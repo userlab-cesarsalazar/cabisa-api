@@ -1,13 +1,15 @@
-'use strict'
+const mysql = require('mysql2/promise')
+const { dbConfig } = require(`${process.env['FILE_ENVIRONMENT']}/globals/dbConfig`)
 const { response, getBody } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
+const { getUsers } = require('./storage')
 
-module.exports.create = async event => {
+module.exports.read = async event => {
+  const connection = await mysql.createConnection(dbConfig)
   try {
-    const body = getBody(event)
-
-    return await response(200, { body }, null)
-  } catch (e) {
-    console.error(e, '<--- error')
-    return await response(400, { message: e }, null)
+    const [users] = await connection.execute(getUsers(true))
+    return await response(200, { message: users }, connection)
+  } catch (error) {
+    console.log(error)
+    return await response(400, error, connection)
   }
 }

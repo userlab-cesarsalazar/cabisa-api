@@ -1,4 +1,7 @@
-service: mg-users
+service: ca-users
+
+plugins:
+  - serverless-offline
 
 custom:
   config: ../../envs/credentials.${self:provider.stage}.json
@@ -10,33 +13,25 @@ provider:
   region: us-east-1
   deploymentBucket:
     name: ${file(${self:custom.config}):deploymentBucket}
-
   environment:
+    STAGE: ${file(${self:custom.config}):stage}
     ACCOUNT_ID: ${file(${self:custom.config}):awsAccountId}
     FILE_ENVIRONMENT: ${file(${self:custom.config}):fileEnvironment}
     RUN_LIKE: ${file(${self:custom.config}):run_like}
-    ACCESS_KEY_ID: ${file(${self:custom.config}):accessKeyId}
-    SECRECT_ACCESS_KEY_ID: ${file(${self:custom.config}):secretAccessKey}
-    REGION: ${file(${self:custom.config}):region}
     DATABASE_HOST: ${file(${self:custom.config}):dbHost}
     DATABASE_USER: ${file(${self:custom.config}):dbUser}
     DATABASE_NAME: ${file(${self:custom.config}):dbName}
     DATABASE_PASSWORD: ${file(${self:custom.config}):dbPassword}
-    DATABASE_PORT: ${file(${self:custom.config}):dbPort}
 
 package:
   exclude:
     - node_modules/**
   include:
     - ../../globals/**
-
 functions:
   users:
-    handler: handler.create
+    handler: handler.read
     events:
       - http:
           path: users
-          method: post
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
+          method: get
