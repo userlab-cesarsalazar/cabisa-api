@@ -54,8 +54,11 @@ const removeEmpty = obj => {
   return Object.keys(obj).length > 0 || obj instanceof Array ? obj : undefined
 }
 
+const getLastId = () => 'SELECT LAST_INSERT_ID() AS "id"'
+
 module.exports = {
   getBody,
+  getLastId,
   response,
   validate,
   removeEmpty,
