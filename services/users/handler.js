@@ -1,13 +1,8 @@
 const mysql = require('mysql2/promise')
 const crypto = require('crypto-js')
-const { dbConfig } = require(`../../globals/dbConfig`)
-const { response, getBody, getLastId } = require(`../../globals/common`)
-// const { dbConfig } = require(`${process.env['FILE_ENVIRONMENT']}/globals/dbConfig`)
-// const { response, getBody, getLastId } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
+const { dbConfig } = require(`${process.env['FILE_ENVIRONMENT']}/globals/dbConfig`)
+const { response, getBody, getLastId } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
 const { findAll, findBy, createUser, updateUser, deleteUser } = require('./storage')
-
-// poner esto en una variable de entorno
-const encryptionKey = 'https://www.allkeysgenerator.com/Random/Security-Encryption-Key-Generator.aspx'
 
 module.exports.read = async () => {
   const connection = await mysql.createConnection(dbConfig)
@@ -43,8 +38,7 @@ module.exports.create = async event => {
 
     if (user) return await response(400, { message: 'The provided email is already registered' }, connection)
 
-    const cipherPassword = crypto.AES.encrypt(password, encryptionKey).toString()
-    // const decrypt = (ciphertext, encryptionKey) => crypto.AES.decrypt(ciphertext, encryptionKey).toString(crypto.enc.Utf8)
+    const cipherPassword = crypto.AES.encrypt(password, process.env['ENCRYPTION_KEY']).toString()
     await connection.execute(createUser(), [fullName, cipherPassword, email, rolId])
     const [[id]] = await connection.execute(getLastId())
 
@@ -63,7 +57,7 @@ module.exports.update = async event => {
 
     if (!userExists) return await response(400, { message: `The user with the id ${id} is not registered` }, connection)
 
-    const cipherPassword = crypto.AES.encrypt(password, encryptionKey).toString()
+    const cipherPassword = crypto.AES.encrypt(password, process.env['ENCRYPTION_KEY']).toString()
     await connection.execute(updateUser(), [fullName, isActive, cipherPassword, rolId, id])
 
     return await response(200, { message: { id } }, connection)
