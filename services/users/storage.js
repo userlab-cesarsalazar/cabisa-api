@@ -1,29 +1,28 @@
-const findAll = debug => {
-  const query = 'SELECT id, full_name, is_active, email, rol_id FROM users'
-  if (debug) console.log(query)
-  return query
-}
-
-const findBy = (whereField, debug) => {
-  const query = `SELECT id, full_name, is_active, email, rol_id FROM users WHERE ${whereField} = ?`
+const findAllBy = (fields = {}, debug) => {
+  const whereFields = Object.keys(fields).map(k => `${k} = ${fields[k] ? `'${fields[k]}'` : null}`)
+  const query = `
+    SELECT id, full_name, email, rol_id
+    FROM users
+    WHERE is_active = 1 ${whereFields.length > 0 ? 'AND' : ''} ${whereFields.join(' AND ')}
+  `
   if (debug) console.log(query)
   return query
 }
 
 const createUser = debug => {
-  const query = 'INSERT INTO users (full_name, password, email, rol_id) VALUES(?, ?, ?, ?)'
+  const query = 'INSERT INTO users (full_name, password, email, rol_id, is_active) VALUES(?, ?, ?, ?, 1)'
   if (debug) console.log(query)
   return query
 }
 
 const updateUser = debug => {
-  const query = 'UPDATE users SET full_name = ?, is_active = ?, password = ?, rol_id = ? WHERE id = ?'
+  const query = 'UPDATE users SET full_name = ?, email = ?, password = ?, rol_id = ? WHERE id = ?'
   if (debug) console.log(query)
   return query
 }
 
 const deleteUser = debug => {
-  const query = 'DELETE FROM users WHERE id = ?'
+  const query = 'UPDATE users SET is_active = 0 WHERE id = ?'
   if (debug) console.log(query)
   return query
 }
@@ -31,7 +30,6 @@ const deleteUser = debug => {
 module.exports = {
   createUser,
   deleteUser,
-  findAll,
-  findBy,
+  findAllBy,
   updateUser,
 }

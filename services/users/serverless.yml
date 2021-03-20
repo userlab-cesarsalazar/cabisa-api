@@ -37,13 +37,6 @@ functions:
           path: users
           method: get
 
-  user:
-    handler: handler.readOne
-    events:
-      - http:
-          path: users/{id}
-          method: get
-
   usersCreate:
     handler: handler.create
     events:
