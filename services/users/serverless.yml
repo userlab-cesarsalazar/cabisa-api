@@ -22,6 +22,7 @@ provider:
     DATABASE_USER: ${file(${self:custom.config}):dbUser}
     DATABASE_NAME: ${file(${self:custom.config}):dbName}
     DATABASE_PASSWORD: ${file(${self:custom.config}):dbPassword}
+    ENCRYPTION_KEY: ${file(${self:custom.config}):encryptionKey}
 
 package:
   exclude:
@@ -35,3 +36,24 @@ functions:
       - http:
           path: users
           method: get
+
+  usersCreate:
+    handler: handler.create
+    events:
+      - http:
+          path: users
+          method: post
+
+  usersUpdate:
+    handler: handler.update
+    events:
+      - http:
+          path: users
+          method: put
+
+  usersDelete:
+    handler: handler.delete
+    events:
+      - http:
+          path: users
+          method: delete

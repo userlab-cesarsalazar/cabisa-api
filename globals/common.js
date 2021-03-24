@@ -54,8 +54,35 @@ const removeEmpty = obj => {
   return Object.keys(obj).length > 0 || obj instanceof Array ? obj : undefined
 }
 
+const escapeFields = (data = {}, fieldsToExclude = []) => {
+  const escapeStr = str => {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+      .replace(/\\/g, '\\\\')
+      .replace(/\$/g, '\\$')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+  }
+
+  let escapedBody = {}
+
+  Object.keys(data).forEach(
+    k => (escapedBody[k] = fieldsToExclude.length > 0 && fieldsToExclude.some(fte => fte === k) ? data[k] : escapeStr(data[k]))
+  )
+
+  return escapedBody
+}
+
+const getLastId = () => 'SELECT LAST_INSERT_ID() AS "id"'
+
 module.exports = {
+  escapeFields,
   getBody,
+  getLastId,
   response,
   validate,
   removeEmpty,
