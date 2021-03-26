@@ -1,5 +1,5 @@
 const findAllBy = (fields = {}, debug) => {
-  const whereFields = Object.keys(fields).map(k => `${k} = ${fields[k] ? `'${fields[k]}'` : null}`)
+  const whereFields = Object.keys(fields).flatMap(k => (fields[k] ? `${k} = '${fields[k]}'` : []))
   const query = `
     SELECT id, name, nit, address, phone, alternative_phone, business_man, payments_man
     FROM clients

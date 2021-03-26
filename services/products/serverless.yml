@@ -1,0 +1,58 @@
+service: ca-products
+
+plugins:
+  - serverless-offline
+
+custom:
+  config: ../../envs/credentials.${self:provider.stage}.json
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage, 'local_dev'}
+  region: us-east-1
+  deploymentBucket:
+    name: ${file(${self:custom.config}):deploymentBucket}
+  environment:
+    STAGE: ${file(${self:custom.config}):stage}
+    ACCOUNT_ID: ${file(${self:custom.config}):awsAccountId}
+    FILE_ENVIRONMENT: ${file(${self:custom.config}):fileEnvironment}
+    RUN_LIKE: ${file(${self:custom.config}):run_like}
+    DATABASE_HOST: ${file(${self:custom.config}):dbHost}
+    DATABASE_USER: ${file(${self:custom.config}):dbUser}
+    DATABASE_NAME: ${file(${self:custom.config}):dbName}
+    DATABASE_PASSWORD: ${file(${self:custom.config}):dbPassword}
+
+package:
+  exclude:
+    - node_modules/**
+  include:
+    - ../../globals/**
+functions:
+  products:
+    handler: handler.read
+    events:
+      - http:
+          path: products
+          method: get
+
+  productsCreate:
+    handler: handler.create
+    events:
+      - http:
+          path: products
+          method: post
+
+  productsUpdate:
+    handler: handler.update
+    events:
+      - http:
+          path: products
+          method: put
+
+  productsDelete:
+    handler: handler.delete
+    events:
+      - http:
+          path: products
+          method: delete
