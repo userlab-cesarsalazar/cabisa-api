@@ -9,7 +9,7 @@ custom:
 provider:
   name: aws
   runtime: nodejs12.x
-  stage: ${opt:stage, 'local_dev'}
+  stage: ${opt:stage, 'dev'}
   region: us-east-1
   deploymentBucket:
     name: ${file(${self:custom.config}):deploymentBucket}
@@ -35,6 +35,8 @@ functions:
       - http:
           path: clients
           method: get
+    layers:
+      - arn:${file(${self:custom.config}):layer}
 
   clientsCreate:
     handler: handler.create
@@ -42,6 +44,8 @@ functions:
       - http:
           path: clients
           method: post
+    layers:
+      - arn:${file(${self:custom.config}):layer}
 
   clientsUpdate:
     handler: handler.update
@@ -49,6 +53,8 @@ functions:
       - http:
           path: clients
           method: put
+    layers:
+      - arn:${file(${self:custom.config}):layer}
 
   clientsDelete:
     handler: handler.delete
@@ -56,3 +62,5 @@ functions:
       - http:
           path: clients
           method: delete
+    layers:
+      - arn:${file(${self:custom.config}):layer}
