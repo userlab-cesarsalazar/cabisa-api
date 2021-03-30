@@ -36,6 +36,7 @@ functions:
       - http:
           path: users
           method: get
+          cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
@@ -45,6 +46,7 @@ functions:
       - http:
           path: users
           method: post
+          cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
@@ -54,6 +56,7 @@ functions:
       - http:
           path: users
           method: put
+          cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
@@ -63,5 +66,6 @@ functions:
       - http:
           path: users
           method: delete
+          cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
