@@ -1,7 +1,7 @@
 const findAllBy = (fields = {}, debug) => {
   const whereFields = Object.keys(fields).flatMap(k => (fields[k] ? `${k} = '${fields[k]}'` : []))
   const query = `
-    SELECT id, full_name, email, rol_id
+    SELECT *
     FROM users
     WHERE is_active = 1 ${whereFields.length > 0 ? 'AND' : ''} ${whereFields.join(' AND ')}
   `
@@ -10,13 +10,13 @@ const findAllBy = (fields = {}, debug) => {
 }
 
 const createUser = debug => {
-  const query = 'INSERT INTO users (full_name, password, email, rol_id, is_active) VALUES(?, ?, ?, ?, 1)'
+  const query = `INSERT INTO users (full_name, email, rol_id, permissions, is_active) VALUES(?,?,?,?, 1)`
   if (debug) console.log(query)
   return query
 }
 
 const updateUser = debug => {
-  const query = 'UPDATE users SET full_name = ?, email = ?, password = ?, rol_id = ? WHERE id = ?'
+  const query = 'UPDATE users SET full_name = ?, email = ?, rol_id = ?, permissions = ? WHERE id = ?'
   if (debug) console.log(query)
   return query
 }

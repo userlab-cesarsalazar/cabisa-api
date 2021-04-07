@@ -1,7 +1,7 @@
 const findAllBy = (fields = {}, debug) => {
   const whereFields = Object.keys(fields).flatMap(k => (fields[k] ? `p.${k} = '${fields[k]}'` : []))
   const query = `
-    SELECT p.id, p.name, p.description, p.code, p.serial_number, p.cost, p.category_id, p.service_type_id, c.name AS category, st.name AS service_type 
+    SELECT p.*, c.name AS category, st.name AS service_type 
     FROM products p
     INNER JOIN categories c ON p.category_id = c.id
     INNER JOIN service_types st ON p.service_type_id = st.id
@@ -13,15 +13,15 @@ const findAllBy = (fields = {}, debug) => {
 
 const createProduct = debug => {
   const query = `
-    INSERT INTO products (name, description, code, serial_number, cost, category_id, service_type_id, is_active)
-    VALUES(?, ?, ?, ?, ?, ?, ?, 1)
+    INSERT INTO products (name, description, code, serial_number, cost, category_id, service_type_id, engine_number,is_active)
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?,1)
   `
   if (debug) console.log(query)
   return query
 }
 
 const updateProduct = debug => {
-  const query = `UPDATE products SET name = ?, description = ?, code = ?, serial_number = ?, cost = ?, category_id = ?, service_type_id = ? WHERE id = ?`
+  const query = `UPDATE products SET name = ?, description = ?, code = ?, serial_number = ?, cost = ?, category_id = ?, service_type_id = ?, engine_number= ? WHERE id = ?`
   if (debug) console.log(query)
   return query
 }

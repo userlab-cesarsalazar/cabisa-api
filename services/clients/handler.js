@@ -21,18 +21,18 @@ module.exports.read = async event => {
 module.exports.create = async event => {
   const connection = await mysql.createConnection(dbConfig)
   try {
-    const requiredFields = ['name', 'nit', 'address']
+    const requiredFields = ['name', 'nit', 'address', 'email', 'client_type']
     const body = escapeFields(getBody(event))
     const errorFields = requiredFields.filter(k => !body[k])
 
     if (errorFields.length > 0) return await response(400, { message: `The fields ${errorFields.join(', ')} are required` }, connection)
 
-    const { name, nit, address, phone = null, alternative_phone = null, business_man = null, payments_man = null } = body
+    const { name, nit, address, phone = null, alternative_phone = null, business_man = null, payments_man = null, email, client_type } = body
     const [[client]] = await connection.execute(findAllBy({ nit }))
 
     if (client) return await response(400, { message: 'The provided nit is already registered' }, connection)
 
-    await connection.execute(createClient(), [name, nit, address, phone, alternative_phone, business_man, payments_man])
+    await connection.execute(createClient(), [name, nit, address, phone, alternative_phone, business_man, payments_man, email, client_type])
     const [[id]] = await connection.execute(getLastId())
 
     return await response(201, { message: id }, connection)

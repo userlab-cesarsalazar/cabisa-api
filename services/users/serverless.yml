@@ -22,7 +22,6 @@ provider:
     DATABASE_USER: ${file(${self:custom.config}):dbUser}
     DATABASE_NAME: ${file(${self:custom.config}):dbName}
     DATABASE_PASSWORD: ${file(${self:custom.config}):dbPassword}
-    ENCRYPTION_KEY: ${file(${self:custom.config}):encryptionKey}
 
 package:
   exclude:
