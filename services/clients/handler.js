@@ -51,12 +51,12 @@ module.exports.update = async event => {
 
     if (errorFields.length > 0) return await response(400, { message: `The fields ${errorFields.join(', ')} are required` }, connection)
 
-    const { id, name, address, phone = null, alternative_phone = null, business_man = null, payments_man = null } = body
+    const { id, name, address, phone = null, alternative_phone = null, business_man = null, payments_man = null, email, client_type, nit } = body
     const [[clientExists]] = await connection.execute(findAllBy({ id }))
 
     if (!clientExists) return await response(400, { message: `The client with the id ${id} is not registered` }, connection)
 
-    await connection.execute(updateClient(), [name, address, phone, alternative_phone, business_man, payments_man, id])
+    await connection.execute(updateClient(), [name, address, phone, alternative_phone, business_man, payments_man, email, client_type, nit, id])
 
     return await response(200, { message: { id } }, connection)
   } catch (error) {

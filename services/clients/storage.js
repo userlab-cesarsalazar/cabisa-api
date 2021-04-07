@@ -22,7 +22,7 @@ const createClient = debug => {
 const updateClient = debug => {
   const query = `
     UPDATE clients
-    SET name = ?, address = ?, phone = ?, alternative_phone = ?, business_man = ?, payments_man = ?, email = ?, client_type = ?
+    SET name = ?, address = ?, phone = ?, alternative_phone = ?, business_man = ?, payments_man = ?, email = ?, client_type = ?, nit = ?
     WHERE id = ?
   `
   if (debug) console.log(query)
