@@ -77,12 +77,51 @@ const escapeFields = (data = {}, fieldsToExclude = []) => {
   return escapedBody
 }
 
+// todos los operadores tienen esta sintaxis $like:, $ como prefijo y : como marcador del fin del/los operador(es)
+// para usar los operadores se deben pasar como prefijo en el valor del query param
+// ademas existe el operador $or que es el unico que se puede usar en conjunto con otro operador -> $like$or:
+const getWhereConditions = (fields, hasPreviousConditions = true) => {
+  const operators = {
+    $eq: '=',
+    $ne: '!=',
+    $gt: '>',
+    $gte: '>=',
+    $lt: '<',
+    $lte: '<=',
+    $like: 'LIKE',
+    $notlike: 'NOT LIKE',
+  }
+
+  const whereConditions = Object.keys(fields).flatMap(k => {
+    if (!fields[k]) return []
+
+    const prefixOperator = fields[k].indexOf('\\$or') > -1 ? 'OR' : 'AND'
+    let paramOperator = '$eq'
+    let value = fields[k]
+
+    if (fields[k][0] === '\\' && fields[k][1] === '$' && fields[k].indexOf(':') > -1) {
+      paramOperator = fields[k].substring(1, fields[k].indexOf(':'))
+      paramOperator = paramOperator.replace('$or\\', '')
+      paramOperator = paramOperator.replace('\\$or', '')
+    }
+
+    if (fields[k][0] === '\\' && fields[k][1] === '$' && fields[k].indexOf(':') > -1) {
+      value = fields[k].substring(fields[k].indexOf(':') + 1)
+    }
+
+    return ` ${hasPreviousConditions ? prefixOperator : ''} ${k} ${operators[paramOperator]} '${value}'`
+  })
+
+  return whereConditions.join('')
+}
+
 const getLastId = () => 'SELECT LAST_INSERT_ID() AS "id"'
 
 module.exports = {
   escapeFields,
   getBody,
   getLastId,
+  getWhereConditions,
   response,
   validate,
   removeEmpty,
