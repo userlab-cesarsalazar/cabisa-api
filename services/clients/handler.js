@@ -1,6 +1,6 @@
 const mysql = require('mysql2/promise')
 const { dbConfig } = require(`${process.env['FILE_ENVIRONMENT']}/globals/dbConfig`)
-const { response, getBody, getLastId, escapeFields } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
+const { response, getBody, getLastId, escapeFields, validateEmail } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
 const { findAllBy, createClient, updateClient, deleteClient } = require('./storage')
 
 module.exports.read = async event => {
@@ -51,12 +51,24 @@ module.exports.update = async event => {
 
     if (errorFields.length > 0) return await response(400, { message: `The fields ${errorFields.join(', ')} are required` }, connection)
 
-    const { id, name, address, phone = null, alternative_phone = null, business_man = null, payments_man = null } = body
+    const {
+      id,
+      name,
+      address,
+      phone = null,
+      alternative_phone = null,
+      business_man = null,
+      payments_man = null,
+      email = null,
+      client_type = null,
+    } = body
     const [[clientExists]] = await connection.execute(findAllBy({ id }))
 
     if (!clientExists) return await response(400, { message: `The client with the id ${id} is not registered` }, connection)
 
-    await connection.execute(updateClient(), [name, address, phone, alternative_phone, business_man, payments_man, id])
+    if (!validateEmail(email)) return await response(400, { message: `The email is invalid` }, connection)
+
+    await connection.execute(updateClient(), [name, address, phone, alternative_phone, business_man, payments_man, email, client_type, id])
 
     return await response(200, { message: { id } }, connection)
   } catch (error) {
