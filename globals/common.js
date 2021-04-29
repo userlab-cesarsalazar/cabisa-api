@@ -80,7 +80,7 @@ const escapeFields = (data = {}, fieldsToExclude = []) => {
 // todos los operadores tienen esta sintaxis $like:, $ como prefijo y : como marcador del fin del/los operador(es)
 // para usar los operadores se deben pasar como prefijo en el valor del query param
 // ademas existe el operador $or que es el unico que se puede usar en conjunto con otro operador -> $like$or:
-const getWhereConditions = (fields, hasPreviousConditions = true) => {
+const getWhereConditions = ({ fields, tableName }, hasPreviousConditions = true) => {
   const operators = {
     $eq: '=',
     $ne: '!=',
@@ -109,7 +109,7 @@ const getWhereConditions = (fields, hasPreviousConditions = true) => {
       value = fields[k].substring(fields[k].indexOf(':') + 1)
     }
 
-    return ` ${hasPreviousConditions ? prefixOperator : ''} ${k} ${operators[paramOperator]} '${value}'`
+    return ` ${hasPreviousConditions ? prefixOperator : ''} ${tableName ? `${tableName}.${k}` : k} ${operators[paramOperator]} '${value}'`
   })
 
   return whereConditions.join('')
