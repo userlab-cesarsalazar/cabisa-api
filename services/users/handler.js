@@ -5,7 +5,12 @@ const { dbConfig } = require(`${process.env['FILE_ENVIRONMENT']}/globals/dbConfi
 const { response, getBody, getLastId, escapeFields } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
 const { findAllBy, createUser, updateUser } = require('./storage')
 
-const cognito = new AWS.CognitoIdentityServiceProvider({ region: process.env['REGION'] })
+AWS.config.update({
+  accessKeyId: process.env['ACCESS_KEY_ID'],
+  secretAccessKey: process.env['SECRET_ACCESS_KEY'],
+  region: process.env['REGION'],
+})
+const cognito = new AWS.CognitoIdentityServiceProvider()
 
 module.exports.read = async event => {
   const connection = await mysql.createConnection(dbConfig)
@@ -91,7 +96,7 @@ module.exports.delete = async event => {
   try {
     const { userName } = getBody(event)
 
-    const result = deleteUser(userName)
+    const result = await deleteUser(userName)
 
     return await response(200, { message: result })
   } catch (error) {
@@ -121,7 +126,7 @@ module.exports.changePassword = async event => {
       ProposedPassword: proposedPassword,
     }
 
-    const result = changePassword(params)
+    const result = await changePassword(params)
 
     return await response(200, { message: result })
   } catch (error) {
