@@ -122,9 +122,12 @@ const validateEmail = email => {
   return re.test(String(email).toLowerCase())
 }
 
+const getError = e => e.error || e.errors || e.data || e.message || e
+
 module.exports = {
   escapeFields,
   getBody,
+  getError,
   getLastId,
   getWhereConditions,
   response,
