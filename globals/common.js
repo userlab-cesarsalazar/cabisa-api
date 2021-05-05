@@ -117,12 +117,21 @@ const getWhereConditions = (fields, hasPreviousConditions = true) => {
 
 const getLastId = () => 'SELECT LAST_INSERT_ID() AS "id"'
 
+const validateEmail = email => {
+  const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+  return re.test(String(email).toLowerCase())
+}
+
+const getError = e => e.error || e.errors || e.data || e.message || e
+
 module.exports = {
   escapeFields,
   getBody,
+  getError,
   getLastId,
   getWhereConditions,
   response,
   validate,
+  validateEmail,
   removeEmpty,
 }

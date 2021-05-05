@@ -2,7 +2,7 @@ const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globa
 
 const findAllBy = (fields = {}, debug) => {
   const query = `
-    SELECT id, name, nit, address, phone, alternative_phone, business_man, payments_man
+    SELECT id, name, nit, address, phone, alternative_phone, business_man, payments_man, email, client_type
     FROM clients
     WHERE is_active = 1 ${getWhereConditions(fields)}
   `
@@ -23,7 +23,7 @@ const createClient = debug => {
 const updateClient = debug => {
   const query = `
     UPDATE clients
-    SET name = ?, address = ?, phone = ?, alternative_phone = ?, business_man = ?, payments_man = ?
+    SET name = ?, address = ?, phone = ?, alternative_phone = ?, business_man = ?, payments_man = ?, email = ?, client_type = ?
     WHERE id = ?
   `
   if (debug) console.log(query)
