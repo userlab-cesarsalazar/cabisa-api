@@ -77,13 +77,15 @@ module.exports.update = async event => {
 }
 
 module.exports.delete = async event => {
-  const deleteUser = async user =>
-    await new Promise((resolve, reject) => {
-      let params = {
-        UserPoolId: process.env['USER_POOL_ID'],
-        Username: user,
-      }
+  try {
+    const { userName } = getBody(event)
 
+    let params = {
+      UserPoolId: process.env['USER_POOL_ID'],
+      Username: userName,
+    }
+
+    const result = await new Promise((resolve, reject) => {
       cognito.adminDeleteUser(params, (err, data) => {
         if (err) {
           reject(err)
@@ -93,11 +95,6 @@ module.exports.delete = async event => {
       })
     })
 
-  try {
-    const { userName } = getBody(event)
-
-    const result = await deleteUser(userName)
-
     return await response(200, { message: result })
   } catch (error) {
     console.log(error)
@@ -106,17 +103,6 @@ module.exports.delete = async event => {
 }
 
 module.exports.changePassword = async event => {
-  const changePassword = async params =>
-    await new Promise((resolve, reject) => {
-      cognito.changePassword(params, (err, data) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(data)
-        }
-      })
-    })
-
   try {
     const { accessToken, previousPassword, proposedPassword } = getBody(event)
 
@@ -126,7 +112,15 @@ module.exports.changePassword = async event => {
       ProposedPassword: proposedPassword,
     }
 
-    const result = await changePassword(params)
+    const result = await new Promise((resolve, reject) => {
+      cognito.changePassword(params, (err, data) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(data)
+        }
+      })
+    })
 
     return await response(200, { message: result })
   } catch (error) {
