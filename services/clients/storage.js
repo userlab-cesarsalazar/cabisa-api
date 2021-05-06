@@ -4,7 +4,7 @@ const findAllBy = (fields = {}, debug) => {
   const query = `
     SELECT id, name, nit, address, phone, alternative_phone, business_man, payments_man
     FROM clients
-    WHERE is_active = 1 ${getWhereConditions(fields)}
+    WHERE is_active = 1 ${getWhereConditions({ fields, hasPreviousConditions: true })}
   `
   if (debug) console.log(query)
   return query

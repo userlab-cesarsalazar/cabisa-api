@@ -6,7 +6,7 @@ const findAllBy = (fields = {}, debug) => {
     FROM products p
     INNER JOIN categories c ON p.category_id = c.id
     INNER JOIN service_types st ON p.service_type_id = st.id
-    WHERE p.is_active = 1 ${getWhereConditions({ fields, tableName: 'p' })}
+    WHERE p.is_active = 1 ${getWhereConditions({ fields, tableName: 'p', hasPreviousConditions: true })}
   `
   if (debug) console.log(query)
   return query
