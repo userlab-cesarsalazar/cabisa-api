@@ -1,4 +1,4 @@
-const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
+const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 
 const findAllBy = (fields = {}, debug) => {
   const query = `

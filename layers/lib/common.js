@@ -2,9 +2,7 @@ const getBody = event => {
   return event.body ? (typeof event.body === 'string' ? JSON.parse(event.body) : event.body) : JSON.parse(event.Records[0].Sns.Message)
 }
 
-const response = async (status, body, connection) => {
-  if (connection) await connection.end()
-
+const response = async (status, body) => {
   return new Promise(resolve => {
     resolve({
       statusCode: status,
