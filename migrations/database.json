@@ -1,0 +1,11 @@
+{
+  "dev": {
+    "driver": "mysql",
+    "multipleStatements": true,
+    "host": "localhost",
+    "database": "cabisa",
+    "user": "root",
+    "password": "20681104"
+  },
+  "sql-file": true
+}

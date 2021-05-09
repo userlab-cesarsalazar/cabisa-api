@@ -1,0 +1,23 @@
+CREATE TABLE `stakeholders` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `stakeholder_type` ENUM('CLIENT_INDIVIDUAL','CLIENT_COMPANY','PROVIDER') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `status` ENUM('ACTIVE', 'INACTIVE', 'BLOCKED') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'ACTIVE' NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `address` VARCHAR(100) NOT NULL,
+  `nit` VARCHAR(11) DEFAULT NULL,
+  `email` VARCHAR(100) DEFAULT NULL,
+  `phone` VARCHAR(20) DEFAULT NULL,
+  `alternative_phone` VARCHAR(20) DEFAULT NULL,
+  `business_man` VARCHAR(100) DEFAULT NULL,
+  `payments_man` VARCHAR(100) DEFAULT NULL,
+  `block_reason` TEXT DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_by` INT NOT NULL,
+  `updated_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP DEFAULT NULL,
+  `updated_by` INT,
+  CONSTRAINT stakeholders_pk PRIMARY KEY (id, stakeholder_type),
+  CONSTRAINT stakeholders_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
+  CONSTRAINT stakeholders_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id),
+  CONSTRAINT stakeholders_block_reason_check CHECK (status <> 'BLOCKED' OR block_reason IS NOT NULL),
+  CONSTRAINT stakeholders_updated_by_check CHECK (updated_at IS NULL OR updated_by IS NOT NULL)
+) ENGINE=InnoDB;
