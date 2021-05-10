@@ -17,10 +17,10 @@ CREATE TABLE `inventory_movements_details` (
   `inventory_movement_id` INT NOT NULL,
   `quantity` INT NOT NULL,
   `storage_location` VARCHAR(255) DEFAULT NULL,
-  `authorizer_comments` TEXT DEFAULT NULL,
-  `authorized_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  `authorized_by` INT NOT NULL,
+  `comments` TEXT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  `created_by` INT NOT NULL,
   CONSTRAINT inventory_movements_details_pk PRIMARY KEY (`id`),
   CONSTRAINT inventory_movements_details_inventory_movement_id_fk FOREIGN KEY (inventory_movement_id) REFERENCES inventory_movements(id),
-  CONSTRAINT inventory_movements_details_authorized_by_fk FOREIGN KEY (authorized_by) REFERENCES users(id)
+  CONSTRAINT inventory_movements_details_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id)
 ) ENGINE=InnoDB;

@@ -4,8 +4,8 @@
     "multipleStatements": true,
     "host": "localhost",
     "database": "cabisa",
-    "user": "root",
-    "password": "20681104"
+    "user": "your-user",
+    "password": "your-password"
   },
   "sql-file": true
 }
