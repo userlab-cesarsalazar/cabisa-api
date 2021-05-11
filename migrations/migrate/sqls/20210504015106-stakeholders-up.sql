@@ -15,7 +15,7 @@ CREATE TABLE `stakeholders` (
   `created_by` INT NOT NULL,
   `updated_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP DEFAULT NULL,
   `updated_by` INT,
-  CONSTRAINT stakeholders_pk PRIMARY KEY (id, stakeholder_type),
+  CONSTRAINT stakeholders_pk PRIMARY KEY (id),
   CONSTRAINT stakeholders_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
   CONSTRAINT stakeholders_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id),
   CONSTRAINT stakeholders_block_reason_check CHECK (status <> 'BLOCKED' OR block_reason IS NOT NULL),
