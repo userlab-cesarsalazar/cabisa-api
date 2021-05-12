@@ -9,13 +9,11 @@ CREATE TABLE `products` (
   `stock` INT DEFAULT 0 NOT NULL,
   `description` VARCHAR(255) DEFAULT NULL,
   `image_url` TEXT DEFAULT NULL,
-  `block_reason` TEXT DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` INT NOT NULL,
   `updated_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP DEFAULT NULL,
   `updated_by` INT,
   CONSTRAINT products_pk PRIMARY KEY (`id`),
   CONSTRAINT products_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
-  CONSTRAINT products_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id),
-  CONSTRAINT products_block_reason_check CHECK (status <> 'BLOCKED' OR block_reason IS NOT NULL)
+  CONSTRAINT products_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id)
 ) ENGINE=InnoDB;
