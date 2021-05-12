@@ -1,79 +1,119 @@
-const mysql = require('mysql2/promise')
-const { dbConfig } = require(`${process.env['FILE_ENVIRONMENT']}/globals/dbConfig`)
-const { response, getBody, getLastId, escapeFields } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
-const { findAllBy, createProduct, updateProduct, deleteProduct } = require('./storage')
+const { getBaseInputType, db, request, response, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { findAllBy, createProduct, updateProduct, setStatusProduct } = require('./storage')
+
+const getInputType = getBaseInputType({
+  id: { type: ['string', 'number'], required: true },
+  product_type: { type: { enum: ['SERVICE', 'EQUIPMENT', 'PART'] }, required: true },
+  status: { type: { enum: ['ACTIVE', 'INACTIVE'] }, required: true, defaultValue: 'ACTIVE' },
+  name: { type: 'string', length: 100, required: true },
+  code: { type: 'string', length: 50, required: true, unique: true },
+  serial_number: { type: 'string', length: 50 },
+  unit_price: { type: 'number', min: 0, defaultValue: 0 },
+  description: { type: 'string', length: 255 },
+  image_url: { type: 'string' },
+})
 
 module.exports.read = async event => {
-  const connection = await mysql.createConnection(dbConfig)
   try {
-    const queryParams = event.queryStringParameters ? event.queryStringParameters : {}
-    const params = escapeFields(queryParams)
+    const req = await request({ event })
 
-    const [products] = await connection.execute(findAllBy(params))
+    const res = { statusCode: 200, data: await db.query(findAllBy(req.query)) }
 
-    return await response(200, { message: products }, connection)
+    return await response({ req, res })
   } catch (error) {
     console.log(error)
-    return await response(400, error, connection)
+    return await response({ error })
   }
 }
 
 module.exports.create = async event => {
-  const connection = await mysql.createConnection(dbConfig)
   try {
-    const requiredFields = ['name', 'category_id', 'service_type_id']
-    const body = escapeFields(getBody(event))
-    const errorFields = requiredFields.filter(k => !body[k])
+    const inputType = getInputType('exclude', 'id', 'status')
+    const req = await request({ event, inputType })
+    const { product_type, name, code, serial_number, unit_price, description, image_url, created_by = 1 } = req.body
 
-    if (errorFields.length > 0) return await response(400, { message: `The fields ${errorFields.join(', ')} are required` }, connection)
+    const errors = []
+    const requiredFields = ['product_type', 'name']
+    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+    const [codeExists] = await db.query(findAllBy({ code }))
 
-    const { name, category_id, service_type_id, description = null, code = null, serial_number = null, cost = null } = body
-    const [[product]] = await connection.execute(findAllBy({ name }))
+    if (inputType.product_type.type.enum.every(v => v !== product_type))
+      errors.push(`The field product_type must contain one of these values: ${inputType.product_type.type.enum.join(', ')}`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
+    if (codeExists) errors.push(`The provided code is already registered`)
 
-    if (product) return await response(400, { message: 'The provided name is already registered' }, connection)
+    if (errors.length > 0) throw new ValidatorException(errors)
 
-    await connection.execute(createProduct(), [name, description, code, serial_number, cost, category_id, service_type_id])
-    const [[id]] = await connection.execute(getLastId())
+    const res = await db.transaction(async connection => {
+      await connection.query(createProduct(), [product_type, name, code, serial_number, unit_price, description, image_url, created_by])
 
-    return await response(201, { message: id }, connection)
+      return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Product created successfully' }
+    })
+
+    return await response({ req, res })
   } catch (error) {
     console.log(error)
-    return await response(400, error, connection)
+    return await response({ error })
   }
 }
 
 module.exports.update = async event => {
-  const connection = await mysql.createConnection(dbConfig)
   try {
-    const requiredFields = ['id', 'name', 'category_id', 'service_type_id']
-    const body = escapeFields(getBody(event))
-    const errorFields = requiredFields.filter(k => !body[k])
+    const inputType = getInputType('exclude', 'product_type', 'status')
+    const req = await request({ event, inputType, dbQuery: db.query, findAllBy })
 
-    if (errorFields.length > 0) return await response(400, { message: `The fields ${errorFields.join(', ')} are required` }, connection)
+    const { id, name, code, serial_number, unit_price, description, image_url, updated_by = 1 } = req.body
 
-    const { id, name, category_id, service_type_id, description = null, code = null, serial_number = null, cost = null } = body
-    const [[product]] = await connection.execute(findAllBy({ id }))
+    const errors = []
+    const requiredFields = ['id', 'name', 'code']
+    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+    const [product] = await db.query(findAllBy({ code }))
 
-    if (!product) return await response(400, { message: `The product with the id ${id} is not registered` }, connection)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
+    if (product && Number(id) !== Number(product.id)) errors.push(`The provided code is already registered`)
 
-    await connection.execute(updateProduct(), [name, description, code, serial_number, cost, category_id, service_type_id, id])
+    if (errors.length > 0) throw new ValidatorException(errors)
 
-    return await response(200, { message: { id } }, connection)
+    const res = await db.transaction(async connection => {
+      await connection.query(updateProduct(), [name, code, serial_number, unit_price, description, image_url, updated_by, id])
+
+      return { statusCode: 200, data: { id }, message: 'Product updated successfully' }
+    })
+
+    return await response({ req, res })
   } catch (error) {
     console.log(error)
-    return await response(400, error, connection)
+    return await response({ error })
   }
 }
 
-module.exports.delete = async event => {
-  const connection = await mysql.createConnection(dbConfig)
+module.exports.setStatus = async event => {
   try {
-    const { id } = getBody(event)
-    await connection.execute(deleteProduct(), [id])
+    const inputType = getInputType('include', 'id', 'status')
+    const req = await request({ event, inputType, dbQuery: db.query, findAllBy, initWhereCondition: '1' })
 
-    return await response(200, { message: { id } }, connection)
+    const { id, status, updated_by = 1 } = req.body
+
+    const errors = []
+    const requiredFields = ['id', 'status']
+    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
+    if (inputType.status.type.enum.every(v => v !== status))
+      errors.push(`The field status must contain one of these values: ${inputType.status.type.enum.join(', ')}`)
+    if (!req.currentModel) errors.push(`The stakeholder with id ${id} is not registered`)
+
+    if (errors.length > 0) throw new ValidatorException(errors)
+
+    const res = await db.transaction(async connection => {
+      await connection.query(setStatusProduct(), [status, updated_by, id])
+
+      return { statusCode: 200, data: { id }, message: 'Product status updated successfully' }
+    })
+
+    return await response({ req, res })
   } catch (error) {
     console.log(error)
-    return await response(400, error, connection)
+    return await response({ error })
   }
 }

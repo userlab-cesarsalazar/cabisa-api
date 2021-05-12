@@ -1,40 +1,25 @@
-const findAllBy = (fields = {}, debug) => {
-  const whereFields = Object.keys(fields).flatMap(k => (fields[k] ? `p.${k} = '${fields[k]}'` : []))
-  const query = `
-    SELECT p.id, p.name, p.description, p.code, p.serial_number, p.cost, p.category_id, p.service_type_id, c.name AS category, st.name AS service_type 
-    FROM products p
-    INNER JOIN categories c ON p.category_id = c.id
-    INNER JOIN service_types st ON p.service_type_id = st.id
-    WHERE p.is_active = 1 ${whereFields.length > 0 ? 'AND' : ''} ${whereFields.join(' AND ')}
-  `
-  if (debug) console.log(query)
-  return query
-}
+const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 
-const createProduct = debug => {
-  const query = `
-    INSERT INTO products (name, description, code, serial_number, cost, category_id, service_type_id, is_active)
-    VALUES(?, ?, ?, ?, ?, ?, ?, 1)
-  `
-  if (debug) console.log(query)
-  return query
-}
+const findAllBy = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
+  SELECT id, product_type, status, name, code, serial_number, unit_price, stock, description, image_url, created_at, created_by, updated_at, updated_by
+  FROM products
+  WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
+`
 
-const updateProduct = debug => {
-  const query = `UPDATE products SET name = ?, description = ?, code = ?, serial_number = ?, cost = ?, category_id = ?, service_type_id = ? WHERE id = ?`
-  if (debug) console.log(query)
-  return query
-}
+const createProduct = () => `
+  INSERT INTO products (product_type, status, name, code, serial_number, unit_price, description, image_url, created_by)
+  VALUES(?, 'ACTIVE', ?, ?, ?, ?, ?, ?, ?)
+`
 
-const deleteProduct = debug => {
-  const query = 'UPDATE products SET is_active = 0 WHERE id = ?'
-  if (debug) console.log(query)
-  return query
-}
+const updateProduct = () => `
+  UPDATE products SET name = ?, code = ?, serial_number = ?, unit_price = ?, description = ?, image_url = ?, updated_by = ? WHERE id = ?
+`
+
+const setStatusProduct = () => 'UPDATE products SET status = ?, updated_by = ? WHERE id = ?'
 
 module.exports = {
   createProduct,
-  deleteProduct,
   findAllBy,
+  setStatusProduct,
   updateProduct,
 }

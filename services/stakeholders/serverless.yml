@@ -1,4 +1,4 @@
-service: ca-clients
+service: ca-stakeholders
 
 plugins:
   - serverless-offline
@@ -29,42 +29,42 @@ package:
   include:
     - ../../globals/**
 functions:
-  clients:
+  stakeholders:
     handler: handler.read
     events:
       - http:
-          path: clients
+          path: stakeholders
           method: get
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  clientsCreate:
+  stakeholdersCreate:
     handler: handler.create
     events:
       - http:
-          path: clients
+          path: stakeholders
           method: post
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  clientsUpdate:
+  stakeholdersUpdate:
     handler: handler.update
     events:
       - http:
-          path: clients
+          path: stakeholders
           method: put
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  clientsDelete:
-    handler: handler.delete
+  stakeholdersSetStatus:
+    handler: handler.setStatus
     events:
       - http:
-          path: clients
-          method: delete
+          path: stakeholders/status
+          method: put
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}

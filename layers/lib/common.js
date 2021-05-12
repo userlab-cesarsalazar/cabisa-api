@@ -1,18 +1,12 @@
-const getBody = event => {
-  return event.body ? (typeof event.body === 'string' ? JSON.parse(event.body) : event.body) : JSON.parse(event.Records[0].Sns.Message)
-}
-
-const response = async (status, body) => {
-  return new Promise(resolve => {
-    resolve({
-      statusCode: status,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Credentials': true,
-      },
-      body: JSON.stringify(body),
-    })
-  })
+function ValidatorException(errors = null) {
+  this.statusCode = 402
+  this.message = {
+    errors,
+    message: 'Invalid request data',
+  }
+  this.toString = function () {
+    return this.statusCode + this.message
+  }
 }
 
 /**
@@ -33,6 +27,7 @@ const validate = (data, toValidate) => {
   if (p.length === tmp.length) return true
   else return false
 }
+
 /**
  *
  * @param obj
@@ -75,10 +70,58 @@ const escapeFields = (data = {}, fieldsToExclude = []) => {
   return escapedBody
 }
 
+const isEmail = email => {
+  const re =
+    /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+  return re.test(String(email).toLowerCase())
+}
+
+const isEmptyObject = obj => {
+  for (var prop in obj) {
+    if (obj.hasOwnProperty(prop)) {
+      return false
+    }
+  }
+
+  return JSON.stringify(obj) === JSON.stringify({})
+}
+
+const getError = e => e.error || e.errors || e.data || e.message || e
+
+const response = async data => {
+  let body
+  let statusCode
+
+  if (data.error) {
+    body = { error: getError(data.error) }
+    statusCode = data.error.statusCode || 400
+  } else {
+    if (!data.res?.data || !data.res?.statusCode) throw new Error('The response must include data and statusCode')
+
+    if (data.req?.httpMethod !== 'GET' && !data.res?.message) throw new Error('The response for non GET requests must include a "message" key')
+
+    statusCode = data.res.statusCode
+
+    if (data.req.httpMethod === 'GET') body = data.res.data
+    else body = { data: data.res.data, message: data.res.message }
+  }
+
+  return new Promise(resolve => {
+    resolve({
+      statusCode,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true,
+      },
+      body: JSON.stringify(body),
+    })
+  })
+}
+
 // todos los operadores tienen esta sintaxis $like:, $ como prefijo y : como marcador del fin del/los operador(es)
 // para usar los operadores se deben pasar como prefijo en el valor del query param
 // ademas existe el operador $or que es el unico que se puede usar en conjunto con otro operador -> $like$or:
-const getWhereConditions = (fields, hasPreviousConditions = true) => {
+const getWhereConditions = ({ fields, tableAlias, hasPreviousConditions = true }) => {
   const operators = {
     $eq: '=',
     $ne: '!=',
@@ -91,45 +134,70 @@ const getWhereConditions = (fields, hasPreviousConditions = true) => {
   }
 
   const whereConditions = Object.keys(fields).flatMap(k => {
-    if (!fields[k]) return []
+    const fieldValue = fields[k] && String(fields[k])
 
-    const prefixOperator = fields[k].indexOf('\\$or') > -1 ? 'OR' : 'AND'
+    if (!fieldValue) return []
+
+    const prefixOperator = fieldValue.indexOf('\\$or') > -1 ? 'OR' : 'AND'
     let paramOperator = '$eq'
-    let value = fields[k]
+    let value = fieldValue
 
-    if (fields[k][0] === '\\' && fields[k][1] === '$' && fields[k].indexOf(':') > -1) {
-      paramOperator = fields[k].substring(1, fields[k].indexOf(':'))
+    if (fieldValue[0] === '\\' && fieldValue[1] === '$' && fieldValue.indexOf(':') > -1) {
+      paramOperator = fieldValue.substring(1, fieldValue.indexOf(':'))
       paramOperator = paramOperator.replace('$or\\', '')
       paramOperator = paramOperator.replace('\\$or', '')
     }
 
-    if (fields[k][0] === '\\' && fields[k][1] === '$' && fields[k].indexOf(':') > -1) {
-      value = fields[k].substring(fields[k].indexOf(':') + 1)
+    if (fieldValue[0] === '\\' && fieldValue[1] === '$' && fieldValue.indexOf(':') > -1) {
+      value = fieldValue.substring(fieldValue.indexOf(':') + 1)
     }
 
-    return ` ${hasPreviousConditions ? prefixOperator : ''} ${k} ${operators[paramOperator]} '${value}'`
+    return ` ${hasPreviousConditions ? prefixOperator : 'WHERE '} ${tableAlias ? `${tableAlias}.${k}` : k} ${operators[paramOperator]} '${value}'`
   })
 
   return whereConditions.join('')
 }
 
-const getLastId = () => 'SELECT LAST_INSERT_ID() AS "id"'
+const getBaseInputType =
+  fields =>
+  (action, ...actionFields) => {
+    if (!action) return fields
 
-const validateEmail = email => {
-  const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
-  return re.test(String(email).toLowerCase())
-}
+    if (action === 'include') {
+      return Object.keys(fields).reduce((r, k) => {
+        return actionFields.some(af => af === k) ? { ...r, [k]: fields[k] } : r
+      }, {})
+    }
 
-const getError = e => e.error || e.errors || e.data || e.message || e
+    if (action === 'exclude') {
+      return Object.keys(fields).reduce((r, k) => {
+        return actionFields.some(af => af === k) ? r : { ...r, [k]: fields[k] }
+      }, {})
+    }
+  }
+
+const decorate =
+  (...functionsToDecorate) =>
+  (...decoratorFunctions) => {
+    const result = functionsToDecorate.map(baseFn => {
+      return decoratorFunctions.reduce((fn, decorator) => decorator(fn), baseFn)
+    })
+
+    if (result.length === 1) return result[0]
+
+    return result
+  }
 
 module.exports = {
+  decorate,
   escapeFields,
-  getBody,
+  getBaseInputType,
   getError,
-  getLastId,
   getWhereConditions,
   response,
   validate,
-  validateEmail,
+  isEmail,
+  isEmptyObject,
+  ValidatorException,
   removeEmpty,
 }

@@ -37,7 +37,7 @@ const transaction = async func => {
 
     await connection.beginTransaction()
 
-    connection.geLastInsertedId = async () => {
+    connection.geLastInsertId = async () => {
       const [result] = await connection.execute('SELECT LAST_INSERT_ID() AS "id"')
       return result[0].id
     }
