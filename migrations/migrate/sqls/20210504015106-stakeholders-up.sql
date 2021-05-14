@@ -4,7 +4,7 @@ CREATE TABLE `stakeholders` (
   `status` ENUM('ACTIVE', 'INACTIVE', 'BLOCKED') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'ACTIVE' NOT NULL,
   `name` VARCHAR(100) NOT NULL,
   `address` VARCHAR(100) NOT NULL,
-  `nit` VARCHAR(11) DEFAULT NULL,
+  `nit` VARCHAR(11) NOT NULL,
   `email` VARCHAR(100) DEFAULT NULL,
   `phone` VARCHAR(20) DEFAULT NULL,
   `alternative_phone` VARCHAR(20) DEFAULT NULL,
@@ -19,5 +19,6 @@ CREATE TABLE `stakeholders` (
   CONSTRAINT stakeholders_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
   CONSTRAINT stakeholders_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id),
   CONSTRAINT stakeholders_block_reason_check CHECK (status <> 'BLOCKED' OR block_reason IS NOT NULL),
-  CONSTRAINT stakeholders_updated_by_check CHECK (updated_at IS NULL OR updated_by IS NOT NULL)
+  CONSTRAINT stakeholders_updated_by_check CHECK (updated_at IS NULL OR updated_by IS NOT NULL),
+  CONSTRAINT stakeholders_nit_stakeholder_type_unique UNIQUE (nit, stakeholder_type)
 ) ENGINE=InnoDB;

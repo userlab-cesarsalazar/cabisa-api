@@ -3,7 +3,7 @@ CREATE TABLE `products` (
   `product_type` ENUM('SERVICE','EQUIPMENT','PART') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `status` ENUM('ACTIVE','INACTIVE') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'ACTIVE' NOT NULL,
   `name` VARCHAR(100) NOT NULL,
-  `code` VARCHAR(50) DEFAULT NULL,
+  `code` VARCHAR(50) NOT NULL,
   `serial_number` VARCHAR(50) DEFAULT NULL,
   `unit_price` DOUBLE NOT NULL DEFAULT 0,
   `stock` INT DEFAULT 0 NOT NULL,
@@ -15,5 +15,6 @@ CREATE TABLE `products` (
   `updated_by` INT,
   CONSTRAINT products_pk PRIMARY KEY (`id`),
   CONSTRAINT products_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
-  CONSTRAINT products_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id)
+  CONSTRAINT products_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id),
+  CONSTRAINT products_code_product_type_unique UNIQUE (code, product_type)
 ) ENGINE=InnoDB;
