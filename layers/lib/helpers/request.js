@@ -12,15 +12,15 @@ const addLog =
 
 const addCurrentModel =
   fn =>
-  async ({ dbQuery, findAllBy, initWhereCondition, uniqueKey = ['id'], ...input }, req) => {
-    const isInvalid = uniqueKey.some(k => !req.body[k])
+  async ({ dbQuery, storage, initWhereCondition, uniqueKey = ['id'], ...input }, req) => {
+    const isInvalid = uniqueKey.some(k => !req.body || !req.body[k])
 
-    if (isInvalid || !dbQuery || !findAllBy) return await fn({ ...input, dbQuery, findAllBy, initWhereCondition, uniqueKey }, req)
+    if (isInvalid || !dbQuery || !storage?.findAllBy) return await fn({ ...input, dbQuery, storage, initWhereCondition, uniqueKey }, req)
 
     const fields = uniqueKey.reduce((r, k) => ({ ...r, [k]: req.body[k] }), {})
-    const [currentModel] = await dbQuery(findAllBy(fields, initWhereCondition))
+    const [currentModel] = await dbQuery(storage.findAllBy(fields, initWhereCondition))
 
-    return await fn({ ...input, dbQuery, findAllBy, initWhereCondition, uniqueKey }, { ...req, currentModel })
+    return await fn({ ...input, dbQuery, storage, initWhereCondition, uniqueKey }, { ...req, currentModel })
   }
 
 const addQuery = fn => async (input, req) => {
@@ -31,13 +31,11 @@ const addQuery = fn => async (input, req) => {
 }
 
 const addBody = fn => async (input, req) => {
-  const rawBody = input.event.body
+  let body = input.event.body
     ? typeof input.event.body === 'string'
       ? JSON.parse(input.event.body)
       : input.event.body
     : input.event.Records && JSON.parse(input.event.Records[0].Sns.Message)
-
-  let body = escapeFields(rawBody)
 
   if (input.inputType) {
     body = Object.keys(input.inputType).reduce((r, k) => {

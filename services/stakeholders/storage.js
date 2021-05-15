@@ -6,6 +6,10 @@ const findAllBy = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
   WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
+const checkExists = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
+  SELECT id FROM stakeholders WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
+`
+
 const createStakeholder = () => `
   INSERT INTO stakeholders
   (stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man, created_by)
@@ -21,6 +25,7 @@ const updateStakeholder = () => `
 const setStatusStakeholder = () => 'UPDATE stakeholders SET status = ?, block_reason = ?, updated_by = ? WHERE id = ?'
 
 module.exports = {
+  checkExists,
   createStakeholder,
   findAllBy,
   setStatusStakeholder,

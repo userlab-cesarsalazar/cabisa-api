@@ -133,7 +133,7 @@ const getWhereConditions = ({ fields, tableAlias, hasPreviousConditions = true }
     $notlike: 'NOT LIKE',
   }
 
-  const whereConditions = Object.keys(fields).flatMap(k => {
+  const whereConditions = Object.keys(fields).flatMap((k, i) => {
     const fieldValue = fields[k] && String(fields[k])
 
     if (!fieldValue) return []
@@ -152,29 +152,13 @@ const getWhereConditions = ({ fields, tableAlias, hasPreviousConditions = true }
       value = fieldValue.substring(fieldValue.indexOf(':') + 1)
     }
 
-    return ` ${hasPreviousConditions ? prefixOperator : 'WHERE '} ${tableAlias ? `${tableAlias}.${k}` : k} ${operators[paramOperator]} '${value}'`
+    return ` ${!hasPreviousConditions && i === 0 ? 'WHERE ' : prefixOperator} ${tableAlias ? `${tableAlias}.${k}` : k} ${
+      operators[paramOperator]
+    } '${value}'`
   })
 
   return whereConditions.join('')
 }
-
-const getBaseInputType =
-  fields =>
-  (action, ...actionFields) => {
-    if (!action) return fields
-
-    if (action === 'include') {
-      return Object.keys(fields).reduce((r, k) => {
-        return actionFields.some(af => af === k) ? { ...r, [k]: fields[k] } : r
-      }, {})
-    }
-
-    if (action === 'exclude') {
-      return Object.keys(fields).reduce((r, k) => {
-        return actionFields.some(af => af === k) ? r : { ...r, [k]: fields[k] }
-      }, {})
-    }
-  }
 
 const decorate =
   (...functionsToDecorate) =>
@@ -191,7 +175,6 @@ const decorate =
 module.exports = {
   decorate,
   escapeFields,
-  getBaseInputType,
   getError,
   getWhereConditions,
   response,
