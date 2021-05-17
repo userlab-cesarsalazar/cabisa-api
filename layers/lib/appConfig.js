@@ -1,37 +1,43 @@
+const actions = {
+  CREATE: 'CREATE',
+  READ: 'READ',
+  UPDATE: 'UPDATE',
+  DELETE: 'DELETE',
+  ACTIVE: 'ACTIVATE',
+  INACTIVE: 'DEACTIVATE',
+  APPROVED: 'APPROVE',
+  CANCELLED: 'CANCEL',
+}
+
 const documents = {
   PURCHASE_ORDER: {
     requires: { authorization: false },
-    defaults: { status: 'PENDING' },
     onAuthorize: {
-      operations: true,
+      operations: 'PURCHASE',
     },
   },
   SELL_PRE_INVOICE: {
     requires: { authorization: false },
-    defaults: { status: 'PENDING' },
     onAuthorize: {
       documents: 'SELL_INVOICE',
     },
   },
   SELL_INVOICE: {
     requires: { authorization: false },
-    defaults: { status: 'APPROVED' },
     onAuthorize: {
-      operations: true,
+      operations: 'SELL',
     },
   },
   RENT_PRE_INVOICE: {
     requires: { authorization: false },
-    defaults: { status: 'PENDING' },
     onAuthorize: {
-      documents: 'SELL_INVOICE',
+      documents: 'RENT_INVOICE',
     },
   },
   RENT_INVOICE: {
     requires: { authorization: false },
-    defaults: { status: 'APPROVED' },
     onAuthorize: {
-      operations: true,
+      operations: 'RENT',
     },
   },
 }
@@ -40,35 +46,27 @@ const operations = {
   SELL: {
     initDocument: 'SELL_PRE_INVOICE',
     finishDocument: 'SELL_INVOICE',
-    onCreate: {
-      inventory_movements: 'OUT',
-    },
+    inventoryMovementsType: ['OUT'],
   },
   PURCHASE: {
     initDocument: 'PURCHASE_ORDER',
-    finishDocument: 'PURCHASE_ORDER',
-    onCreate: {
-      inventory_movements: 'IN',
-    },
+    hasExternalDocument: true,
+    inventoryMovementsType: ['IN'],
   },
   RENT: {
     initDocument: 'RENT_PRE_INVOICE',
     finishDocument: 'RENT_INVOICE',
-    onCreate: {
-      inventory_movements: 'OUT',
-    },
+    hasProductReturnCost: true,
+    inventoryMovementsType: ['OUT', 'IN'],
   },
 }
 
 const inventory_movements = {
   requires: { authorization: false },
-  defaults: { status: 'COMPLETED' },
-  onCreate: {
-    inventory_movements_details: true,
-  },
 }
 
 module.exports = {
+  actions,
   documents,
   inventory_movements,
   operations,
