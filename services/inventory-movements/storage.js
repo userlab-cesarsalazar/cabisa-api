@@ -87,7 +87,7 @@ const createInventoryMovements = inventoryMovementsValues => `
 `
 
 const findCreatedInventoryMovements = operationsIds => `
-  SELECT id AS inventory_movement_id, product_id, quantity
+  SELECT id AS inventory_movement_id, product_id, quantity, movement_type
   FROM inventory_movements
   WHERE operation_id IN (${operationsIds.join(', ')})
 `

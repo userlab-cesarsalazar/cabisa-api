@@ -49,7 +49,7 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  inventoryUpdate:
+  inventoryAuthorize:
     handler: handler.authorize
     events:
       - http:

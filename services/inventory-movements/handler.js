@@ -1,4 +1,4 @@
-const { appConfig, db, request, response, handleRead, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { types, appConfig, db, request, response, handleRead, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 const storage = require('./storage')
 
 module.exports.read = async event => {
@@ -39,13 +39,13 @@ module.exports.create = async event => {
   }
 
   try {
-    const req = await request({ event, inputType, currentAction: appConfig.actions.CREATE })
+    const req = await request({ event, inputType, currentAction: types.actions.CREATE })
     const { stakeholder_id, operation_type, products } = req.body
     // can(req.currentAction, operation_type)
     const document_type = appConfig.operations[operation_type]?.initDocument
 
     const errors = []
-    const movementType = appConfig.operations[operation_type].inventoryMovementsType
+    const movementTypes = appConfig.operations[operation_type]?.inventoryMovementsType
     const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] ?? []), p.product_id] }), {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
@@ -55,10 +55,7 @@ module.exports.create = async event => {
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     if (appConfig.operations[operation_type]?.hasExternalDocument && !appConfig.documents[document_type].requires.authorization)
       requiredFields.push('related_external_document_id')
-    if (operation_type === 'RENT') {
-      requiredFields.push('start_date', 'end_date')
-      requiredProductFields.push('product_return_cost')
-    }
+    if (operation_type === 'RENT') requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
     const [stakeholderExists] = await db.query(storage.findStakeholder({ id: stakeholder_id }))
@@ -70,11 +67,11 @@ module.exports.create = async event => {
     if (!stakeholderExists) errors.push('The provided stakeholder_id is not registered')
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`The products with id ${id} is duplicated`))
     if (missingProducts.length > 0) missingProducts.forEach(id => errors.push(`The products with id ${id} is not registered`))
-    if (movementType.some(mt => mt === 'OUT')) {
+    if (movementTypes?.some(mt => mt === 'OUT')) {
       const productsStocksMap = products.reduce((r, p) => {
         const product = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id))
 
-        if (product.stock) return { ...r, [p.product_id]: product.stock - p.product_quantity }
+        if (product?.stock) return { ...r, [p.product_id]: product.stock - p.product_quantity }
         else return r
       }, {})
 
@@ -92,7 +89,7 @@ module.exports.create = async event => {
         const document_id = await connection.geLastInsertId()
 
         const documentsProductsValues = products.map(
-          p => `(${document_id}, ${p.product_id}, ${p.product_price}, ${p.product_quantity}, ${p.product_return_cost})`
+          p => `(${document_id}, ${p.product_id}, ${p.product_price}, ${p.product_quantity}, ${p.product_return_cost ?? null})`
         )
         await connection.query(res.storage.createDocumentsProducts(documentsProductsValues))
 
@@ -107,7 +104,7 @@ module.exports.create = async event => {
 
         const requireAuthorization = appConfig.documents[document_type].requires.authorization
 
-        if (req.currentAction === appConfig.actions.CREATE && requireAuthorization) return { req, res }
+        if (req.currentAction === types.actions.CREATE && requireAuthorization) return { req, res }
 
         const onAuthorize = appConfig.documents[document_type].onAuthorize
         if (onAuthorize.documents) {
@@ -171,13 +168,11 @@ module.exports.create = async event => {
       }
 
       const addCreateInventoryMovements = async (req, res) => {
-        const movementTypes = appConfig.operations[operation_type].inventoryMovementsType
-
-        const { products, operation_id } = req.body
+        const { products, operation_id, operation_type } = req.body
 
         if (!operation_id) return { req, res }
 
-        const inventoryMovements = movementTypes.reduce((movementsResult, movement_type) => {
+        const inventoryMovements = req.movementTypes.reduce((movementsResult, movement_type) => {
           const movements = products.map(p => {
             const unit_cost = movement_type === 'IN' ? (operation_type === 'RENT' ? p.product_return_cost : p.product_price) : null
 
@@ -212,13 +207,14 @@ module.exports.create = async event => {
       }
 
       const addAuthorizeInventoryMovements = async (req, res) => {
-        const { inventory_movements, created_by = 1 } = req.body
+        const { inventory_movements, operation_type, created_by = 1 } = req.body
 
-        const requireAuthorization = appConfig.inventory_movements.requires.authorization
-
-        if (req.currentAction === appConfig.actions.CREATE && requireAuthorization) return { req, res }
+        const inventoryMovementTypes = appConfig.inventory_movements[operation_type]
+        const requiresAuth = Object.keys(inventoryMovementTypes).flatMap(k => (inventoryMovementTypes[k]?.requires?.authorization ? k : []))
 
         const { inventoryMovementsIds } = inventory_movements.reduce((result, im) => {
+          if (req.currentAction === types.actions.CREATE && requiresAuth.some(ra => ra === im?.movement_type)) return result
+
           const isDuplicateId = result?.inventoryMovementsIds?.some(id => id === im.inventory_movement_id)
 
           return {
@@ -227,9 +223,13 @@ module.exports.create = async event => {
           }
         }, {})
 
+        if (!inventoryMovementsIds) return { req, res }
+
         const [currentDetails] = await connection.query(res.storage.findInventoryMovementsDetails(inventoryMovementsIds))
 
         const currentInventoryMovements = inventory_movements.reduce((r, im) => {
+          if (req.currentAction === types.actions.CREATE && requiresAuth.some(ra => ra === im?.movement_type)) return r
+
           const sameMovement = currentDetails.find(cd => Number(cd.inventory_movement_id) === Number(im.inventory_movement_id))
 
           if (sameMovement) return [...r, { ...im, ...sameMovement }]
@@ -272,12 +272,15 @@ module.exports.create = async event => {
         const stocks = currentInventoryMovements.reduce((result, im) => {
           const detailQty = im.movement_type === 'IN' ? im.quantity : im.quantity * -1
           const newStock = { stock: im.stock + detailQty, product_id: im.product_id }
-          const stocks = result?.stocks?.reduce((r, s) => {
-            if (s.product_id === im.product_id) return [...r, { ...r.s, stock: (s.stock || 0) + detailQty }]
-            else return [...r, newStock]
-          }, []) || [newStock]
+          const sameProducts = result?.flatMap(s => (Number(s.product_id) === Number(im.product_id) ? s : []))
 
-          return [...(result || []), ...stocks]
+          if (sameProducts?.length > 0) {
+            const productStock = sameProducts.reverse()[0].stock
+
+            return [...result, { ...newStock, stock: productStock + detailQty }]
+          }
+
+          return [...(result || []), newStock]
         }, [])
 
         const authorizeMovements = async im => {
@@ -289,7 +292,7 @@ module.exports.create = async event => {
             created_by,
           ])
 
-          const status = im.remainningQty === 0 ? 'COMPLETED' : im.remainningQty === Number(im.total_qty) ? 'PENDING' : 'PARTIAL'
+          const status = im.remainningQty === 0 ? 'APPROVED' : im.remainningQty === Number(im.total_qty) ? 'PENDING' : 'PARTIAL'
 
           await connection.query(res.storage.authorizeInventoryMovements(), [status, im.inventory_movement_id])
         }
@@ -328,7 +331,7 @@ module.exports.create = async event => {
       const productsWithReturnCost = await getProductsReturnCost()
 
       const documentCreated = await addCreateDocument(
-        { ...req, body: { ...req.body, document_type, products: productsWithReturnCost } },
+        { ...req, movementTypes, body: { ...req.body, document_type, products: productsWithReturnCost } },
         { connection, storage }
       )
       const documentAuthorized = await addAuthorizeDocument(documentCreated.req, documentCreated.res)

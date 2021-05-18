@@ -1,14 +1,3 @@
-const actions = {
-  CREATE: 'CREATE',
-  READ: 'READ',
-  UPDATE: 'UPDATE',
-  DELETE: 'DELETE',
-  ACTIVE: 'ACTIVATE',
-  INACTIVE: 'DEACTIVATE',
-  APPROVED: 'APPROVE',
-  CANCELLED: 'CANCEL',
-}
-
 const documents = {
   PURCHASE_ORDER: {
     requires: { authorization: false },
@@ -57,16 +46,24 @@ const operations = {
     initDocument: 'RENT_PRE_INVOICE',
     finishDocument: 'RENT_INVOICE',
     hasProductReturnCost: true,
-    inventoryMovementsType: ['OUT', 'IN'],
+    inventoryMovementsType: ['OUT', 'IN'], // if both are needed, keep the order in the array, first 'OUT' then 'IN'
   },
 }
 
 const inventory_movements = {
-  requires: { authorization: false },
+  SELL: {
+    OUT: { requires: { authorization: true } },
+  },
+  PURCHASE: {
+    IN: { requires: { authorization: false } },
+  },
+  RENT: {
+    OUT: { requires: { authorization: false } },
+    IN: { requires: { authorization: true } },
+  },
 }
 
 module.exports = {
-  actions,
   documents,
   inventory_movements,
   operations,
