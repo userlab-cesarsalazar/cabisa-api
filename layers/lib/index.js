@@ -7,7 +7,7 @@ const types = require('./types')
 module.exports = {
   appConfig,
   db,
+  helpers,
   types,
   ...common,
-  ...helpers,
 }

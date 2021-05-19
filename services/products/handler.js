@@ -1,16 +1,16 @@
-const { handleRead, db, request, response, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { handleRead, db, handleRequest, handleResponse, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 const storage = require('./storage')
 
 module.exports.read = async event => {
   try {
-    const req = await request({ event })
+    const req = await handleRequest({ event })
 
     const res = await handleRead(req, { dbQuery: db.query, storage, nestedFieldsKeys: ['product_history'] })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }
 
@@ -25,7 +25,7 @@ module.exports.create = async event => {
       description: { type: 'string', length: 255 },
       image_url: { type: 'string' },
     }
-    const req = await request({ event, inputType })
+    const req = await handleRequest({ event, inputType })
     const { product_type, name, code, serial_number, unit_price, description, image_url, created_by = 1 } = req.body
 
     const errors = []
@@ -46,10 +46,10 @@ module.exports.create = async event => {
       return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Product created successfully' }
     })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }
 
@@ -64,7 +64,7 @@ module.exports.update = async event => {
       description: { type: 'string', length: 255 },
       image_url: { type: 'string' },
     }
-    const req = await request({ event, inputType, dbQuery: db.query, storage })
+    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage })
 
     const { id, name, code, serial_number, unit_price, description, image_url, updated_by = 1 } = req.body
 
@@ -84,10 +84,10 @@ module.exports.update = async event => {
       return { statusCode: 200, data: { id }, message: 'Product updated successfully' }
     })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }
 
@@ -97,7 +97,7 @@ module.exports.setStatus = async event => {
       id: { type: ['string', 'number'], required: true },
       status: { type: { enum: ['ACTIVE', 'INACTIVE'] }, required: true, defaultValue: 'ACTIVE' },
     }
-    const req = await request({ event, inputType })
+    const req = await handleRequest({ event, inputType })
 
     const { id, status, updated_by = 1 } = req.body
 
@@ -119,9 +119,9 @@ module.exports.setStatus = async event => {
       return { statusCode: 200, data: { id }, message: 'Product status updated successfully' }
     })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }

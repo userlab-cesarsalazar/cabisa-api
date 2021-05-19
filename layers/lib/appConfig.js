@@ -1,65 +1,67 @@
+const { documentsTypes, operationsTypes, inventoryMovementsTypes } = require('./types')
+
 const documents = {
-  PURCHASE_ORDER: {
+  [documentsTypes.PURCHASE_ORDER]: {
     requires: { authorization: false },
     onAuthorize: {
-      operations: 'PURCHASE',
+      operations: operationsTypes.PURCHASE,
     },
   },
-  SELL_PRE_INVOICE: {
+  [documentsTypes.SELL_PRE_INVOICE]: {
     requires: { authorization: false },
     onAuthorize: {
-      documents: 'SELL_INVOICE',
+      documents: documentsTypes.SELL_INVOICE,
     },
   },
-  SELL_INVOICE: {
+  [documentsTypes.SELL_INVOICE]: {
     requires: { authorization: false },
     onAuthorize: {
-      operations: 'SELL',
+      operations: operationsTypes.SELL,
     },
   },
-  RENT_PRE_INVOICE: {
+  [documentsTypes.RENT_PRE_INVOICE]: {
     requires: { authorization: false },
     onAuthorize: {
-      documents: 'RENT_INVOICE',
+      documents: documentsTypes.RENT_INVOICE,
     },
   },
-  RENT_INVOICE: {
+  [documentsTypes.RENT_INVOICE]: {
     requires: { authorization: false },
     onAuthorize: {
-      operations: 'RENT',
+      operations: operationsTypes.RENT,
     },
   },
 }
 
 const operations = {
-  SELL: {
-    initDocument: 'SELL_PRE_INVOICE',
-    finishDocument: 'SELL_INVOICE',
-    inventoryMovementsType: ['OUT'],
+  [operationsTypes.SELL]: {
+    initDocument: documentsTypes.SELL_PRE_INVOICE,
+    finishDocument: documentsTypes.SELL_INVOICE,
+    inventoryMovementsType: [inventoryMovementsTypes.OUT],
   },
-  PURCHASE: {
-    initDocument: 'PURCHASE_ORDER',
+  [operationsTypes.PURCHASE]: {
+    initDocument: documentsTypes.PURCHASE_ORDER,
     hasExternalDocument: true,
-    inventoryMovementsType: ['IN'],
+    inventoryMovementsType: [inventoryMovementsTypes.IN],
   },
-  RENT: {
-    initDocument: 'RENT_PRE_INVOICE',
-    finishDocument: 'RENT_INVOICE',
+  [operationsTypes.RENT]: {
+    initDocument: documentsTypes.RENT_PRE_INVOICE,
+    finishDocument: documentsTypes.RENT_INVOICE,
     hasProductReturnCost: true,
-    inventoryMovementsType: ['OUT', 'IN'], // if both are needed, keep the order in the array, first 'OUT' then 'IN'
+    inventoryMovementsType: [inventoryMovementsTypes.OUT, inventoryMovementsTypes.IN], // if both are needed, keep the order in the array, first 'OUT' then 'IN'
   },
 }
 
 const inventory_movements = {
-  SELL: {
-    OUT: { requires: { authorization: true } },
+  [operationsTypes.SELL]: {
+    [inventoryMovementsTypes.OUT]: { requires: { authorization: false } },
   },
-  PURCHASE: {
-    IN: { requires: { authorization: false } },
+  [operationsTypes.PURCHASE]: {
+    [inventoryMovementsTypes.IN]: { requires: { authorization: false } },
   },
-  RENT: {
-    OUT: { requires: { authorization: false } },
-    IN: { requires: { authorization: true } },
+  [operationsTypes.RENT]: {
+    [inventoryMovementsTypes.OUT]: { requires: { authorization: false } },
+    [inventoryMovementsTypes.IN]: { requires: { authorization: true } },
   },
 }
 

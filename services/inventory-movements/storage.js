@@ -46,7 +46,7 @@ const findProductReturnCost = whereIn => `
     (
       SELECT MAX(subim.id) AS id
       FROM inventory_movements subim
-      WHERE subim.movement_type = 'IN' AND status = 'COMPLETED' AND subim.product_id IN (${whereIn.join(', ')})
+      WHERE subim.movement_type = 'IN' AND subim.status = 'APPROVED' AND subim.product_id IN (${whereIn.join(', ')})
       GROUP BY subim.product_id
     )
   )
@@ -120,10 +120,15 @@ const setStatusDocument = () => 'UPDATE documents SET status = ?, block_reason =
 
 const updateProductStock = () => `UPDATE products SET stock = ? WHERE id = ?`
 
+const checkInventoryMovementsExists = whereIn => `
+  SELECT id FROM inventory_movements WHERE status <> 'CANCELLED' AND status <> 'APPROVED' AND id IN (${whereIn.join(', ')})
+`
+
 module.exports = {
   authorizeInternalDocument,
   authorizeInventoryMovements,
   authorizeExternalDocument,
+  checkInventoryMovementsExists,
   createDocument,
   createDocumentsProducts,
   createInventoryMovements,
