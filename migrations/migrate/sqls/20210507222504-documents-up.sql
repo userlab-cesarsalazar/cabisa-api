@@ -22,7 +22,7 @@ CREATE TABLE `documents` (
   CONSTRAINT documents_operation_id_check CHECK (status <> 'APPROVED' OR operation_id IS NOT NULL),
   CONSTRAINT documents_start_date_check CHECK ((document_type <> 'RENT' AND document_type <> 'RENT_PRE_INVOICE') OR start_date IS NOT NULL),
   CONSTRAINT documents_end_date_check CHECK ((document_type <> 'RENT' AND document_type <> 'RENT_PRE_INVOICE') OR end_date IS NOT NULL),
-  CONSTRAINT documents_authorized_by_check CHECK (status = 'PENDING' OR authorized_by IS NOT NULL)    
+  CONSTRAINT documents_authorized_by_check CHECK (status = 'PENDING' OR authorized_by IS NOT NULL)
 ) ENGINE=InnoDB;
 
 CREATE TABLE `documents_products` (
@@ -31,7 +31,9 @@ CREATE TABLE `documents_products` (
   `product_price` INT NOT NULL,
   `product_quantity` INT NOT NULL,
   `product_return_cost` INT,
+  `tax_fee` DECIMAL(5,2) NOT NULL,
   CONSTRAINT documents_products_document_id_product_id_pk PRIMARY KEY (document_id, product_id),
   CONSTRAINT documents_products_product_id_fk FOREIGN KEY (product_id) REFERENCES products(id),
-  CONSTRAINT documents_products_document_id_fk FOREIGN KEY (document_id) REFERENCES documents(id)
+  CONSTRAINT documents_products_document_id_fk FOREIGN KEY (document_id) REFERENCES documents(id),
+  CONSTRAINT documents_products_tax_fee_check CHECK (tax_fee BETWEEN 0.00 AND 100.00)
 ) ENGINE=InnoDB;

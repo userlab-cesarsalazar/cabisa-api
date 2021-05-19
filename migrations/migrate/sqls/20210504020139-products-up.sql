@@ -6,6 +6,7 @@ CREATE TABLE `products` (
   `code` VARCHAR(50) NOT NULL,
   `serial_number` VARCHAR(50) DEFAULT NULL,
   `unit_price` DOUBLE NOT NULL DEFAULT 0,
+  `tax_id` INT NOT NULL,
   `stock` INT DEFAULT 0 NOT NULL,
   `description` VARCHAR(255) DEFAULT NULL,
   `image_url` TEXT DEFAULT NULL,
