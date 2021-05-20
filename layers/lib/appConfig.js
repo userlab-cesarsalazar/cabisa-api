@@ -3,32 +3,49 @@ const { documentsTypes, operationsTypes, inventoryMovementsTypes } = require('./
 const documents = {
   [documentsTypes.PURCHASE_ORDER]: {
     requires: { authorization: false },
-    onAuthorize: {
+    onApprove: {
       operations: operationsTypes.PURCHASE,
+    },
+    onCancel: {
+      inventory_movements: true,
     },
   },
   [documentsTypes.SELL_PRE_INVOICE]: {
     requires: { authorization: false },
-    onAuthorize: {
+    onApprove: {
       documents: documentsTypes.SELL_INVOICE,
+    },
+    onCancel: {
+      inventory_movements: false,
     },
   },
   [documentsTypes.SELL_INVOICE]: {
     requires: { authorization: false },
-    onAuthorize: {
+    onApprove: {
       operations: operationsTypes.SELL,
     },
-  },
-  [documentsTypes.RENT_PRE_INVOICE]: {
-    requires: { authorization: false },
-    onAuthorize: {
-      documents: documentsTypes.RENT_INVOICE,
+    onCancel: {
+      inventory_movements: true,
     },
   },
+  // ESTE GENERA LOS MOVIMIENTOS DE SALIDA
+  [documentsTypes.RENT_PRE_INVOICE]: {
+    requires: { authorization: false },
+    onApprove: {
+      documents: documentsTypes.RENT_INVOICE,
+    },
+    onCancel: {
+      inventory_movements: true,
+    },
+  },
+  // ESTE GENERA LOS MOVIMIENTOS DE ENTRADA
   [documentsTypes.RENT_INVOICE]: {
     requires: { authorization: false },
-    onAuthorize: {
+    onApprove: {
       operations: operationsTypes.RENT,
+    },
+    onCancel: {
+      inventory_movements: true,
     },
   },
 }

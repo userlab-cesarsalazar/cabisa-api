@@ -17,6 +17,12 @@ const documentsTypes = {
   RENT_INVOICE: 'RENT_INVOICE',
 }
 
+const documentsStatus = {
+  PENDING: 'PENDING',
+  CANCELLED: 'CANCELLED',
+  APPROVED: 'APPROVED',
+}
+
 const inventoryMovementsStatus = {
   PENDING: 'PENDING',
   PARTIAL: 'PARTIAL',
@@ -38,6 +44,7 @@ const operationsTypes = {
 const productsStatus = {
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
+  BLOCKED: 'BLOCKED',
 }
 
 const productsTypes = {
@@ -71,6 +78,7 @@ const usersStatus = {
 
 module.exports = {
   actions,
+  documentsStatus,
   documentsTypes,
   inventoryMovementsStatus,
   inventoryMovementsTypes,

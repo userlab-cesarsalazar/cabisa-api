@@ -38,13 +38,25 @@ const handleCreateInventoryMovements = async (req, res) => {
 
   const { insertValues, where } = inventoryMovmentsQueryValues
 
-  await res.connection.query(res.storage.createInventoryMovements(insertValues))
-  const [inventory_movements] = await res.connection.query(res.storage.findCreatedInventoryMovements(where.operationsIds))
+  await res.connection.query(createInventoryMovements(insertValues))
+  const [inventory_movements] = await res.connection.query(findCreatedInventoryMovements(where.operationsIds))
 
   return {
     req: { ...req, body: { ...req.body, inventory_movements } },
     res: { ...res, statusCode: 201, data: { inventory_movements }, message: 'Inventory movements created successfully' },
   }
 }
+
+const createInventoryMovements = inventoryMovementsValues => `
+  INSERT INTO inventory_movements
+  (operation_id, product_id, quantity, unit_cost, movement_type)
+  VALUES ${inventoryMovementsValues.join(', ')}
+`
+
+const findCreatedInventoryMovements = operationsIds => `
+  SELECT id AS inventory_movement_id, product_id, quantity, movement_type
+  FROM inventory_movements
+  WHERE operation_id IN (${operationsIds.join(', ')})
+`
 
 module.exports = handleCreateInventoryMovements

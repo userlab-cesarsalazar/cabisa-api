@@ -10,12 +10,6 @@ const checkExists = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
   SELECT id FROM stakeholders WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
-const createStakeholder = () => `
-  INSERT INTO stakeholders
-  (stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man, created_by)
-  VALUES(?, 'ACTIVE', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`
-
 const updateStakeholder = () => `
   UPDATE stakeholders
   SET name = ?, address = ?, nit = ?, email = ?, phone = ?, alternative_phone = ?, business_man = ?, payments_man = ?, updated_by = ?

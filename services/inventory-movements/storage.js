@@ -54,7 +54,7 @@ const findProductReturnCost = whereIn => `
 `
 
 const findProducts = whereIn => `
-  SELECT id AS product_id, stock
+  SELECT id AS product_id, stock, unit_price AS product_price
   FROM products
   WHERE id IN (${whereIn.join(', ')})
 `
@@ -120,15 +120,19 @@ const setStatusDocument = () => 'UPDATE documents SET status = ?, block_reason =
 
 const updateProductStock = () => `UPDATE products SET stock = ? WHERE id = ?`
 
-const checkInventoryMovementsExists = whereIn => `
-  SELECT id FROM inventory_movements WHERE status <> 'CANCELLED' AND status <> 'APPROVED' AND id IN (${whereIn.join(', ')})
+const checkInventoryMovementsOnApprove = whereIn => `
+  SELECT im.id, im.quantity AS total_qty, SUM(imd.quantity) AS approved_qty
+  FROM inventory_movements im
+  LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
+  WHERE im.status <> 'CANCELLED' AND im.status <> 'APPROVED' AND im.id IN (${whereIn.join(', ')})
+  GROUP BY im.id, imd.inventory_movement_id
 `
 
 module.exports = {
   authorizeInternalDocument,
   authorizeInventoryMovements,
   authorizeExternalDocument,
-  checkInventoryMovementsExists,
+  checkInventoryMovementsOnApprove,
   createDocument,
   createDocumentsProducts,
   createInventoryMovements,

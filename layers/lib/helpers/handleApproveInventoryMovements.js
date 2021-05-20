@@ -2,7 +2,7 @@ const types = require('../types')
 const appConfig = require('../appConfig')
 const { ValidatorException } = require('../common')
 
-const handleAuthorizeInventoryMovements = async (req, res) => {
+const handleApproveInventoryMovements = async (req, res) => {
   const { inventory_movements, operation_type, created_by = 1 } = req.body
 
   const inventoryMovementTypes = appConfig.inventory_movements[operation_type]
@@ -22,7 +22,7 @@ const handleAuthorizeInventoryMovements = async (req, res) => {
 
   if (!inventoryMovementsIds) return { req, res }
 
-  const [currentDetails] = await res.connection.query(res.storage.findInventoryMovementsDetails(inventoryMovementsIds))
+  const [currentDetails] = await res.connection.query(findInventoryMovementsDetails(inventoryMovementsIds))
 
   const currentInventoryMovements = inventory_movements.reduce((r, im) => {
     if (req.currentAction === types.actions.CREATE && requiresAuth?.some(ra => ra === im?.movement_type)) return r
@@ -81,7 +81,7 @@ const handleAuthorizeInventoryMovements = async (req, res) => {
   }, [])
 
   const authorizeMovements = async im => {
-    await res.connection.query(res.storage.createInventoryMovementsDetails(), [
+    await res.connection.query(createInventoryMovementsDetails(), [
       im.inventory_movement_id,
       im.quantity,
       im.storage_location ? im.storage_location : null,
@@ -96,11 +96,11 @@ const handleAuthorizeInventoryMovements = async (req, res) => {
         ? types.inventoryMovementsStatus.PENDING
         : types.inventoryMovementsStatus.PARTIAL
 
-    await res.connection.query(res.storage.authorizeInventoryMovements(), [status, im.inventory_movement_id])
+    await res.connection.query(authorizeInventoryMovements(), [status, im.inventory_movement_id])
   }
 
   const inventoryMovementsDetailsPromises = inventoryMovements.map(im => authorizeMovements(im))
-  const updateStockPromises = stocks.map(s => res.connection.query(res.storage.updateStock(), [s.stock, s.product_id]))
+  const updateStockPromises = stocks.map(s => res.connection.query(updateStock(), [s.stock, s.product_id]))
   await Promise.all(inventoryMovementsDetailsPromises, updateStockPromises)
 
   return {
@@ -114,4 +114,22 @@ const handleAuthorizeInventoryMovements = async (req, res) => {
   }
 }
 
-module.exports = handleAuthorizeInventoryMovements
+const findInventoryMovementsDetails = whereIn => `
+  SELECT im.id AS inventory_movement_id, imd.quantity AS detail_qty, im.quantity AS total_qty, im.movement_type, p.id AS product_id, p.stock
+  FROM inventory_movements im
+  LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
+  LEFT JOIN products p ON p.id = im.product_id
+  WHERE im.id IN (${whereIn.join(', ')})
+`
+
+const createInventoryMovementsDetails = () => `
+  INSERT INTO inventory_movements_details
+  (inventory_movement_id, quantity, storage_location, comments, created_by)
+  VALUES(?, ?, ?, ?, ?)
+`
+
+const updateStock = () => `UPDATE products SET stock = ? WHERE id = ?`
+
+const authorizeInventoryMovements = () => `UPDATE inventory_movements SET status = ? WHERE id = ?`
+
+module.exports = handleApproveInventoryMovements
