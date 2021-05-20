@@ -1,4 +1,4 @@
-const { types, appConfig, db, helpers, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { types, groupJoinResult, appConfig, db, helpers, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 const storage = require('./storage')
 const {
   handleRequest,
@@ -41,7 +41,7 @@ module.exports.create = async event => {
         fields: {
           product_id: { type: ['string', 'number'], required: true },
           product_quantity: { type: 'number', min: 0, required: true },
-          product_price: { type: 'number', min: 0 },
+          product_price: { type: 'number', min: 0, required: true },
         },
       },
     },
@@ -65,7 +65,7 @@ module.exports.create = async event => {
     const requiredFields = ['products', 'related_external_document_id']
     if (stakeholder_id) requiredFields.push('stakeholder_id')
     if (!stakeholder_id) requiredFields.push('stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
-    const requiredProductFields = ['product_id', 'product_quantity']
+    const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
     const [stakeholderNitExists] = stakeholder_nit ? await db.query(storage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
@@ -99,12 +99,13 @@ module.exports.create = async event => {
 
     const actualProducts = products.map(p => {
       const sameProduct = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id))
+      const product_price = p?.product_price > 0 ? p.product_price : sameProduct.product_price
 
       return {
         ...p,
-        product_price: p?.product_price > 0 ? p.product_price : sameProduct.product_price,
+        product_price,
         tax_fee: sameProduct.tax_fee,
-        tax_amount: sameProduct.tax_amount,
+        unit_tax_amount: product_price * (sameProduct.tax_fee / 100),
       }
     })
 
@@ -129,7 +130,7 @@ module.exports.create = async event => {
 module.exports.cancel = async event => {
   try {
     const inputType = {
-      document_id: { type: 'number || string', required: true },
+      document_id: { type: ['number', 'string'], required: true },
       cancel_reason: { type: 'string', required: true },
     }
 
@@ -141,16 +142,27 @@ module.exports.cancel = async event => {
     const errors = []
     const requiredFields = ['document_id', 'cancel_reason']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const [purchaseMovements] = document_id
-      ? await db.query(storage.findPurchaseMovements({ id: document_id, document_type: types.documentsTypes.PURCHASE_ORDER }))
-      : []
+    const purchaseMovements = document_id ? await db.query(storage.findPurchaseMovements(), [document_id, types.documentsTypes.PURCHASE_ORDER]) : []
+    const invalidStatusProducts = purchaseMovements.flatMap(pm =>
+      pm.inventory_movements__product_status !== types.productsStatus.ACTIVE ? pm.inventory_movements__product_id : []
+    )
+
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (!purchaseMovements) errors.push('There is no purchase registered with the provided document_id')
+    if (!purchaseMovements?.length > 0) errors.push('There is no purchase registered with the provided document_id')
+    if (invalidStatusProducts?.length > 0)
+      invalidStatusProducts.forEach(id => errors.push(`The product with id ${id} must be ${types.productsStatus.ACTIVE}`))
+    if (purchaseMovements[0]?.document_status === types.documentsStatus.CANCELLED) errors.push('The document is already cancelled')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
+    const [groupedPurchaseMovements] = groupJoinResult({
+      data: purchaseMovements,
+      nestedFieldsKeys: ['inventory_movements'],
+      uniqueKey: ['document_id'],
+    })
+
     const { res } = await db.transaction(
-      async connection => await handleCancelDocument({ ...req, body: { ...req.body, ...purchaseMovements } }, { connection })
+      async connection => await handleCancelDocument({ ...req, body: { ...req.body, ...groupedPurchaseMovements } }, { connection })
     )
 
     return await handleResponse({ req, res })
