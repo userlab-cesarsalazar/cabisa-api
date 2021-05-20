@@ -33,93 +33,6 @@ const findAllBy = (fields = {}) => `
   ${getWhereConditions({ fields, tableAlias: 'd', hasPreviousConditions: false })}
 `
 
-const findStakeholder = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
-  SELECT id, stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man,block_reason, created_at, created_by, updated_at, updated_by
-  FROM stakeholders
-  WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
-`
-
-const findProductReturnCost = whereIn => `
-  SELECT im.product_id, im.unit_cost AS product_return_cost
-  FROM inventory_movements im
-  WHERE im.id IN (
-    (
-      SELECT MAX(subim.id) AS id
-      FROM inventory_movements subim
-      WHERE subim.movement_type = 'IN' AND subim.status = 'APPROVED' AND subim.product_id IN (${whereIn.join(', ')})
-      GROUP BY subim.product_id
-    )
-  )
-  ORDER BY id DESC
-`
-
-const findProducts = whereIn => `
-  SELECT id AS product_id, stock, unit_price AS product_price
-  FROM products
-  WHERE id IN (${whereIn.join(', ')})
-`
-
-const createDocument = () => `
-  INSERT INTO documents
-  (document_type, stakeholder_id, start_date, end_date, created_by)
-  VALUES(?, ?, ?, ?, ?)
-`
-const createDocumentsProducts = valuesArray => `
-  INSERT INTO documents_products
-  (document_id, product_id, product_price, product_quantity, product_return_cost)
-  VALUES ${valuesArray.join(', ')}
-`
-
-const createOperation = () => `INSERT INTO operations (operation_type, created_by) VALUES(?, ?)`
-
-const authorizeInternalDocument = () => `
-  UPDATE documents SET status = 'APPROVED', operation_id = ?, related_internal_document_id = ?, authorized_by = ? WHERE id = ?
-`
-
-const authorizeExternalDocument = () => `
-  UPDATE documents SET status = 'APPROVED', operation_id = ?, related_external_document_id = ?, authorized_by = ? WHERE id = ?
-`
-
-const createInventoryMovements = inventoryMovementsValues => `
-  INSERT INTO inventory_movements
-  (operation_id, product_id, quantity, unit_cost, movement_type)
-  VALUES ${inventoryMovementsValues.join(', ')}
-`
-
-const findCreatedInventoryMovements = operationsIds => `
-  SELECT id AS inventory_movement_id, product_id, quantity, movement_type
-  FROM inventory_movements
-  WHERE operation_id IN (${operationsIds.join(', ')})
-`
-
-const createInventoryMovementsDetails = () => `
-  INSERT INTO inventory_movements_details
-  (inventory_movement_id, quantity, storage_location, comments, created_by)
-  VALUES(?, ?, ?, ?, ?)
-`
-
-const authorizeInventoryMovements = () => `UPDATE inventory_movements SET status = ? WHERE id = ?`
-
-const findInventoryMovementsDetails = whereIn => `
-  SELECT im.id AS inventory_movement_id, imd.quantity AS detail_qty, im.quantity AS total_qty, im.movement_type, p.id AS product_id, p.stock
-  FROM inventory_movements im
-  LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
-  LEFT JOIN products p ON p.id = im.product_id
-  WHERE im.id IN (${whereIn.join(', ')})
-`
-
-const updateStock = () => `UPDATE products SET stock = ? WHERE id = ?`
-
-const updateDocument = () => `
-  UPDATE documents
-  SET stakeholder_id = ?, operation_id = ?, status = ?, start_date = ?, end_date = ?, cancel_reason = ?, created_at = ?, created_by = ?, authorized_at = ?, authorized_by = ?
-  WHERE id = ?
-`
-
-const setStatusDocument = () => 'UPDATE documents SET status = ?, block_reason = ? WHERE id = ?'
-
-const updateProductStock = () => `UPDATE products SET stock = ? WHERE id = ?`
-
 const checkInventoryMovementsOnApprove = whereIn => `
   SELECT im.id, im.quantity AS total_qty, SUM(imd.quantity) AS approved_qty
   FROM inventory_movements im
@@ -129,23 +42,6 @@ const checkInventoryMovementsOnApprove = whereIn => `
 `
 
 module.exports = {
-  authorizeInternalDocument,
-  authorizeInventoryMovements,
-  authorizeExternalDocument,
   checkInventoryMovementsOnApprove,
-  createDocument,
-  createDocumentsProducts,
-  createInventoryMovements,
-  createInventoryMovementsDetails,
-  createOperation,
   findAllBy,
-  findCreatedInventoryMovements,
-  findInventoryMovementsDetails,
-  findProducts,
-  findProductReturnCost,
-  findStakeholder,
-  setStatusDocument,
-  updateDocument,
-  updateProductStock,
-  updateStock,
 }

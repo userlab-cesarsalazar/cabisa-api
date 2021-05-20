@@ -1,6 +1,6 @@
 const { types, db, helpers, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
-const storage = require('./storage')
 const { handleRequest, handleResponse, handleRead, handleApproveInventoryMovements } = helpers
+const storage = require('./storage')
 
 module.exports.read = async event => {
   try {
@@ -26,6 +26,8 @@ module.exports.approve = async event => {
           fields: {
             inventory_movement_id: { type: 'number', required: true },
             quantity: { type: 'number', min: 0, required: true },
+            storage_location: { type: 'string' },
+            comments: { type: 'string', length: 255 },
           },
         },
       },
@@ -64,7 +66,7 @@ module.exports.approve = async event => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const { res } = await db.transaction(async connection => await handleApproveInventoryMovements(req, { connection, storage }))
+    const { res } = await db.transaction(async connection => await handleApproveInventoryMovements(req, { connection }))
 
     return await handleResponse({ req, res })
   } catch (error) {

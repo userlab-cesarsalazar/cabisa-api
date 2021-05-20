@@ -10,7 +10,6 @@ const {
   handleApproveInventoryMovements,
   handleCreateStakeholder,
   handleCancelDocument,
-  handleCancelInventoryMovements,
 } = helpers
 
 module.exports.read = async event => {
@@ -27,13 +26,6 @@ module.exports.read = async event => {
 }
 
 module.exports.create = async event => {
-  // proyecto
-  // encargado
-  // fecha
-
-  // observaciones -> comments
-  // quien-entrega -> es el usuario logieado (que cobra comision)
-  // quien-recibe -> string
   const inputType = {
     stakeholder_id: { type: ['string', 'number'] },
     stakeholder_name: { type: 'string', length: 100 },
@@ -88,7 +80,7 @@ module.exports.create = async event => {
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (requiredProductErrorFields) errors.push(`The fields ${requiredProductFields.join(', ')} in products are required`)
     if (stakeholderNitExists) errors.push('The provided nit is already registered')
-    if (!stakeholderIdExists) errors.push('The provided stakeholder_id is not registered')
+    if (stakeholder_id && !stakeholderIdExists) errors.push('The provided stakeholder_id is not registered')
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`The products with id ${id} is duplicated`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`The products with id ${id} is not registered`))
     if (appConfig.operations[operation_type]?.inventoryMovementsType?.some(mt => mt === types.inventoryMovementsTypes.OUT)) {
@@ -119,7 +111,7 @@ module.exports.create = async event => {
     const { res } = await db.transaction(async connection => {
       const stakeholderCreated = await handleCreateStakeholder(
         { ...req, body: { ...req.body, products: actualProducts, document_type, stakeholder_type, operation_type } },
-        { connection, storage }
+        { connection }
       )
       const documentCreated = await handleCreateDocument(stakeholderCreated.req, stakeholderCreated.res)
       const documentApproved = await handleApproveDocument(documentCreated.req, documentCreated.res)
@@ -158,7 +150,7 @@ module.exports.cancel = async event => {
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const { res } = await db.transaction(
-      async connection => await handleCancelDocument({ ...req, body: { ...req.body, ...purchaseMovements } }, { connection, storage })
+      async connection => await handleCancelDocument({ ...req, body: { ...req.body, ...purchaseMovements } }, { connection })
     )
 
     return await handleResponse({ req, res })
