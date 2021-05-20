@@ -25,7 +25,8 @@ const findAllBy = (fields = {}) => `
     p.status AS products__status,
     dp.product_price AS products__product_price,
     dp.product_quantity AS products__product_quantity,
-    dp.product_return_cost AS products__product_return_cost,
+    dp.tax_fee AS products__tax_fee,
+    dp.unit_tax_amount AS products__unit_tax_amount,
     p.code AS products__code,
     p.serial_number AS products__serial_number,
     p.description AS products__description,
@@ -49,8 +50,7 @@ const findProducts = whereIn => `
     p.id AS product_id,
     p.stock,
     p.unit_price AS product_price,
-    t.fee AS tax_fee,
-    (p.unit_price * (t.fee / 100)) AS tax_amount
+    t.fee AS tax_fee
   FROM products p
   LEFT JOIN taxes t ON t.id = p.tax_id
   WHERE p.id IN (${whereIn.join(', ')})
@@ -67,10 +67,24 @@ const checkInventoryMovementsOnApprove = whereIn => `
   GROUP BY im.id, imd.inventory_movement_id
 `
 
-const findPurchaseMovements = (fields = {}) => `
-  SELECT d.id AS document_id, d.related_internal_document_id, d.document_type, d.operation_id
+const findPurchaseMovements = () => `
+  SELECT
+    d.id AS document_id,
+    d.related_internal_document_id AS related_internal_document_id,
+    d.document_type AS document_type,
+    d.status AS document_status,
+    d.operation_id AS operation_id,
+    im.id AS inventory_movements__inventory_movement_id,
+    im.movement_type AS inventory_movements__movement_type,
+    im.product_id AS inventory_movements__product_id,
+    im.quantity AS inventory_movements__quantity,
+    p.stock AS inventory_movements__stock,
+    p.status AS inventory_movements__product_status
   FROM documents d
-  ${getWhereConditions({ fields, hasPreviousConditions: false })}
+  LEFT JOIN operations o ON o.id = d.operation_id
+  LEFT JOIN inventory_movements im ON im.operation_id = o.id
+  LEFT JOIN products p ON p.id = im.product_id
+  WHERE d.id = ? AND d.document_type = ?
 `
 
 module.exports = {
