@@ -1,4 +1,4 @@
-const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { types, getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 
 const findAllBy = (fields = {}) => `
   SELECT
@@ -13,7 +13,7 @@ const findAllBy = (fields = {}) => `
     d.created_at,
     d.created_by,
     d.authorized_at,
-    d.authorized_by,
+    d.updated_by,
     p.id AS products__id,
     p.name AS products__name,
     p.product_type AS products__product_type,
@@ -33,7 +33,7 @@ const findAllBy = (fields = {}) => `
   ${getWhereConditions({ fields, tableAlias: 'd', hasPreviousConditions: false })}
 `
 
-const findStakeholder = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
+const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `
   SELECT id, stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man,block_reason, created_at, created_by, updated_at, updated_by
   FROM stakeholders
   WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
@@ -55,7 +55,10 @@ const checkInventoryMovementsOnApprove = whereIn => `
   SELECT im.id, im.quantity AS total_qty, SUM(imd.quantity) AS approved_qty
   FROM inventory_movements im
   LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
-  WHERE im.status <> 'CANCELLED' AND im.status <> 'APPROVED' AND im.id IN (${whereIn.join(', ')})
+  WHERE
+    im.status <> '${types.inventoryMovementsStatus.CANCELLED}' AND
+    im.status <> '${types.inventoryMovementsStatus.APPROVED}' AND
+    im.id IN (${whereIn.join(', ')})
   GROUP BY im.id, imd.inventory_movement_id
 `
 

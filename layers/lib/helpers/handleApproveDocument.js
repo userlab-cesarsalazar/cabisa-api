@@ -4,7 +4,7 @@ const types = require('../types')
 const appConfig = require('../appConfig')
 
 const handleApproveDocument = async (req, res) => {
-  const { document_id, related_internal_document_id, related_external_document_id, document_type, operation_type, authorized_by = 1 } = req.body
+  const { document_id, related_internal_document_id, related_external_document_id, document_type, operation_type, updated_by = 1 } = req.body
 
   const requireAuthorization = appConfig.documents[document_type].requires.authorization
 
@@ -25,27 +25,12 @@ const handleApproveDocument = async (req, res) => {
     : {}
 
   if (appConfig.operations[operation_type].hasExternalDocument) {
-    await res.connection.query(authorizeExternalDocument(), [
-      operation.req.body.operation_id,
-      related_external_document_id,
-      authorized_by,
-      document_id,
-    ])
+    await res.connection.query(authorizeExternalDocument(), [operation.req.body.operation_id, related_external_document_id, updated_by, document_id])
   }
 
   if (appConfig.operations[operation_type].finishDocument) {
-    await res.connection.query(authorizeInternalDocument(), [
-      operation.req.body.operation_id,
-      related_internal_document_id,
-      authorized_by,
-      document_id,
-    ])
-    await res.connection.query(authorizeInternalDocument(), [
-      operation.req.body.operation_id,
-      document_id,
-      authorized_by,
-      related_internal_document_id,
-    ])
+    await res.connection.query(authorizeInternalDocument(), [operation.req.body.operation_id, related_internal_document_id, updated_by, document_id])
+    await res.connection.query(authorizeInternalDocument(), [operation.req.body.operation_id, document_id, updated_by, related_internal_document_id])
   }
 
   return {
@@ -60,11 +45,11 @@ const handleApproveDocument = async (req, res) => {
 }
 
 const authorizeExternalDocument = () => `
-  UPDATE documents SET status = 'APPROVED', operation_id = ?, related_external_document_id = ?, authorized_by = ? WHERE id = ?
+  UPDATE documents SET status = '${types.documentsStatus.APPROVED}', operation_id = ?, related_external_document_id = ?, updated_by = ? WHERE id = ?
 `
 
 const authorizeInternalDocument = () => `
-  UPDATE documents SET status = 'APPROVED', operation_id = ?, related_internal_document_id = ?, authorized_by = ? WHERE id = ?
+  UPDATE documents SET status = '${types.documentsStatus.APPROVED}', operation_id = ?, related_internal_document_id = ?, updated_by = ? WHERE id = ?
 `
 
 module.exports = handleApproveDocument

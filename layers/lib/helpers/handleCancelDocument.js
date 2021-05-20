@@ -19,7 +19,7 @@ const handleCancelDocument = async (req, res) => {
 }
 
 const cancelDocument = () => `
-  UPDATE documents SET status = '${types.documentsStatus.CANCELLED}', cancel_reason = ?, authorized_by = ? WHERE id = ?
+  UPDATE documents SET status = '${types.documentsStatus.CANCELLED}', cancel_reason = ?, updated_by = ? WHERE id = ?
 `
 
 const cancelInventoryMovements = () => `
