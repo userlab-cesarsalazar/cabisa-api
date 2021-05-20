@@ -36,7 +36,7 @@ CREATE TABLE `documents_products` (
   `product_quantity` INT NOT NULL,
   `product_return_cost` INT,
   `tax_fee` DECIMAL(5,2) NOT NULL,
-  `tax_amount` DOUBLE AS ((product_price * product_quantity) * (tax_fee / 100)),
+  `unit_tax_amount` DOUBLE NOT NULL,
   CONSTRAINT documents_products_document_id_product_id_pk PRIMARY KEY (document_id, product_id),
   CONSTRAINT documents_products_product_id_fk FOREIGN KEY (product_id) REFERENCES products(id),
   CONSTRAINT documents_products_document_id_fk FOREIGN KEY (document_id) REFERENCES documents(id),

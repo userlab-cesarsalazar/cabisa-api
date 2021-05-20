@@ -10,14 +10,14 @@ INSERT INTO documents (document_type, stakeholder_id, project_id, operation_id, 
 UPDATE documents SET status = 'APPROVED', operation_id = 2, related_internal_document_id = 2 WHERE id = 3;
 UPDATE documents SET status = 'APPROVED', operation_id = 3, related_internal_document_id = 4 WHERE id = 5;
 
-INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee) VALUES (1, 5, 35, 5, 12.00);
-INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee) VALUES (1, 6, 15, 5, 12.00);
-INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee) VALUES (1, 7, 70, 3, 12.00);
+INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee, unit_tax_amount) VALUES (1, 5, 35, 5, 12.00, 4.2);
+INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee, unit_tax_amount) VALUES (1, 6, 15, 5, 12.00, 1.8);
+INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee, unit_tax_amount) VALUES (1, 7, 70, 3, 12.00, 8.4);
 
-INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee) VALUES (2, 5, 39, 3, 12.00);
-INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee) VALUES (2, 6, 19, 3, 12.00);
-INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee) VALUES (3, 5, 39, 3, 12.00);
-INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee) VALUES (3, 6, 19, 3, 12.00);
+INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee, unit_tax_amount) VALUES (2, 5, 39, 3, 12.00, 4.68);
+INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee, unit_tax_amount) VALUES (2, 6, 19, 3, 12.00, 2.28);
+INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee, unit_tax_amount) VALUES (3, 5, 39, 3, 12.00, 4.68);
+INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, tax_fee, unit_tax_amount) VALUES (3, 6, 19, 3, 12.00, 2.28);
 
-INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, product_return_cost, tax_fee) VALUES (4, 7, 81, 2, 68, 12.00);
-INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, product_return_cost, tax_fee) VALUES (5, 7, 81, 2, 68, 12.00);
+INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, product_return_cost, tax_fee, unit_tax_amount) VALUES (4, 7, 81, 2, 68, 12.00, 9.72);
+INSERT INTO documents_products (document_id, product_id, product_price, product_quantity, product_return_cost, tax_fee, unit_tax_amount) VALUES (5, 7, 81, 2, 68, 12.00, 9.72);
