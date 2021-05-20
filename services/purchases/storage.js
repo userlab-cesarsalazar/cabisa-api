@@ -6,13 +6,18 @@ const findAllBy = (fields = {}) => `
     d.document_type,
     d.stakeholder_id,
     d.operation_id,
+    d.project_id,
+    d.related_internal_document_id,
+    d.related_external_document_id,
     d.status,
+    d.comments,
+    d.received_by,
     d.start_date,
     d.end_date,
     d.cancel_reason,
     d.created_at,
     d.created_by,
-    d.authorized_at,
+    d.updated_at,
     d.updated_by,
     p.id AS products__id,
     p.name AS products__name,
@@ -28,9 +33,9 @@ const findAllBy = (fields = {}) => `
     p.created_at AS products__created_at,
     p.created_by AS products__created_by
   FROM documents d
-  INNER JOIN documents_products dp ON dp.document_id = d.id
-  INNER JOIN products p ON p.id = dp.product_id
-  ${getWhereConditions({ fields, tableAlias: 'd', hasPreviousConditions: false })}
+  LEFT JOIN documents_products dp ON dp.document_id = d.id
+  LEFT JOIN products p ON p.id = dp.product_id
+  WHERE d.document_type = '${types.documentsTypes.PURCHASE_ORDER}' ${getWhereConditions({ fields, tableAlias: 'd' })}
 `
 
 const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `
