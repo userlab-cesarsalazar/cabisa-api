@@ -1,13 +1,17 @@
-const { types, appConfig, db, helpers, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { types, calculateProductTaxes, groupJoinResult, db, helpers, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 const storage = require('./storage')
 const {
   handleRequest,
   handleResponse,
   handleRead,
   handleCreateDocument,
-  handleAuthorizeDocument,
+  handleApproveDocument,
   handleCreateInventoryMovements,
-  handleAuthorizeInventoryMovements,
+  handleApproveInventoryMovements,
+  handleCreateStakeholder,
+  handleCancelDocument,
+  handleCreateOperation,
+  handleUpdateStock,
 } = helpers
 
 module.exports.read = async event => {
@@ -25,36 +29,16 @@ module.exports.read = async event => {
 
 module.exports.create = async event => {
   const inputType = {
-    stakeholder_id: { type: ['string', 'number'], required: true },
-    related_external_document_id: { type: ['string', 'number'] },
-    operation_type: {
-      type: { enum: types.operationsTypes },
-      required: true,
-    },
-    start_date: { type: 'string' },
-    end_date: { type: 'string' },
-    products: {
-      type: 'array',
-      required: true,
-      fields: {
-        type: 'object',
-        fields: {
-          product_id: { type: ['string', 'number'], required: true },
-          product_quantity: { type: 'number', min: 0, required: true },
-          product_price: { type: 'number', min: 0, required: true },
-        },
-      },
-    },
-  }
-
-  const inputType = {
     stakeholder_id: { type: ['string', 'number'] },
+    project_id: { type: ['string', 'number'], required: true },
+    stakeholder_type: { type: { enum: [types.stakeholdersTypes.CLIENT_INDIVIDUAL, types.stakeholdersTypes.CLIENT_COMPANY] } },
     stakeholder_name: { type: 'string', length: 100 },
     stakeholder_address: { type: 'string', length: 100 },
     stakeholder_nit: { type: 'string', length: 11 },
     stakeholder_phone: { type: 'string', length: 20 },
-    related_internal_document_id: { type: ['string', 'number'], required: true },
     related_external_document_id: { type: ['string', 'number'] },
+    comments: { type: 'string' },
+    received_by: { type: 'string' },
     products: {
       type: 'array',
       required: true,
@@ -70,10 +54,11 @@ module.exports.create = async event => {
   }
 
   try {
-    const req = await handleRequest({ event, inputType, currentAction: types.actions.CREATE })
-    const { stakeholder_id, operation_type, products } = req.body
+    const req = await handleRequest({ event, inputType })
+    const { stakeholder_id, project_id, stakeholder_type, stakeholder_nit, products } = req.body
+    const operation_type = types.operationsTypes.SELL
+
     // can(req.currentAction, operation_type)
-    const document_type = appConfig.operations[operation_type]?.initDocument
 
     const errors = []
     const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] ?? []), p.product_id] }), {})
@@ -81,14 +66,14 @@ module.exports.create = async event => {
     const productsIds = products.map(p => p.product_id)
     const productsStocks = await db.query(storage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsStocks.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
-    const requiredFields = ['stakeholder_id', 'operation_type', 'products']
-    const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
-    if (appConfig.operations[operation_type]?.hasExternalDocument && !appConfig.documents[document_type].requires.authorization)
-      requiredFields.push('related_external_document_id')
-    if (operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
+    const requiredFields = ['products', 'project_id']
+    if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
+    const requiredProductFields = ['product_id', 'product_quantity']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
-    const [stakeholderExists] = await db.query(storage.findStakeholder({ id: stakeholder_id }))
+    const [stakeholderNitUnique] = stakeholder_nit ? await db.query(storage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
+    const [stakeholderIdExists] = stakeholder_id ? await db.query(storage.findStakeholder({ id: stakeholder_id })) : []
+    const [projectExists] = await db.query(storage.checkProjectExists(), [project_id])
 
     if (Object.keys(types.operationsTypes).every(k => types.operationsTypes[k] !== operation_type))
       errors.push(
@@ -98,51 +83,50 @@ module.exports.create = async event => {
       )
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (requiredProductErrorFields) errors.push(`The fields ${requiredProductFields.join(', ')} in products are required`)
-    if (!stakeholderExists) errors.push('The provided stakeholder_id is not registered')
+    if (stakeholderNitUnique) errors.push('The provided nit is already registered')
+    if (stakeholder_id && !stakeholderIdExists) errors.push('The provided stakeholder_id is not registered')
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`The products with id ${id} is duplicated`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`The products with id ${id} is not registered`))
-    if (appConfig.operations[operation_type]?.inventoryMovementsType?.some(mt => mt === types.inventoryMovementsTypes.OUT)) {
-      const productsStocksMap = products.reduce((r, p) => {
-        const product = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id))
+    if (!projectExists) errors.push(`The provided project_id is not registered`)
+    const productsStocksMap = products.reduce((r, p) => {
+      const product = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id))
 
-        if (product?.stock) return { ...r, [p.product_id]: product.stock - p.product_quantity }
-        else return r
-      }, {})
+      if (product?.stock) return { ...r, [p.product_id]: product.stock - p.product_quantity }
+      else return r
+    }, {})
 
-      const negativeStocks = Object.keys(productsStocksMap).flatMap(k => (productsStocksMap[k] < 0 ? k : []))
-      negativeStocks.forEach(id => errors.push(`The product with id ${id} cannot have negative stock`))
-    }
+    const negativeStocks = Object.keys(productsStocksMap).flatMap(k => (productsStocksMap[k] < 0 ? k : []))
+    negativeStocks.forEach(id => errors.push(`The product with id ${id} cannot have negative stock`))
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const getProductsReturnCost = async () => {
-      if (operation_type === types.operationsTypes.RENT) {
-        const productsReturnCost = await db.query(storage.findProductReturnCost(productsIds))
+    const productsWithTaxes = calculateProductTaxes(products, productsStocks)
 
-        if (!productsReturnCost?.length > 0) return products
+    const { res } = await db.transaction(async connection => {
+      const stakeholderCreated = await handleCreateStakeholder({ ...req, body: { ...req.body, products: productsWithTaxes } }, { connection })
 
-        return products.map(p => {
-          const product = productsReturnCost.find(prc => Number(prc.product_id) === Number(p.product_id))
-
-          return { ...p, product_return_cost: product.product_return_cost ?? null }
-        })
-      }
-
-      return products
-    }
-
-    const productsWithReturnCost = await getProductsReturnCost()
-
-    const res = await db.transaction(async connection => {
-      const documentCreated = await handleCreateDocument(
-        { ...req, body: { ...req.body, document_type, products: productsWithReturnCost } },
-        { connection, storage }
+      const initDocumentCreated = await handleCreateDocument(
+        { ...stakeholderCreated.req, body: { ...stakeholderCreated.req.body, document_type: types.documentsTypes.SELL_PRE_INVOICE } },
+        stakeholderCreated.res
       )
-      const documentApproved = await handleAuthorizeDocument(documentCreated.req, documentCreated.res)
-      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, documentApproved.res)
-      const inventoryMovementsApproved = await handleAuthorizeInventoryMovements(inventoryMovementsCreated.req, inventoryMovementsCreated.res)
 
-      return inventoryMovementsApproved.res
+      const finishDocumentCreated = await handleCreateDocument(
+        { ...initDocumentCreated.req, body: { ...initDocumentCreated.req.body, document_type: types.documentsTypes.SELL_INVOICE } },
+        initDocumentCreated.res
+      )
+
+      const operationCreated = await handleCreateOperation(
+        { ...finishDocumentCreated.req, body: { ...finishDocumentCreated.req.body, operation_type } },
+        finishDocumentCreated.res
+      )
+
+      const documentApproved = await handleApproveDocument(operationCreated.req, operationCreated.res)
+
+      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, documentApproved.res)
+
+      const inventoryMovementsApproved = await handleApproveInventoryMovements(inventoryMovementsCreated.req, inventoryMovementsCreated.res)
+
+      return await handleUpdateStock(inventoryMovementsApproved.req, { ...inventoryMovementsApproved.res, updateStockOn: types.actions.APPROVED })
     })
 
     return await handleResponse({ req, res })
@@ -152,47 +136,45 @@ module.exports.create = async event => {
   }
 }
 
-module.exports.authorize = async event => {
+module.exports.cancel = async event => {
   try {
     const inputType = {
-      inventory_movements: {
-        type: 'array',
-        required: true,
-        fields: {
-          type: 'object',
-          fields: {
-            inventory_movement_id: { type: 'number', required: true },
-            quantity: { type: 'number', min: 0, required: true },
-          },
-        },
-      },
+      document_id: { type: ['number', 'string'], required: true },
+      cancel_reason: { type: 'string', required: true },
     }
 
-    const req = await handleRequest({ event, inputType, currentAction: types.actions.APPROVED })
-    const { inventory_movements } = req.body
-    // can(req.currentAction, 'INVENTORY')
+    const req = await handleRequest({ event, inputType })
+    const { document_id } = req.body
+
+    // can(req.currentAction, [ types.operationsTypes.SELL, types.operationsTypes.RENT ])
 
     const errors = []
-    const movementsMap = inventory_movements.reduce(
-      (r, im) => ({ ...r, [im.inventory_movement_id]: [...(r[im.inventory_movement_id] ?? []), im.inventory_movement_id] }),
-      {}
+    const requiredFields = ['document_id', 'cancel_reason']
+    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+    const documentMovements = document_id ? await db.query(storage.findDocumentMovements(), [document_id]) : []
+    const invalidStatusProducts = documentMovements.flatMap(pm =>
+      pm.inventory_movements__product_status !== types.productsStatus.ACTIVE ? pm.inventory_movements__product_id : []
     )
-    const duplicateMovements = Object.keys(movementsMap)?.flatMap(k => (movementsMap[k].length > 1 ? k : []))
-    const movementsIds = inventory_movements?.map(im => im.inventory_movement_id)
-    const movements = await db.query(storage.checkInventoryMovementsExists(movementsIds))
-    const movementsExists = inventory_movements?.flatMap(im =>
-      !movements?.some(m => Number(m.id) === Number(im.inventory_movement_id)) ? im.inventory_movement_id : []
-    )
-    const requiredMovementFields = ['inventory_movement_id', 'quantity']
-    const requiredMovementErrorFields = requiredMovementFields.some(k => inventory_movements?.some(im => !im[k]))
 
-    if (duplicateMovements?.length > 0) duplicateMovements.forEach(id => errors.push(`The movement with id ${id} is duplicated`))
-    if (movementsExists?.length > 0) movementsExists.forEach(id => errors.push(`The movement with id ${id} is not registered`))
-    if (requiredMovementErrorFields) errors.push(`The fields ${requiredMovementFields.join(', ')} in inventory_movements are required`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
+    if (!documentMovements || !documentMovements[0]) errors.push('There is no invoice registered with the provided document_id')
+    if (invalidStatusProducts?.length > 0)
+      invalidStatusProducts.forEach(id => errors.push(`The product with id ${id} must be ${types.productsStatus.ACTIVE}`))
+    if (documentMovements[0]?.document_status === types.documentsStatus.CANCELLED) errors.push('The document is already cancelled')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const { res } = await db.transaction(async connection => await handleAuthorizeInventoryMovements(req, { connection, storage }))
+    const [groupedDocumentMovements] = groupJoinResult({
+      data: documentMovements,
+      nestedFieldsKeys: ['inventory_movements'],
+      uniqueKey: ['document_id'],
+    })
+
+    const { res } = await db.transaction(async connection => {
+      const documentCancelled = await handleCancelDocument({ ...req, body: { ...req.body, ...groupedDocumentMovements } }, { connection })
+
+      return await handleUpdateStock(documentCancelled.req, { ...documentCancelled.res, updateStockOn: types.actions.CANCELLED })
+    })
 
     return await handleResponse({ req, res })
   } catch (error) {

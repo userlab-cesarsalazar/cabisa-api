@@ -23,8 +23,6 @@ const addCurrentModel =
     return await fn({ ...input, dbQuery, storage, initWhereCondition, uniqueKey }, { ...req, currentModel })
   }
 
-const addCurrentAction = fn => async (input, req) => await fn(input, { ...req, currentAction: input.currentAction })
-
 const addQuery = fn => async (input, req) => {
   const rawQuery = input.event?.queryStringParameters || {}
   const query = escapeFields(rawQuery)
@@ -58,4 +56,4 @@ const addEvent =
 
 const baseFunction = async (input, req) => req
 
-module.exports = decorate(baseFunction)(addLog, addCurrentModel, addCurrentAction, addQuery, addBody, addEvent)
+module.exports = decorate(baseFunction)(addLog, addCurrentModel, addQuery, addBody, addEvent)

@@ -136,6 +136,83 @@ const getWhereConditions = ({ fields, tableAlias, hasPreviousConditions = true }
   return whereConditions.join('')
 }
 
+const groupJoinResult = ({ data, nestedFieldsKeys, uniqueKey = ['id'] }) => {
+  if (!data || data.length === 0 || !nestedFieldsKeys) return data
+
+  const nestedFieldFlag = '__'
+
+  const groupByValues = data.reduce((result, row) => {
+    const isDuplicate = result?.some(r => uniqueKey.every(uk => r[uk] === row[uk]))
+
+    const groupByValue = uniqueKey.reduce((r, k) => ({ ...r, [k]: row[k] }), {})
+
+    if (isDuplicate) return result
+    else return [...result, groupByValue]
+  }, [])
+
+  const nestedFieldsValues = data.map(row => {
+    return Object.keys(row).reduce((rr, rk) => {
+      const isUniqueKey = uniqueKey.some(uk => uk === rk)
+      if (isUniqueKey) return { ...rr, [rk]: row[rk] }
+
+      const [keys] = nestedFieldsKeys.flatMap(nfk =>
+        rk.indexOf(`${nfk}${nestedFieldFlag}`) === 0 ? { fieldKey: nfk, nestedKey: `${rk.replace(`${nfk}${nestedFieldFlag}`, '')}` } : []
+      )
+      if (keys) return { ...rr, [keys.fieldKey]: { ...rr[keys.fieldKey], [keys.nestedKey]: row[rk] } }
+
+      return rr
+    }, {})
+  })
+
+  const dataWithoutNestedFields = data.map(row => {
+    return Object.keys(row).reduce((rr, rk) => {
+      const isNestedFieldKey = nestedFieldsKeys.some(nfk => rk.indexOf(`${nfk}${nestedFieldFlag}`) === 0)
+
+      if (isNestedFieldKey) return rr
+      else return { ...rr, [rk]: row[rk] }
+    }, {})
+  })
+
+  const dataWithoutDuplicates = dataWithoutNestedFields.reduce((result, row) => {
+    const isDuplicate = result?.some(r => uniqueKey.every(uk => r[uk] === row[uk]))
+
+    if (isDuplicate) return result
+    else return [...result, row]
+  }, [])
+
+  return groupByValues.map(groupBy => {
+    const data = dataWithoutDuplicates.find(data => Object.keys(groupBy).every(gbk => groupBy[gbk] === data[gbk]))
+
+    return nestedFieldsValues.reduce((result, value) => {
+      const isSameGroup = Object.keys(groupBy).every(gbk => groupBy[gbk] === value[gbk])
+
+      if (isSameGroup) {
+        return nestedFieldsKeys.reduce((nestedResult, fieldKey) => {
+          const fieldValue = nestedResult[fieldKey] || []
+
+          return { ...nestedResult, [fieldKey]: [...fieldValue, value[fieldKey]] }
+        }, result)
+      }
+
+      return result
+    }, data)
+  })
+}
+
+const calculateProductTaxes = (products, productsStocks) => {
+  return products.map(p => {
+    const sameProduct = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id))
+    const product_price = p?.product_price > 0 ? p.product_price : sameProduct.product_price
+
+    return {
+      ...p,
+      product_price,
+      tax_fee: sameProduct.tax_fee,
+      unit_tax_amount: product_price * (sameProduct.tax_fee / 100),
+    }
+  })
+}
+
 const decorate =
   (...functionsToDecorate) =>
   (...decoratorFunctions) => {
@@ -149,12 +226,14 @@ const decorate =
   }
 
 module.exports = {
+  calculateProductTaxes,
   decorate,
   decrypt,
   encrypt,
   escapeFields,
   getError,
   getWhereConditions,
+  groupJoinResult,
   validate,
   isEmail,
   isEmptyObject,

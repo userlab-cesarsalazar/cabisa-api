@@ -1,43 +1,29 @@
-const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { types, getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 
 const findAllBy = (fields = {}) => `
   SELECT
-    d.id,
-    d.document_type,
-    d.stakeholder_id,
-    d.operation_id,
-    d.status,
-    d.start_date,
-    d.end_date,
-    d.cancel_reason,
-    d.created_at,
-    d.created_by,
-    d.authorized_at,
-    d.authorized_by,
-    p.id AS products__id,
-    p.name AS products__name,
-    p.product_type AS products__product_type,
-    p.status AS products__status,
-    dp.product_price AS products__product_price,
-    dp.product_quantity AS products__product_quantity,
-    dp.product_return_cost AS products__product_return_cost,
-    p.code AS products__code,
-    p.serial_number AS products__serial_number,
-    p.description AS products__description,
-    p.image_url AS products__image_url,
-    p.created_at AS products__created_at,
-    p.created_by AS products__created_by
-  FROM documents d
-  INNER JOIN documents_products dp ON dp.document_id = d.id
-  INNER JOIN products p ON p.id = dp.product_id
-  ${getWhereConditions({ fields, tableAlias: 'd', hasPreviousConditions: false })}
+  im.id,
+  im.operation_id,
+  im.product_id,
+  im.quantity,
+  im.unit_cost,
+  im.movement_type,
+  im.status
+  FROM inventory_movements im
+  LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
+  LEFT JOIN operations o ON o.id = im.operation_id
+  LEFT JOIN documents d ON d.operation_id = o.id
+  ${getWhereConditions({ fields, tableAlias: 'im', hasPreviousConditions: false })}
 `
 
 const checkInventoryMovementsOnApprove = whereIn => `
   SELECT im.id, im.quantity AS total_qty, SUM(imd.quantity) AS approved_qty
   FROM inventory_movements im
   LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
-  WHERE im.status <> 'CANCELLED' AND im.status <> 'APPROVED' AND im.id IN (${whereIn.join(', ')})
+  WHERE
+    im.status <> '${types.inventoryMovementsStatus.CANCELLED}' AND
+    im.status <> '${types.inventoryMovementsStatus.APPROVED}' AND
+    im.id IN (${whereIn.join(', ')})
   GROUP BY im.id, imd.inventory_movement_id
 `
 

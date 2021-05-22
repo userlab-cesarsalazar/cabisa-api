@@ -1,10 +1,10 @@
 const { types, db, helpers, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
-const { handleRequest, handleResponse, handleRead, handleApproveInventoryMovements } = helpers
+const { handleRequest, handleResponse, handleRead, handleApproveInventoryMovements, handleUpdateStock } = helpers
 const storage = require('./storage')
 
 module.exports.read = async event => {
   try {
-    const req = await handleRequest({ event, currentAction: types.actions.READ })
+    const req = await handleRequest({ event })
 
     const res = await handleRead(req, { dbQuery: db.query, storage, nestedFieldsKeys: ['products'] })
 
@@ -33,7 +33,7 @@ module.exports.approve = async event => {
       },
     }
 
-    const req = await handleRequest({ event, inputType, currentAction: types.actions.APPROVED })
+    const req = await handleRequest({ event, inputType })
     const { inventory_movements } = req.body
 
     const errors = []
@@ -66,7 +66,12 @@ module.exports.approve = async event => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const { res } = await db.transaction(async connection => await handleApproveInventoryMovements(req, { connection }))
+    const handlersConfig = { updateStockOn: types.actions.APPROVED }
+
+    const { res } = await db.transaction(async connection => {
+      const inventoryMovementsApproved = await handleApproveInventoryMovements(req, { connection, handlersConfig })
+      return await handleUpdateStock(inventoryMovementsApproved.req, inventoryMovementsApproved.res)
+    })
 
     return await handleResponse({ req, res })
   } catch (error) {

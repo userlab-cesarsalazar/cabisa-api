@@ -1,4 +1,4 @@
-const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { types, getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 
 const findAllBy = (fields = {}) => `
   SELECT
@@ -30,10 +30,13 @@ const findAllBy = (fields = {}) => `
   FROM documents d
   INNER JOIN documents_products dp ON dp.document_id = d.id
   INNER JOIN products p ON p.id = dp.product_id
-  ${getWhereConditions({ fields, tableAlias: 'd', hasPreviousConditions: false })}
+  WHERE (
+    d.document_type = '${types.documentsTypes.SELL_PRE_INVOICE}' OR
+    d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}'
+  ) ${getWhereConditions({ fields, tableAlias: 'd' })}
 `
 
-const findStakeholder = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
+const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `
   SELECT id, stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man,block_reason, created_at, created_by, updated_at, updated_by
   FROM stakeholders
   WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
@@ -54,94 +57,92 @@ const findProductReturnCost = whereIn => `
 `
 
 const findProducts = whereIn => `
-  SELECT id AS product_id, stock
-  FROM products
-  WHERE id IN (${whereIn.join(', ')})
+  SELECT
+    p.id AS product_id,
+    p.stock,
+    p.unit_price AS product_price,
+    t.fee AS tax_fee
+  FROM products p
+  LEFT JOIN taxes t ON t.id = p.tax_id
+  WHERE p.id IN (${whereIn.join(', ')})
 `
 
-const createDocument = () => `
-  INSERT INTO documents
-  (document_type, stakeholder_id, start_date, end_date, created_by)
-  VALUES(?, ?, ?, ?, ?)
+const findDocument = () => `
+  SELECT
+    d.id AS document_id,
+    d.document_type AS document_type,
+    d.stakeholder_id AS stakeholder_id,
+    d.operation_id AS operation_id,
+    o.operation_type AS operation_type,
+    d.project_id AS project_id,
+    d.related_internal_document_id AS related_internal_document_id,
+    d.related_external_document_id AS related_external_document_id,
+    d.status AS status,
+    d.comments AS comments,
+    d.received_by AS received_by,
+    d.start_date AS start_date,
+    d.end_date AS end_date,
+    d.cancel_reason AS cancel_reason,
+    d.created_at AS created_at,
+    d.created_by AS created_by,
+    d.updated_at AS updated_at,
+    d.updated_by AS updated_by,
+    im.id AS old_inventory_movements__inventory_movement_id,
+    im.operation_id AS old_inventory_movements__operation_id,
+    im.product_id AS old_inventory_movements__product_id,
+    im.quantity AS old_inventory_movements__quantity,
+    im.unit_cost AS old_inventory_movements__unit_cost,
+    im.movement_type AS old_inventory_movements__movement_type,
+    im.status AS old_inventory_movements__status,
+    p.stock AS old_inventory_movements__stock,
+    dp.product_id AS old_products__product_id,
+    dp.product_price AS old_products__product_price,
+    dp.product_quantity AS old_products__product_quantity,
+    dp.product_return_cost AS old_products__product_return_cost,
+    dp.tax_fee AS old_products__tax_fee,
+    dp.unit_tax_amount AS old_products__unit_tax_amount,
+    p.stock AS old_products__stock
+  FROM documents d
+  LEFT JOIN documents_products dp ON dp.document_id = d.id
+  LEFT JOIN products p ON p.id = dp.product_id
+  LEFT JOIN operations o ON o.id = d.operation_id
+  LEFT JOIN inventory_movements im ON im.operation_id = o.id
+  WHERE d.id = ?
 `
-const createDocumentsProducts = valuesArray => `
-  INSERT INTO documents_products
-  (document_id, product_id, product_price, product_quantity, product_return_cost)
-  VALUES ${valuesArray.join(', ')}
-`
 
-const createOperation = () => `INSERT INTO operations (operation_type, created_by) VALUES(?, ?)`
-
-const authorizeInternalDocument = () => `
-  UPDATE documents SET status = 'APPROVED', operation_id = ?, related_internal_document_id = ?, updated_by = ? WHERE id = ?
-`
-
-const authorizeExternalDocument = () => `
-  UPDATE documents SET status = 'APPROVED', operation_id = ?, related_external_document_id = ?, updated_by = ? WHERE id = ?
-`
-
-const createInventoryMovements = inventoryMovementsValues => `
-  INSERT INTO inventory_movements
-  (operation_id, product_id, quantity, unit_cost, movement_type)
-  VALUES ${inventoryMovementsValues.join(', ')}
-`
-
-const findCreatedInventoryMovements = operationsIds => `
-  SELECT id AS inventory_movement_id, product_id, quantity, movement_type
-  FROM inventory_movements
-  WHERE operation_id IN (${operationsIds.join(', ')})
-`
-
-const createInventoryMovementsDetails = () => `
-  INSERT INTO inventory_movements_details
-  (inventory_movement_id, quantity, storage_location, comments, created_by)
-  VALUES(?, ?, ?, ?, ?)
-`
-
-const authorizeInventoryMovements = () => `UPDATE inventory_movements SET status = ? WHERE id = ?`
-
-const findInventoryMovementsDetails = whereIn => `
-  SELECT im.id AS inventory_movement_id, imd.quantity AS detail_qty, im.quantity AS total_qty, im.movement_type, p.id AS product_id, p.stock
-  FROM inventory_movements im
-  LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
+const findDocumentDetails = () => `
+  SELECT
+    d.id AS document_id,
+    d.related_internal_document_id AS related_internal_document_id,
+    d.document_type AS document_type,
+    d.status AS document_status,
+    d.operation_id AS operation_id,
+    d.stakeholder_id AS stakeholder_id,
+    d.project_id AS project_id,
+    o.operation_type AS operation_type,
+    dp.product_id AS products__product_id,
+    dp.product_quantity AS products__product_quantity,
+    dp.product_price AS products__product_price,
+    dp.product_return_cost AS products__product_return_cost,
+    dp.tax_fee AS products__tax_fee,
+    dp.unit_tax_amount AS products__unit_tax_amount
+  FROM documents d
+  LEFT JOIN documents_products dp ON dp.document_id = d.id
+  LEFT JOIN operations o ON o.id = d.operation_id
+  LEFT JOIN inventory_movements im ON im.operation_id = o.id
   LEFT JOIN products p ON p.id = im.product_id
-  WHERE im.id IN (${whereIn.join(', ')})
-`
-
-const updateStock = () => `UPDATE products SET stock = ? WHERE id = ?`
-
-const updateDocument = () => `
-  UPDATE documents
-  SET stakeholder_id = ?, operation_id = ?, status = ?, start_date = ?, end_date = ?, cancel_reason = ?, created_at = ?, created_by = ?, updated_at = ?, updated_by = ?
-  WHERE id = ?
-`
-
-const setStatusDocument = () => 'UPDATE documents SET status = ?, block_reason = ? WHERE id = ?'
-
-const updateProductStock = () => `UPDATE products SET stock = ? WHERE id = ?`
-
-const checkInventoryMovementsExists = whereIn => `
-  SELECT id FROM inventory_movements WHERE status <> 'CANCELLED' AND status <> 'APPROVED' AND id IN (${whereIn.join(', ')})
+  WHERE 
+  d.id = ? AND (
+    d.document_type = '${types.documentsTypes.SELL_PRE_INVOICE}' OR
+    d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}'
+  )
 `
 
 module.exports = {
-  authorizeInternalDocument,
-  authorizeInventoryMovements,
-  authorizeExternalDocument,
-  checkInventoryMovementsExists,
-  createDocument,
-  createDocumentsProducts,
-  createInventoryMovements,
-  createInventoryMovementsDetails,
-  createOperation,
   findAllBy,
-  findCreatedInventoryMovements,
-  findInventoryMovementsDetails,
+  findDocumentDetails,
+  findDocument,
   findProducts,
   findProductReturnCost,
   findStakeholder,
-  setStatusDocument,
-  updateDocument,
-  updateProductStock,
-  updateStock,
 }

@@ -1,30 +1,45 @@
-const handleCreateDocument = async (req, res) => {
-  const { stakeholder_id, document_type, start_date, end_date, products, created_by = 1 } = req.body
+// importante especificar el document_type del documento a crear
 
-  await res.connection.query(createDocument(), [document_type, stakeholder_id, start_date, end_date, created_by])
-  const document_id = await res.connection.geLastInsertId()
+// req.body: { stakeholder_id, project_id, document_type, start_date, end_date, products }
+
+const handleCreateDocument = async (req, res) => {
+  const { document_id, stakeholder_id, project_id, comments, received_by, document_type, start_date, end_date, products, created_by = 1 } = req.body
+
+  const related_internal_document_id = document_id
+
+  await res.connection.query(createDocument(), [document_type, stakeholder_id, project_id, comments, received_by, start_date, end_date, created_by])
+  const newDocumentId = await res.connection.geLastInsertId()
 
   const documentsProductsValues = products.map(
-    p => `(${document_id}, ${p.product_id}, ${p.product_price}, ${p.product_quantity}, ${p.product_return_cost ?? null}, ${p.tax_fee})` // , ${p.tax_amount}
+    p =>
+      `(
+        ${newDocumentId},
+        ${p.product_id},
+        ${p.product_price},
+        ${p.product_quantity},
+        ${p.product_return_cost ?? null},
+        ${p.tax_fee},
+        ${p.unit_tax_amount}
+      )`
   )
+
   await res.connection.query(createDocumentsProducts(documentsProductsValues))
 
   return {
-    req: { ...req, body: { ...req.body, document_id } },
+    req: { ...req, body: { ...req.body, document_id: newDocumentId, related_internal_document_id } },
     res: { ...res, statusCode: 201, data: { document_id }, message: 'Document created successfully' },
   }
 }
 
 const createDocument = () => `
   INSERT INTO documents
-  (document_type, stakeholder_id, start_date, end_date, created_by)
-  VALUES(?, ?, ?, ?, ?)
+  (document_type, stakeholder_id, project_id, comments, received_by, start_date, end_date, created_by)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products
-  (document_id, product_id, product_price, product_quantity, product_return_cost, tax_fee)
+  (document_id, product_id, product_price, product_quantity, product_return_cost, tax_fee, unit_tax_amount)
   VALUES ${valuesArray.join(', ')}
 `
-// tax_amount
 
 module.exports = handleCreateDocument
