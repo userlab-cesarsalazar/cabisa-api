@@ -39,21 +39,11 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  inventoryCreate:
-    handler: handler.create
+  inventoryApprove:
+    handler: handler.approve
     events:
       - http:
-          path: inventory-movements
-          method: post
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
-  inventoryAuthorize:
-    handler: handler.authorize
-    events:
-      - http:
-          path: inventory-movements/authorize
+          path: inventory-movements/approve
           method: put
           cors: true
     layers:

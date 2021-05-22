@@ -1,3 +1,9 @@
+const crypto = require('crypto-js')
+
+const encrypt = (text, encryptionKey) => crypto.AES.encrypt(text, encryptionKey).toString()
+
+const decrypt = (ciphertext, encryptionKey) => crypto.AES.decrypt(ciphertext, encryptionKey).toString(crypto.enc.Utf8)
+
 function ValidatorException(errors = null) {
   this.statusCode = 402
   this.message = {
@@ -88,36 +94,6 @@ const isEmptyObject = obj => {
 
 const getError = e => e.error || e.errors || e.data || e.message || e
 
-const response = async data => {
-  let body
-  let statusCode
-
-  if (data.error) {
-    body = { error: getError(data.error) }
-    statusCode = data.error.statusCode || 400
-  } else {
-    if (!data.res?.data || !data.res?.statusCode) throw new Error('The response must include data and statusCode')
-
-    if (data.req?.httpMethod !== 'GET' && !data.res?.message) throw new Error('The response for non GET requests must include a "message" key')
-
-    statusCode = data.res.statusCode
-
-    if (data.req.httpMethod === 'GET') body = data.res.data
-    else body = { data: data.res.data, message: data.res.message }
-  }
-
-  return new Promise(resolve => {
-    resolve({
-      statusCode,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Credentials': true,
-      },
-      body: JSON.stringify(body),
-    })
-  })
-}
-
 // todos los operadores tienen esta sintaxis $like:, $ como prefijo y : como marcador del fin del/los operador(es)
 // para usar los operadores se deben pasar como prefijo en el valor del query param
 // ademas existe el operador $or que es el unico que se puede usar en conjunto con otro operador -> $like$or:
@@ -160,6 +136,83 @@ const getWhereConditions = ({ fields, tableAlias, hasPreviousConditions = true }
   return whereConditions.join('')
 }
 
+const groupJoinResult = ({ data, nestedFieldsKeys, uniqueKey = ['id'] }) => {
+  if (!data || data.length === 0 || !nestedFieldsKeys) return data
+
+  const nestedFieldFlag = '__'
+
+  const groupByValues = data.reduce((result, row) => {
+    const isDuplicate = result?.some(r => uniqueKey.every(uk => r[uk] === row[uk]))
+
+    const groupByValue = uniqueKey.reduce((r, k) => ({ ...r, [k]: row[k] }), {})
+
+    if (isDuplicate) return result
+    else return [...result, groupByValue]
+  }, [])
+
+  const nestedFieldsValues = data.map(row => {
+    return Object.keys(row).reduce((rr, rk) => {
+      const isUniqueKey = uniqueKey.some(uk => uk === rk)
+      if (isUniqueKey) return { ...rr, [rk]: row[rk] }
+
+      const [keys] = nestedFieldsKeys.flatMap(nfk =>
+        rk.indexOf(`${nfk}${nestedFieldFlag}`) === 0 ? { fieldKey: nfk, nestedKey: `${rk.replace(`${nfk}${nestedFieldFlag}`, '')}` } : []
+      )
+      if (keys) return { ...rr, [keys.fieldKey]: { ...rr[keys.fieldKey], [keys.nestedKey]: row[rk] } }
+
+      return rr
+    }, {})
+  })
+
+  const dataWithoutNestedFields = data.map(row => {
+    return Object.keys(row).reduce((rr, rk) => {
+      const isNestedFieldKey = nestedFieldsKeys.some(nfk => rk.indexOf(`${nfk}${nestedFieldFlag}`) === 0)
+
+      if (isNestedFieldKey) return rr
+      else return { ...rr, [rk]: row[rk] }
+    }, {})
+  })
+
+  const dataWithoutDuplicates = dataWithoutNestedFields.reduce((result, row) => {
+    const isDuplicate = result?.some(r => uniqueKey.every(uk => r[uk] === row[uk]))
+
+    if (isDuplicate) return result
+    else return [...result, row]
+  }, [])
+
+  return groupByValues.map(groupBy => {
+    const data = dataWithoutDuplicates.find(data => Object.keys(groupBy).every(gbk => groupBy[gbk] === data[gbk]))
+
+    return nestedFieldsValues.reduce((result, value) => {
+      const isSameGroup = Object.keys(groupBy).every(gbk => groupBy[gbk] === value[gbk])
+
+      if (isSameGroup) {
+        return nestedFieldsKeys.reduce((nestedResult, fieldKey) => {
+          const fieldValue = nestedResult[fieldKey] || []
+
+          return { ...nestedResult, [fieldKey]: [...fieldValue, value[fieldKey]] }
+        }, result)
+      }
+
+      return result
+    }, data)
+  })
+}
+
+const calculateProductTaxes = (products, productsStocks) => {
+  return products.map(p => {
+    const sameProduct = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id))
+    const product_price = p?.product_price > 0 ? p.product_price : sameProduct.product_price
+
+    return {
+      ...p,
+      product_price,
+      tax_fee: sameProduct.tax_fee,
+      unit_tax_amount: product_price * (sameProduct.tax_fee / 100),
+    }
+  })
+}
+
 const decorate =
   (...functionsToDecorate) =>
   (...decoratorFunctions) => {
@@ -173,11 +226,14 @@ const decorate =
   }
 
 module.exports = {
+  calculateProductTaxes,
   decorate,
+  decrypt,
+  encrypt,
   escapeFields,
   getError,
   getWhereConditions,
-  response,
+  groupJoinResult,
   validate,
   isEmail,
   isEmptyObject,

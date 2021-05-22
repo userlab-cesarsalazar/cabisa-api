@@ -1,7 +1,25 @@
-const request = require('./request')
+const handleApproveDocument = require('./handleApproveDocument')
+const handleApproveInventoryMovements = require('./handleApproveInventoryMovements')
+const handleCancelDocument = require('./handleCancelDocument')
+const handleCreateDocument = require('./handleCreateDocument')
+const handleCreateInventoryMovements = require('./handleCreateInventoryMovements')
+const handleCreateOperation = require('./handleCreateOperation')
+const handleCreateStakeholder = require('./handleCreateStakeholder')
 const handleRead = require('./handleRead')
+const handleRequest = require('./handleRequest')
+const handleResponse = require('./handleResponse')
+const handleUpdateStock = require('./handleUpdateStock')
 
 module.exports = {
+  handleApproveDocument,
+  handleApproveInventoryMovements,
+  handleCancelDocument,
+  handleCreateDocument,
+  handleCreateInventoryMovements,
+  handleCreateOperation,
+  handleCreateStakeholder,
   handleRead,
-  request,
+  handleRequest,
+  handleResponse,
+  handleUpdateStock,
 }
