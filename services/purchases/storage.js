@@ -34,8 +34,8 @@ const findAllBy = (fields = {}) => `
     p.created_at AS products__created_at,
     p.created_by AS products__created_by
   FROM documents d
-  LEFT JOIN documents_products dp ON dp.document_id = d.id
-  LEFT JOIN products p ON p.id = dp.product_id
+  INNER JOIN documents_products dp ON dp.document_id = d.id
+  INNER JOIN products p ON p.id = dp.product_id
   WHERE d.document_type = '${types.documentsTypes.PURCHASE_ORDER}' ${getWhereConditions({ fields, tableAlias: 'd' })}
 `
 
@@ -67,7 +67,7 @@ const checkInventoryMovementsOnApprove = whereIn => `
   GROUP BY im.id, imd.inventory_movement_id
 `
 
-const findPurchaseMovements = () => `
+const findDocumentMovements = () => `
   SELECT
     d.id AS document_id,
     d.related_internal_document_id AS related_internal_document_id,
@@ -84,13 +84,13 @@ const findPurchaseMovements = () => `
   LEFT JOIN operations o ON o.id = d.operation_id
   LEFT JOIN inventory_movements im ON im.operation_id = o.id
   LEFT JOIN products p ON p.id = im.product_id
-  WHERE d.id = ? AND d.document_type = ?
+  WHERE d.id = ? AND d.document_type = '${types.documentsTypes.PURCHASE_ORDER}'
 `
 
 module.exports = {
   checkInventoryMovementsOnApprove,
   findAllBy,
   findProducts,
-  findPurchaseMovements,
+  findDocumentMovements,
   findStakeholder,
 }
