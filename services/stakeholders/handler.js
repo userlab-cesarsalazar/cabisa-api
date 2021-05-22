@@ -1,16 +1,17 @@
-const { handleRead, db, request, response, isEmail, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { db, helpers, isEmail, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { handleRead, handleRequest, handleResponse, handleCreateStakeholder } = helpers
 const storage = require('./storage')
 
 module.exports.read = async event => {
   try {
-    const req = await request({ event })
+    const req = await handleRequest({ event })
 
     const res = await handleRead(req, { dbQuery: db.query, storage })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }
 
@@ -22,17 +23,17 @@ module.exports.create = async event => {
       address: { type: 'string', length: 100, required: true },
       nit: { type: 'string', length: 11, required: true },
       email: { type: 'email' },
-      phone: { type: 'string', length: 20 },
+      phone: { type: 'string', length: 20, required: true },
       alternative_phone: { type: 'string', length: 20 },
       business_man: { type: 'string', length: 100 },
       payments_man: { type: 'string', length: 100 },
     }
-    const req = await request({ event, inputType })
+    const req = await handleRequest({ event, inputType })
 
-    const { stakeholder_type, name, address, nit, email, phone, alternative_phone, business_man, payments_man, created_by = 1 } = req.body
+    const { stakeholder_type, nit, email } = req.body
 
     const errors = []
-    const requiredFields = ['stakeholder_type', 'name', 'address']
+    const requiredFields = ['stakeholder_type', 'name', 'address', 'nit', 'phone']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [stakeholderExists] = await db.query(storage.checkExists({ nit, stakeholder_type }))
 
@@ -40,31 +41,19 @@ module.exports.create = async event => {
       errors.push(`The field stakeholder_type must contain one of these values: ${inputType.stakeholder_type.type.enum.join(', ')}`)
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (stakeholderExists) errors.push(`The provided nit is already registered`)
-    if (!isEmail(email)) errors.push(`The provided email is invalid`)
+    if (email && !isEmail(email)) errors.push(`The provided email is invalid`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.createStakeholder(), [
-        stakeholder_type,
-        name,
-        address,
-        nit,
-        email,
-        phone,
-        alternative_phone,
-        business_man,
-        payments_man,
-        created_by,
-      ])
-
-      return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Stakeholder created successfully' }
+      const stakeholderCreated = await handleCreateStakeholder(req, { connection, storage })
+      return stakeholderCreated.res
     })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }
 
@@ -81,7 +70,7 @@ module.exports.update = async event => {
       business_man: { type: 'string', length: 100 },
       payments_man: { type: 'string', length: 100 },
     }
-    const req = await request({ event, inputType, dbQuery: db.query, storage })
+    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage })
 
     const { id, name, address, nit, email, phone, alternative_phone, business_man, payments_man, updated_by = 1 } = req.body
 
@@ -115,10 +104,10 @@ module.exports.update = async event => {
       return { statusCode: 200, data: { id }, message: 'Stakeholder updated successfully' }
     })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }
 
@@ -129,7 +118,7 @@ module.exports.setStatus = async event => {
       status: { type: { enum: ['ACTIVE', 'INACTIVE', 'BLOCKED'] }, required: true, defaultValue: 'ACTIVE' },
       block_reason: { type: 'string' },
     }
-    const req = await request({ event, inputType })
+    const req = await handleRequest({ event, inputType })
 
     const { id, status, block_reason, updated_by = 1 } = req.body
 
@@ -151,9 +140,9 @@ module.exports.setStatus = async event => {
       return { statusCode: 200, data: { id }, message: 'Stakeholder status updated successfully' }
     })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }
