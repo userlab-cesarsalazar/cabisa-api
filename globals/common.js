@@ -2,7 +2,9 @@ const getBody = event => {
   return event.body ? (typeof event.body === 'string' ? JSON.parse(event.body) : event.body) : JSON.parse(event.Records[0].Sns.Message)
 }
 
-const response = async (status, body) => {
+const response = async (status, body, connection) => {
+  if (connection) await connection.end()
+
   return new Promise(resolve => {
     resolve({
       statusCode: status,
@@ -116,7 +118,8 @@ const getWhereConditions = (fields, hasPreviousConditions = true) => {
 const getLastId = () => 'SELECT LAST_INSERT_ID() AS "id"'
 
 const validateEmail = email => {
-  const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+  const re =
+    /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
   return re.test(String(email).toLowerCase())
 }
 
