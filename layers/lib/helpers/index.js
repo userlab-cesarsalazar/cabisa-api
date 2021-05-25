@@ -8,6 +8,8 @@ const handleCreateStakeholder = require('./handleCreateStakeholder')
 const handleRead = require('./handleRead')
 const handleRequest = require('./handleRequest')
 const handleResponse = require('./handleResponse')
+const handleDeleteInventoryMovements = require('./handleDeleteInventoryMovements')
+const handleUpdateDocument = require('./handleUpdateDocument')
 const handleUpdateStock = require('./handleUpdateStock')
 
 module.exports = {
@@ -21,5 +23,7 @@ module.exports = {
   handleRead,
   handleRequest,
   handleResponse,
+  handleDeleteInventoryMovements,
+  handleUpdateDocument,
   handleUpdateStock,
 }

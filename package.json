@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "deploy-dev": "export AWS_PROFILE=cabisa && serverless deploy"
   },
   "dependencies": {
@@ -12,5 +12,7 @@
     "moment-timezone": "^0.5.25",
     "mysql2": "^1.6.5"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "jest": "^26.6.3"
+  }
 }

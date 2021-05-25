@@ -1,70 +1,63 @@
-const { handleRead, db, request, response, isEmail, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { types, db, helpers, isEmail, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { handleRead, handleRequest, handleResponse, handleCreateStakeholder } = helpers
 const storage = require('./storage')
 
 module.exports.read = async event => {
   try {
-    const req = await request({ event })
+    const req = await handleRequest({ event })
 
     const res = await handleRead(req, { dbQuery: db.query, storage })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }
 
 module.exports.create = async event => {
   try {
     const inputType = {
-      stakeholder_type: { type: { enum: ['CLIENT_INDIVIDUAL', 'CLIENT_COMPANY', 'PROVIDER'] }, required: true },
+      stakeholder_type: { type: { enum: types.stakeholdersTypes }, required: true },
       name: { type: 'string', length: 100, required: true },
       address: { type: 'string', length: 100, required: true },
       nit: { type: 'string', length: 11, required: true },
       email: { type: 'email' },
-      phone: { type: 'string', length: 20 },
+      phone: { type: 'string', length: 20, required: true },
       alternative_phone: { type: 'string', length: 20 },
       business_man: { type: 'string', length: 100 },
       payments_man: { type: 'string', length: 100 },
     }
-    const req = await request({ event, inputType })
+    const req = await handleRequest({ event, inputType })
 
-    const { stakeholder_type, name, address, nit, email, phone, alternative_phone, business_man, payments_man, created_by = 1 } = req.body
+    const { stakeholder_type, nit, email } = req.body
 
     const errors = []
-    const requiredFields = ['stakeholder_type', 'name', 'address']
+    const requiredFields = ['stakeholder_type', 'name', 'address', 'nit', 'phone']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [stakeholderExists] = await db.query(storage.checkExists({ nit, stakeholder_type }))
 
-    if (inputType.stakeholder_type.type.enum.every(v => v !== stakeholder_type))
-      errors.push(`The field stakeholder_type must contain one of these values: ${inputType.stakeholder_type.type.enum.join(', ')}`)
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (stakeholderExists) errors.push(`The provided nit is already registered`)
-    if (!isEmail(email)) errors.push(`The provided email is invalid`)
+    if (email && !isEmail(email)) errors.push(`The provided email is invalid`)
+    if (Object.keys(types.stakeholdersTypes).every(k => types.stakeholdersTypes[k] !== stakeholder_type))
+      errors.push(
+        `The field stakeholder_type must contain one of these values: ${Object.keys(types.stakeholdersTypes)
+          .map(k => types.stakeholdersTypes[k])
+          .join(', ')}`
+      )
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.createStakeholder(), [
-        stakeholder_type,
-        name,
-        address,
-        nit,
-        email,
-        phone,
-        alternative_phone,
-        business_man,
-        payments_man,
-        created_by,
-      ])
-
-      return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Stakeholder created successfully' }
+      const stakeholderCreated = await handleCreateStakeholder(req, { connection, storage })
+      return stakeholderCreated.res
     })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }
 
@@ -76,17 +69,17 @@ module.exports.update = async event => {
       address: { type: 'string', length: 100, required: true },
       nit: { type: 'string', length: 11, required: true },
       email: { type: 'email' },
-      phone: { type: 'string', length: 20 },
+      phone: { type: 'string', length: 20, required: true },
       alternative_phone: { type: 'string', length: 20 },
       business_man: { type: 'string', length: 100 },
       payments_man: { type: 'string', length: 100 },
     }
-    const req = await request({ event, inputType, dbQuery: db.query, storage })
+    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage })
 
     const { id, name, address, nit, email, phone, alternative_phone, business_man, payments_man, updated_by = 1 } = req.body
 
     const errors = []
-    const requiredFields = ['id', 'name', 'address']
+    const requiredFields = ['id', 'name', 'address', 'nit', 'phone']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [stakeholder] = await db.query(storage.checkExists({ nit, stakeholder_type: req.currentModel.stakeholder_type }))
 
@@ -115,10 +108,10 @@ module.exports.update = async event => {
       return { statusCode: 200, data: { id }, message: 'Stakeholder updated successfully' }
     })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }
 
@@ -126,22 +119,26 @@ module.exports.setStatus = async event => {
   try {
     const inputType = {
       id: { type: ['string', 'number'], required: true },
-      status: { type: { enum: ['ACTIVE', 'INACTIVE', 'BLOCKED'] }, required: true, defaultValue: 'ACTIVE' },
+      status: { type: { enum: types.stakeholdersStatus }, required: true, defaultValue: types.stakeholdersStatus.ACTIVE },
       block_reason: { type: 'string' },
     }
-    const req = await request({ event, inputType })
+    const req = await handleRequest({ event, inputType })
 
     const { id, status, block_reason, updated_by = 1 } = req.body
 
     const errors = []
-    const requiredFields = status === 'BLOCKED' ? ['id', 'status', 'block_reason'] : ['id', 'status']
+    const requiredFields = status === types.stakeholdersStatus.BLOCKED ? ['id', 'status', 'block_reason'] : ['id', 'status']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [stakeholderExists] = await db.query(storage.checkExists({ id }, '1'))
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (inputType.status.type.enum.every(v => v !== status))
-      errors.push(`The field status must contain one of these values: ${inputType.status.type.enum.join(', ')}`)
     if (!stakeholderExists) errors.push(`The stakeholder with id ${id} is not registered`)
+    if (Object.keys(types.stakeholdersStatus).every(k => types.stakeholdersStatus[k] !== status))
+      errors.push(
+        `The field status must contain one of these values: ${Object.keys(types.stakeholdersStatus)
+          .map(k => types.stakeholdersStatus[k])
+          .join(', ')}`
+      )
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -151,9 +148,9 @@ module.exports.setStatus = async event => {
       return { statusCode: 200, data: { id }, message: 'Stakeholder status updated successfully' }
     })
 
-    return await response({ req, res })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response({ error })
+    return await handleResponse({ error })
   }
 }

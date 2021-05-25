@@ -59,12 +59,12 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  productsSetStatus:
-    handler: handler.setStatus
+  productsDelete:
+    handler: handler.delete
     events:
       - http:
-          path: products/status
-          method: put
+          path: products
+          method: delete
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
