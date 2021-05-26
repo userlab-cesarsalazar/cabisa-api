@@ -1,6 +1,7 @@
 CREATE TABLE `products` (
   `id` INT NOT NULL AUTO_INCREMENT,
-  `product_type` ENUM('SERVICE','EQUIPMENT','PART') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `product_type` ENUM('SERVICE','PRODUCT') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `product_category` ENUM('EQUIPMENT','PART') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
   `status` ENUM('ACTIVE','INACTIVE','BLOCKED') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT 'ACTIVE' NOT NULL,
   `name` VARCHAR(100) NOT NULL,
   `code` VARCHAR(50) NOT NULL,
@@ -17,5 +18,6 @@ CREATE TABLE `products` (
   CONSTRAINT products_pk PRIMARY KEY (`id`),
   CONSTRAINT products_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
   CONSTRAINT products_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id),
+  CONSTRAINT products_product_category_check CHECK (product_type <> 'PRODUCT' OR product_category IS NOT NULL),
   CONSTRAINT products_code_product_type_unique UNIQUE (code, product_type)
 ) ENGINE=InnoDB;

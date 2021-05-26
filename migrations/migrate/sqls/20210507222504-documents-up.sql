@@ -1,7 +1,7 @@
 CREATE TABLE `documents` (
   `id` INT NOT NULL AUTO_INCREMENT,
-  `document_type` ENUM('SELL_INVOICE','RENT_INVOICE','SELL_PRE_INVOICE','PURCHASE_ORDER','RENT_PRE_INVOICE') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `stakeholder_id` INT NOT NULL,
+  `document_type` ENUM('SELL_PRE_INVOICE','RENT_PRE_INVOICE','SELL_INVOICE','RENT_INVOICE','PURCHASE_ORDER','REPAIR_ORDER') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `stakeholder_id` INT,
   `operation_id` INT,
   `project_id` INT,
   `related_internal_document_id` INT DEFAULT NULL,
@@ -23,7 +23,8 @@ CREATE TABLE `documents` (
   CONSTRAINT documents_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
   CONSTRAINT documents_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id),
   CONSTRAINT documents_operation_id_check CHECK (status <> 'APPROVED' OR operation_id IS NOT NULL),
-  CONSTRAINT documents_project_id_check CHECK (document_type = 'PURCHASE_ORDER' OR project_id IS NOT NULL),
+  CONSTRAINT documents_stakeholder_id_check CHECK (document_type = 'REPAIR_ORDER' OR stakeholder_id IS NOT NULL),
+  CONSTRAINT documents_project_id_check CHECK (document_type = 'PURCHASE_ORDER' OR document_type = 'REPAIR_ORDER' OR project_id IS NOT NULL),
   CONSTRAINT documents_start_date_check CHECK ((document_type <> 'RENT' AND document_type <> 'RENT_PRE_INVOICE') OR start_date IS NOT NULL),
   CONSTRAINT documents_end_date_check CHECK ((document_type <> 'RENT' AND document_type <> 'RENT_PRE_INVOICE') OR end_date IS NOT NULL),
   CONSTRAINT documents_updated_by_check CHECK (status = 'PENDING' OR updated_by IS NOT NULL)
