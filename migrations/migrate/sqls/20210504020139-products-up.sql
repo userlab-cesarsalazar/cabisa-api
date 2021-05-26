@@ -19,5 +19,5 @@ CREATE TABLE `products` (
   CONSTRAINT products_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
   CONSTRAINT products_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id),
   CONSTRAINT products_product_category_check CHECK (product_type <> 'PRODUCT' OR product_category IS NOT NULL),
-  CONSTRAINT products_code_product_type_unique UNIQUE (code, product_type)
+  CONSTRAINT products_code_product_type_unique UNIQUE (code, product_type, product_category)
 ) ENGINE=InnoDB;
