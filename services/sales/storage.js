@@ -6,35 +6,55 @@ const findAllBy = (fields = {}) => `
     d.document_type,
     d.stakeholder_id,
     d.operation_id,
+    d.related_internal_document_id,
+    d.related_external_document_id,
     d.status,
+    d.comments,
+    d.received_by,
     d.start_date,
     d.end_date,
     d.cancel_reason,
+    u.full_name AS creator_name,
     d.created_at,
     d.created_by,
     d.updated_at,
     d.updated_by,
-    p.id AS products__id,
-    p.name AS products__name,
-    p.product_type AS products__product_type,
-    p.status AS products__status,
-    dp.product_price AS products__product_price,
-    dp.product_quantity AS products__product_quantity,
+    (CASE
+      WHEN 
+        (d.related_internal_document_id IS NOT NULL AND d.operation_id IS NOT NULL) OR
+        d.status = '${types.documentsStatus.CANCELLED}'
+      THEN 1
+      ELSE 0
+    END) AS has_related_invoice,
+    s.id AS stakeholder_id,
+    s.name AS stakeholder_name,
+    s.business_man AS stakeholder_business_man,
+    s.address AS stakeholder_address,
+    s.phone AS stakeholder_phone,
+    proj.id AS project_id,
+    proj.name AS project_name,
+    proj.business_man AS project_business_man,
+    prod.id AS products__id,
+    prod.status AS products__status,
+    dp.product_price AS products__unit_price,
+    dp.product_quantity AS products__quantity,
     dp.product_return_cost AS products__product_return_cost,
-    p.code AS products__code,
-    p.serial_number AS products__serial_number,
-    p.description AS products__description,
-    p.image_url AS products__image_url,
-    p.created_at AS products__created_at,
-    p.created_by AS products__created_by
+    prod.code AS products__code,
+    prod.serial_number AS products__serial_number,
+    prod.description AS products__description
   FROM documents d
+  INNER JOIN users u ON u.id = d.created_by
   INNER JOIN documents_products dp ON dp.document_id = d.id
-  INNER JOIN products p ON p.id = dp.product_id
+  INNER JOIN products prod ON prod.id = dp.product_id
+  INNER JOIN stakeholders s ON s.id = d.stakeholder_id
+  INNER JOIN projects proj ON proj.id = d.project_id
   WHERE (
     d.document_type = '${types.documentsTypes.SELL_PRE_INVOICE}' OR
     d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}'
   ) ${getWhereConditions({ fields, tableAlias: 'd' })}
 `
+
+const findSalesStatus = () => `DESCRIBE documents status`
 
 const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `
   SELECT id, stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man,block_reason, created_at, created_by, updated_at, updated_by
@@ -107,7 +127,10 @@ const findDocument = () => `
   LEFT JOIN products p ON p.id = dp.product_id
   LEFT JOIN operations o ON o.id = d.operation_id
   LEFT JOIN inventory_movements im ON im.operation_id = o.id
-  WHERE d.id = ?
+  WHERE d.id = ? AND (
+    d.document_type = '${types.documentsTypes.SELL_PRE_INVOICE}' OR
+    d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}'
+  )
 `
 
 const findDocumentDetails = () => `
@@ -123,14 +146,14 @@ const findDocumentDetails = () => `
     dp.product_id AS products__product_id,
     dp.product_quantity AS products__product_quantity,
     dp.product_price AS products__product_price,
-    dp.product_return_cost AS products__product_return_cost,
+    COALESCE(dp.product_return_cost, dp.product_price) AS products__product_return_cost,
     dp.tax_fee AS products__tax_fee,
-    dp.unit_tax_amount AS products__unit_tax_amount
+    dp.unit_tax_amount AS products__unit_tax_amount,
+    p.status AS products__product_status
   FROM documents d
   LEFT JOIN documents_products dp ON dp.document_id = d.id
+  LEFT JOIN products p ON p.id = dp.product_id
   LEFT JOIN operations o ON o.id = d.operation_id
-  LEFT JOIN inventory_movements im ON im.operation_id = o.id
-  LEFT JOIN products p ON p.id = im.product_id
   WHERE 
   d.id = ? AND (
     d.document_type = '${types.documentsTypes.SELL_PRE_INVOICE}' OR
@@ -138,11 +161,37 @@ const findDocumentDetails = () => `
   )
 `
 
+const findDocumentMovements = () => `
+  SELECT
+    d.id AS document_id,
+    d.related_internal_document_id AS related_internal_document_id,
+    d.document_type AS document_type,
+    d.status AS document_status,
+    d.operation_id AS operation_id,
+    im.id AS inventory_movements__inventory_movement_id,
+    im.movement_type AS inventory_movements__movement_type,
+    im.product_id AS inventory_movements__product_id,
+    im.quantity AS inventory_movements__quantity,
+    p.stock AS inventory_movements__stock,
+    p.status AS inventory_movements__product_status
+  FROM documents d
+  LEFT JOIN operations o ON o.id = d.operation_id
+  LEFT JOIN inventory_movements im ON im.operation_id = o.id
+  LEFT JOIN products p ON p.id = im.product_id
+  WHERE
+    d.id = ? AND (
+      d.document_type = '${types.documentsTypes.SELL_PRE_INVOICE}' OR
+      d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}'
+    )
+`
+
 module.exports = {
   findAllBy,
-  findDocumentDetails,
   findDocument,
+  findDocumentDetails,
+  findDocumentMovements,
   findProducts,
   findProductReturnCost,
+  findSalesStatus,
   findStakeholder,
 }
