@@ -12,6 +12,7 @@ CREATE TABLE `documents` (
   `start_date` TIMESTAMP,
   `end_date` TIMESTAMP,
   `cancel_reason` TEXT DEFAULT NULL,
+  `payment_method` ENUM('CARD','TRANSFER','CASH') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` INT NOT NULL,
   `updated_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -27,6 +28,7 @@ CREATE TABLE `documents` (
   CONSTRAINT documents_project_id_check CHECK (document_type = 'PURCHASE_ORDER' OR document_type = 'REPAIR_ORDER' OR project_id IS NOT NULL),
   CONSTRAINT documents_start_date_check CHECK ((document_type <> 'RENT' AND document_type <> 'RENT_PRE_INVOICE') OR start_date IS NOT NULL),
   CONSTRAINT documents_end_date_check CHECK ((document_type <> 'RENT' AND document_type <> 'RENT_PRE_INVOICE') OR end_date IS NOT NULL),
+  CONSTRAINT documents_payment_method_check CHECK (document_type <> 'SELL_INVOICE' OR payment_method IS NOT NULL),
   -- CONSTRAINT documents_cancel_reason_check CHECK (status <> 'CANCELLED' OR cancel_reason IS NOT NULL),
   CONSTRAINT documents_updated_by_check CHECK (status = 'PENDING' OR updated_by IS NOT NULL)
 ) ENGINE=InnoDB;
