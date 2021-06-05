@@ -41,8 +41,11 @@ CREATE TABLE `documents_products` (
   `product_return_cost` INT,
   `tax_fee` DECIMAL(5,2) NOT NULL,
   `unit_tax_amount` DOUBLE NOT NULL,
+  `discount_percentage` DECIMAL(5,2) DEFAULT NULL,
+  `unit_discount_amount` DOUBLE DEFAULT NULL,
   CONSTRAINT documents_products_document_id_product_id_pk PRIMARY KEY (document_id, product_id),
   CONSTRAINT documents_products_product_id_fk FOREIGN KEY (product_id) REFERENCES products(id),
   CONSTRAINT documents_products_document_id_fk FOREIGN KEY (document_id) REFERENCES documents(id),
-  CONSTRAINT documents_products_tax_fee_check CHECK (tax_fee BETWEEN 0.00 AND 100.00)
+  CONSTRAINT documents_products_tax_fee_check CHECK (tax_fee BETWEEN 0.00 AND 100.00),
+  CONSTRAINT documents_products_discount_percentage_check CHECK (discount_percentage BETWEEN 0.00 AND 100.00)
 ) ENGINE=InnoDB;
