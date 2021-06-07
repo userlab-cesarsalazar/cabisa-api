@@ -14,9 +14,9 @@ const types = require('../types')
 // }
 
 const handleUpdateStock = async (req, res) => {
-  const { document_id, inventory_movements, old_inventory_movements = [] } = req.body
+  const { document_id, inventory_movements = [], old_inventory_movements = [] } = req.body
 
-  const stocks = [...old_inventory_movements, ...inventory_movements].reduce((result, im) => {
+  const stocks = [...old_inventory_movements, ...inventory_movements]?.reduce((result, im) => {
     const actionType = !im.status ? types.actions.CANCELLED : types.actions.APPROVED
     const movementType = res.updateStockOn === actionType ? types.inventoryMovementsTypes.OUT : types.inventoryMovementsTypes.IN
     const addedQty = im.movement_type === movementType ? im.quantity : im.quantity * -1
@@ -32,12 +32,14 @@ const handleUpdateStock = async (req, res) => {
     return [...(result || []), newStock]
   }, [])
 
-  const errors = stocks.flatMap(s => (s.stock < 0 ? `The stock for product with id ${s.product_id} cannot be less than zero` : []))
+  if (stocks) {
+    const errors = stocks.flatMap(s => (s.stock < 0 ? `The stock for product with id ${s.product_id} cannot be less than zero` : []))
 
-  if (errors.length > 0) throw new ValidatorException(errors)
+    if (errors.length > 0) throw new ValidatorException(errors)
 
-  const updateStockPromises = stocks.map(s => res.connection.query(updateStock(), [s.stock, s.product_id]))
-  await Promise.all(updateStockPromises)
+    const updateStockPromises = stocks.map(s => res.connection.query(updateStock(), [s.stock, s.product_id]))
+    await Promise.all(updateStockPromises)
+  }
 
   return {
     req,
