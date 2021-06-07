@@ -9,6 +9,12 @@ const actions = {
   CANCELLED: 'CANCEL',
 }
 
+const documentsPaymentMethods = {
+  CARD: 'CARD',
+  CASH: 'CASH',
+  TRANSFER: 'TRANSFER',
+}
+
 const documentsTypes = {
   PURCHASE_ORDER: 'PURCHASE_ORDER',
   SELL_PRE_INVOICE: 'SELL_PRE_INVOICE',
@@ -41,6 +47,11 @@ const operationsTypes = {
   RENT: 'RENT',
 }
 
+const productsCategories = {
+  EQUIPMENT: 'EQUIPMENT',
+  PART: 'PART',
+}
+
 const productsStatus = {
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
@@ -49,8 +60,7 @@ const productsStatus = {
 
 const productsTypes = {
   SERVICE: 'SERVICE',
-  EQUIPMENT: 'EQUIPMENT',
-  PART: 'PART',
+  PRODUCT: 'PRODUCT',
 }
 
 const rolesStatus = {
@@ -78,11 +88,13 @@ const usersStatus = {
 
 module.exports = {
   actions,
+  documentsPaymentMethods,
   documentsStatus,
   documentsTypes,
   inventoryMovementsStatus,
   inventoryMovementsTypes,
   operationsTypes,
+  productsCategories,
   productsStatus,
   productsTypes,
   rolesStatus,

@@ -5,7 +5,7 @@ const encrypt = (text, encryptionKey) => crypto.AES.encrypt(text, encryptionKey)
 const decrypt = (ciphertext, encryptionKey) => crypto.AES.decrypt(ciphertext, encryptionKey).toString(crypto.enc.Utf8)
 
 function ValidatorException(errors = null) {
-  this.statusCode = 402
+  this.statusCode = 400
   this.message = {
     errors,
     message: 'Invalid request data',
@@ -100,7 +100,7 @@ const getError = e => e.error || e.errors || e.data || e.message || e
 const getWhereConditions = ({ fields, tableAlias, hasPreviousConditions = true }) => {
   const operators = {
     $eq: '=',
-    $ne: '!=',
+    $ne: '<>',
     $gt: '>',
     $gte: '>=',
     $lt: '<',
@@ -128,9 +128,12 @@ const getWhereConditions = ({ fields, tableAlias, hasPreviousConditions = true }
       value = fieldValue.substring(fieldValue.indexOf(':') + 1)
     }
 
-    return ` ${!hasPreviousConditions && i === 0 ? 'WHERE ' : prefixOperator} ${tableAlias ? `${tableAlias}.${k}` : k} ${
-      operators[paramOperator]
-    } '${value}'`
+    if (!operators[paramOperator]) throw new Error(`The provided operator doesn't exist`)
+
+    const previousCondition = !hasPreviousConditions && i === 0 ? 'WHERE ' : prefixOperator
+    const field = tableAlias ? `${tableAlias}.${k}` : k
+
+    return ` ${previousCondition} ${field} ${operators[paramOperator]} '${value}'`
   })
 
   return whereConditions.join('')
@@ -213,6 +216,15 @@ const calculateProductTaxes = (products, productsStocks) => {
   })
 }
 
+const getFormattedDates = dates =>
+  Object.keys(dates).reduce(
+    (r, k) => ({
+      ...r,
+      [k]: dates[k].replace(/T/i, ' ').replace(/Z/i, ''),
+    }),
+    {}
+  )
+
 const decorate =
   (...functionsToDecorate) =>
   (...decoratorFunctions) => {
@@ -232,6 +244,7 @@ module.exports = {
   encrypt,
   escapeFields,
   getError,
+  getFormattedDates,
   getWhereConditions,
   groupJoinResult,
   validate,

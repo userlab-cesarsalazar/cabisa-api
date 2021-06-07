@@ -42,17 +42,11 @@ const handleApproveInventoryMovements = async (req, res) => {
       return detailsResult
     }, {})
 
-    const { movement_type, stock, total_qty, approved_qty = 0, quantity, inventory_movement_id, product_id } = movementDetail
     const errors = []
     const inventoryMovements = {
       ...movementDetail,
-      remainningQty: total_qty - quantity,
+      remainningQty: movementDetail.total_qty - movementDetail.quantity,
     }
-
-    if (quantity + approved_qty > total_qty)
-      errors.push(`The quantity for the movement with id ${inventory_movement_id} cannot be more than ${total_qty}`)
-    if (movement_type == types.inventoryMovementsTypes.OUT && stock < total_qty)
-      errors.push(`The stock cannot be negative for the product with id ${product_id}`)
 
     return {
       ...result,

@@ -10,6 +10,21 @@ const addLog =
     return result
   }
 
+const addReadEnum =
+  fn =>
+  async (req, { data, ...res }) => {
+    const row = data[0]
+
+    if (row?.Type?.substring(0, 5).toLowerCase() === 'enum(') {
+      const enumValues = row.Type.substring(5, row.Type.length - 1).split(',')
+      const result = enumValues.map(d => d.replaceAll(/'/gi, '').trim())
+
+      return await fn(req, { ...res, data: result })
+    }
+
+    return await fn(req, { ...res, data })
+  }
+
 const addGroupJoinResult =
   fn =>
   async (req, { nestedFieldsKeys, uniqueKey, data, ...res }) => {
@@ -20,12 +35,12 @@ const addGroupJoinResult =
 
 const addFindBy =
   fn =>
-  async (req, { storage, dbQuery, ...res }) => {
-    const data = await dbQuery(storage.findAllBy(req.query))
+  async (req, { initWhereCondition, storage, dbQuery, ...res }) => {
+    const data = await dbQuery(storage(req.query, initWhereCondition))
 
     return await fn(req, { ...res, storage, dbQuery, statusCode: 200, data })
   }
 
 const baseFunction = async (req, res) => res
 
-module.exports = decorate(baseFunction)(addLog, addGroupJoinResult, addFindBy)
+module.exports = decorate(baseFunction)(addLog, addReadEnum, addGroupJoinResult, addFindBy)

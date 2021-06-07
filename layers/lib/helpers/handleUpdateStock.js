@@ -4,16 +4,20 @@ const types = require('../types')
 // updateStockOn: types.actions.CANCELLED | types.actions.APPROVED
 
 // req.body: {
+//   document_id,
 //   inventory_movements: [
 //     { movement_type, stock, quantity, product_id }
-//   ]
+//   ],
+//   old_inventory_movements: [
+//     { movement_type, stock, quantity, product_id, status }
+//   ],
 // }
 
 const handleUpdateStock = async (req, res) => {
-  const { inventory_movements, old_inventory_movements } = req.body
+  const { document_id, inventory_movements, old_inventory_movements = [] } = req.body
 
-  const stocks = [...inventory_movements, ...old_inventory_movements].reduce((result, im) => {
-    const actionType = im.status ? types.actions.APPROVED : types.actions.CANCELLED
+  const stocks = [...old_inventory_movements, ...inventory_movements].reduce((result, im) => {
+    const actionType = !im.status ? types.actions.CANCELLED : types.actions.APPROVED
     const movementType = res.updateStockOn === actionType ? types.inventoryMovementsTypes.OUT : types.inventoryMovementsTypes.IN
     const addedQty = im.movement_type === movementType ? im.quantity : im.quantity * -1
     const newStock = { stock: im.stock + addedQty, product_id: im.product_id }
@@ -37,7 +41,7 @@ const handleUpdateStock = async (req, res) => {
 
   return {
     req,
-    res: { ...res, statusCode: 200, data: { stocks }, message: 'Product stock updated successfully' },
+    res: { ...res, statusCode: 200, data: { document_id, stocks }, message: 'Product stock updated successfully' },
   }
 }
 

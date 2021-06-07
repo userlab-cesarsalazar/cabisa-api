@@ -44,7 +44,7 @@ functions:
     events:
       - http:
           path: inventory-movements/approve
-          method: put
+          method: post
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
