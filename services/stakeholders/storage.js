@@ -6,6 +6,8 @@ const findAllBy = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
   WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
+const findStakeholderTypes = () => `DESCRIBE stakeholders stakeholder_type`
+
 const checkExists = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
   SELECT id FROM stakeholders WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
@@ -18,9 +20,17 @@ const updateStakeholder = () => `
 
 const setStatusStakeholder = () => 'UPDATE stakeholders SET status = ?, block_reason = ?, updated_by = ? WHERE id = ?'
 
+const findOptionsBy = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
+  SELECT id, stakeholder_type, name, address, phone, business_man, address, email, nit
+  FROM stakeholders
+  WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
+`
+
 module.exports = {
   checkExists,
   findAllBy,
+  findOptionsBy,
+  findStakeholderTypes,
   setStatusStakeholder,
   updateStakeholder,
 }

@@ -39,6 +39,26 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
+  stakeholdersOptions:
+    handler: handler.readStakeholdersOptions
+    events:
+      - http:
+          path: stakeholders-options
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  stakeholdersTypes:
+    handler: handler.readStakeholdersTypes
+    events:
+      - http:
+          path: stakeholders/types
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
   stakeholdersCreate:
     handler: handler.create
     events:
