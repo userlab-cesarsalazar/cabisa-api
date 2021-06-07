@@ -6,7 +6,59 @@ module.exports.read = async event => {
   try {
     const req = await handleRequest({ event })
 
-    const res = await handleRead(req, { dbQuery: db.query, storage, nestedFieldsKeys: ['product_history'] })
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['product_history', 'tax'] })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readProductsStatus = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findProductsStatus })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readProductsCategories = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findProductsCategories })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readProductTaxes = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findProductsTaxes })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readProductsOptions = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findOptionsBy })
 
     return await handleResponse({ req, res })
   } catch (error) {
@@ -18,30 +70,24 @@ module.exports.read = async event => {
 module.exports.create = async event => {
   try {
     const inputType = {
-      product_type: { type: { enum: types.productsTypes }, required: true },
-      name: { type: 'string', length: 100, required: true },
+      product_category: { type: { enum: types.productsCategories }, required: true },
+      status: { type: { enum: types.productsStatus }, required: true },
       code: { type: 'string', length: 50, required: true, unique: true },
-      tax_id: { type: 'name || string', required: true },
-      serial_number: { type: 'string', length: 50 },
+      tax_id: { type: ['number', 'string'], required: true },
+      serial_number: { type: 'string', length: 50, required: true },
       unit_price: { type: 'number', min: 0, required: true, defaultValue: 0 },
-      description: { type: 'string', length: 255 },
+      description: { type: 'string', length: 255, required: true },
       image_url: { type: 'string' },
     }
     const req = await handleRequest({ event, inputType })
-    const { product_type, name, code, serial_number, unit_price, tax_id, description, image_url, created_by = 1 } = req.body
+    const { product_category, status, code, serial_number, unit_price, tax_id, description, image_url, created_by = 1 } = req.body
+    const product_type = types.productsTypes.PRODUCT
 
     const errors = []
-    const requiredFields = ['product_type', 'name', 'code', 'unit_price']
-    if (product_type !== types.productsTypes.SERVICE) requiredFields.push('tax_id')
+    const requiredFields = ['product_category', 'status', 'code', 'serial_number', 'unit_price', 'tax_id', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const [codeExists] = await db.query(storage.checkExists({ code, product_type }))
+    const [codeExists] = await db.query(storage.checkExists({ code, product_category }))
 
-    if (Object.keys(types.productsTypes).every(k => types.productsTypes[k] !== product_type))
-      errors.push(
-        `The field product_type must contain one of these values: ${Object.keys(types.productsTypes)
-          .map(k => types.productsTypes[k])
-          .join(', ')}`
-      )
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (codeExists) errors.push(`The provided code is already registered`)
 
@@ -50,7 +96,8 @@ module.exports.create = async event => {
     const res = await db.transaction(async connection => {
       await connection.query(storage.createProduct(), [
         product_type,
-        name,
+        product_category,
+        status,
         code,
         serial_number,
         unit_price,
@@ -74,22 +121,21 @@ module.exports.update = async event => {
   try {
     const inputType = {
       id: { type: ['string', 'number'], required: true },
+      product_category: { type: { enum: types.productsCategories }, required: true },
       status: { type: { enum: types.productsStatus }, required: true },
-      name: { type: 'string', length: 100, required: true },
       code: { type: 'string', length: 50, required: true, unique: true },
-      serial_number: { type: 'string', length: 50 },
+      serial_number: { type: 'string', length: 50, required: true },
       unit_price: { type: 'number', min: 0, required: true, defaultValue: 0 },
-      tax_id: { type: 'name || string', required: true },
-      description: { type: 'string', length: 255 },
+      tax_id: { type: ['number', 'string'], required: true },
+      description: { type: 'string', length: 255, required: true },
       image_url: { type: 'string' },
     }
     const req = await handleRequest({ event, inputType, dbQuery: db.query, storage })
 
-    const { id, status, name, code, serial_number, unit_price, tax_id, description, image_url, updated_by = 1 } = req.body
+    const { id, product_category, status, code, serial_number, unit_price, tax_id, description, image_url, updated_by = 1 } = req.body
 
     const errors = []
-    const requiredFields = ['id', 'status', 'name', 'code', 'unit_price']
-    if (req.currentModel.product_type !== types.productsTypes.SERVICE) requiredFields.push('tax_id')
+    const requiredFields = ['id', 'product_category', 'serial_number', 'status', 'code', 'unit_price', 'tax_id', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [product] = await db.query(storage.checkExists({ code, product_type: req.currentModel?.product_type }))
 
@@ -105,7 +151,18 @@ module.exports.update = async event => {
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.updateProduct(), [name, status, code, serial_number, unit_price, tax_id, description, image_url, updated_by, id])
+      await connection.query(storage.updateProduct(), [
+        product_category,
+        status,
+        code,
+        serial_number,
+        unit_price,
+        tax_id,
+        description,
+        image_url,
+        updated_by,
+        id,
+      ])
 
       return { statusCode: 200, data: { id }, message: 'Product updated successfully' }
     })
@@ -124,12 +181,12 @@ module.exports.delete = async event => {
     }
     const req = await handleRequest({ event, inputType })
 
-    const { id, updated_by = 1 } = req.body
+    const { id } = req.body
 
     const errors = []
     const requiredFields = ['id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const [productExists] = await db.query(storage.checkExists({ id }, '1'))
+    const [productExists] = await db.query(storage.checkExists({ id, product_type: types.productsTypes.PRODUCT }, '1'))
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (!productExists) errors.push(`The product with id ${id} is not registered`)
@@ -137,7 +194,7 @@ module.exports.delete = async event => {
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.deleteProduct(), [updated_by, id])
+      await connection.query(storage.deleteProduct(), [id])
 
       return { statusCode: 200, data: { id }, message: 'Product deleted successfully' }
     })

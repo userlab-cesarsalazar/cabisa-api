@@ -1,15 +1,16 @@
-const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { types, getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 
-const findAllBy = (fields = {}, initWhereCondition = `p.is_deleted = 0`) => `
+const findAllBy = (fields = {}, initWhereCondition = `p.product_type = '${types.productsTypes.PRODUCT}'`) => `
   SELECT
     p.id,
-    p.product_type,
+    p.product_category,
     p.status,
-    p.name,
     p.code,
     p.serial_number,
     p.unit_price,
+    p.tax_id,
     t.fee AS tax_fee,
+    t.name AS tax_name,
     p.stock,
     p.description,
     p.image_url,
@@ -30,25 +31,42 @@ const findAllBy = (fields = {}, initWhereCondition = `p.is_deleted = 0`) => `
   WHERE ${initWhereCondition} ${getWhereConditions({ fields, tableAlias: 'p' })}
 `
 
-const checkExists = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
-  SELECT id FROM products WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
+const findProductsCategories = () => `DESCRIBE products product_category`
+
+const findProductsStatus = () => `DESCRIBE products status`
+
+const findProductsTaxes = () => `SELECT id, name, description, fee FROM taxes`
+
+const checkExists = (fields = {}, initWhereCondition = `p.product_type = '${types.productsTypes.PRODUCT}'`) => `
+  SELECT id FROM products p WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
 const createProduct = () => `
-  INSERT INTO products (product_type, status, name, code, serial_number, unit_price, tax_id, description, image_url, created_by)
-  VALUES(?, 'ACTIVE', ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO products (product_type, product_category, status, code, serial_number, unit_price, tax_id, description, image_url, created_by)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 const updateProduct = () => `
-  UPDATE products SET name = ?, status = ?, code = ?, serial_number = ?, unit_price = ?, tax_id = ?, description = ?, image_url = ?, updated_by = ? WHERE id = ?
+  UPDATE products SET product_category = ?, status = ?, code = ?, serial_number = ?, unit_price = ?, tax_id = ?, description = ?, image_url = ?, updated_by = ? WHERE id = ?
 `
 
-const deleteProduct = () => 'UPDATE products SET is_deleted = 1, updated_by = ? WHERE id = ?'
+const deleteProduct = () => `DELETE FROM products WHERE product_type = '${types.productsTypes.PRODUCT}' AND id = ?`
+
+const findOptionsBy = (fields = {}) => `
+  SELECT p.id, p.code, p.unit_price, p.description, t.fee AS tax_fee, t.name AS tax_name
+  FROM products p
+  LEFT JOIN taxes t ON t.id = p.tax_id
+  ${getWhereConditions({ fields, tableAlias: 'p', hasPreviousConditions: false })}
+`
 
 module.exports = {
   checkExists,
   createProduct,
-  findAllBy,
   deleteProduct,
+  findAllBy,
+  findOptionsBy,
+  findProductsCategories,
+  findProductsStatus,
+  findProductsTaxes,
   updateProduct,
 }
