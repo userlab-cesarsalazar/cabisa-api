@@ -3,24 +3,20 @@ const { types, getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']
 const findAllBy = (fields = {}) => `
   SELECT
     d.id,
-    d.document_type,
     d.stakeholder_id,
-    d.operation_id,
-    d.project_id,
-    d.related_internal_document_id,
+    s.name AS stakeholder_name,
+    s.business_man AS stakeholder_business_man,
+    s.address AS stakeholder_address,
+    s.phone AS stakeholder_phone,
     d.related_external_document_id,
-    d.status,
     d.comments,
-    d.received_by,
+    d.status,
     d.start_date,
-    d.end_date,
-    d.cancel_reason,
     d.created_at,
     d.created_by,
     d.updated_at,
     d.updated_by,
     p.id AS products__id,
-    p.name AS products__name,
     p.product_type AS products__product_type,
     p.status AS products__status,
     dp.product_price AS products__product_price,
@@ -34,8 +30,9 @@ const findAllBy = (fields = {}) => `
     p.created_at AS products__created_at,
     p.created_by AS products__created_by
   FROM documents d
-  INNER JOIN documents_products dp ON dp.document_id = d.id
-  INNER JOIN products p ON p.id = dp.product_id
+  LEFT JOIN stakeholders s ON s.id = d.stakeholder_id
+  LEFT JOIN documents_products dp ON dp.document_id = d.id
+  LEFT JOIN products p ON p.id = dp.product_id
   WHERE d.document_type = '${types.documentsTypes.PURCHASE_ORDER}' ${getWhereConditions({ fields, tableAlias: 'd' })}
 `
 

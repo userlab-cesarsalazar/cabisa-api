@@ -1,4 +1,12 @@
-const { types, calculateProductTaxes, groupJoinResult, db, helpers, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const {
+  types,
+  calculateProductTaxes,
+  getFormattedDates,
+  groupJoinResult,
+  db,
+  helpers,
+  ValidatorException,
+} = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 const storage = require('./storage')
 const {
   handleRequest,
@@ -18,7 +26,7 @@ module.exports.read = async event => {
   try {
     const req = await handleRequest({ event })
 
-    const res = await handleRead(req, { dbQuery: db.query, storage, nestedFieldsKeys: ['products'] })
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['products'] })
 
     return await handleResponse({ req, res })
   } catch (error) {
@@ -30,13 +38,13 @@ module.exports.read = async event => {
 module.exports.create = async event => {
   const inputType = {
     stakeholder_id: { type: ['string', 'number'] },
-    stakeholder_name: { type: 'string', length: 100 },
-    stakeholder_address: { type: 'string', length: 100 },
-    stakeholder_nit: { type: 'string', length: 11 },
-    stakeholder_phone: { type: 'string', length: 20 },
+    // stakeholder_name: { type: 'string', length: 100 },
+    // stakeholder_address: { type: 'string', length: 100 },
+    // stakeholder_nit: { type: 'string', length: 11 },
+    // stakeholder_phone: { type: 'string', length: 20 },
+    start_date: { type: 'string', required: true },
     related_external_document_id: { type: ['string', 'number'], required: true },
     comments: { type: 'string' },
-    received_by: { type: 'string' },
     products: {
       type: 'array',
       required: true,
@@ -53,7 +61,7 @@ module.exports.create = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
-    const { stakeholder_id, stakeholder_nit, products } = req.body
+    const { stakeholder_id, stakeholder_nit, products, start_date } = req.body
     const stakeholder_type = types.stakeholdersTypes.PROVIDER
     const operation_type = types.operationsTypes.PURCHASE
 
@@ -65,8 +73,7 @@ module.exports.create = async event => {
     const productsIds = products.map(p => p.product_id)
     const productsStocks = await db.query(storage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsStocks.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
-    const requiredFields = ['products', 'related_external_document_id']
-    if (stakeholder_id) requiredFields.push('stakeholder_id')
+    const requiredFields = ['stakeholder_id', 'products', 'related_external_document_id']
     if (!stakeholder_id) requiredFields.push('stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -90,9 +97,13 @@ module.exports.create = async event => {
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const productsWithTaxes = calculateProductTaxes(products, productsStocks)
+    const formattedDates = getFormattedDates({ start_date })
 
     const { res } = await db.transaction(async connection => {
-      const stakeholderCreated = await handleCreateStakeholder({ ...req, body: { ...req.body, products: productsWithTaxes } }, { connection })
+      const stakeholderCreated = await handleCreateStakeholder(
+        { ...req, body: { ...req.body, ...formattedDates, products: productsWithTaxes } },
+        { connection }
+      )
 
       const documentCreated = await handleCreateDocument(
         { ...stakeholderCreated.req, body: { ...stakeholderCreated.req.body, document_type: types.documentsTypes.PURCHASE_ORDER } },
@@ -124,7 +135,6 @@ module.exports.cancel = async event => {
   try {
     const inputType = {
       document_id: { type: ['number', 'string'], required: true },
-      cancel_reason: { type: 'string', required: true },
     }
 
     const req = await handleRequest({ event, inputType })
@@ -133,17 +143,12 @@ module.exports.cancel = async event => {
     // can(req.currentAction, types.operationsTypes.PURCHASE)
 
     const errors = []
-    const requiredFields = ['document_id', 'cancel_reason']
+    const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const documentMovements = document_id ? await db.query(storage.findDocumentMovements(), [document_id]) : []
-    const invalidStatusProducts = documentMovements.flatMap(pm =>
-      pm.inventory_movements__product_status !== types.productsStatus.ACTIVE ? pm.inventory_movements__product_id : []
-    )
+    const documentMovements = await db.query(storage.findDocumentMovements(), [document_id])
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (!documentMovements?.length > 0) errors.push('There is no purchase registered with the provided document_id')
-    if (invalidStatusProducts?.length > 0)
-      invalidStatusProducts.forEach(id => errors.push(`The product with id ${id} must be ${types.productsStatus.ACTIVE}`))
     if (documentMovements[0]?.document_status === types.documentsStatus.CANCELLED) errors.push('The document is already cancelled')
 
     if (errors.length > 0) throw new ValidatorException(errors)
