@@ -18,7 +18,52 @@ module.exports.read = async event => {
   try {
     const req = await handleRequest({ event })
 
-    const res = await handleRead(req, { dbQuery: db.query, storage, nestedFieldsKeys: ['products'] })
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['products'] })
+
+    const data = res.data.map(invoice => {
+      const { discount, discount_percentage, subtotal, total_tax, total } = invoice.products.reduce((r, p) => {
+        const discount = (r.discount || 0) + p.unit_discount_amount * p.product_quantity
+        const subtotal = (r.subtotal || 0) + p.product_price * p.product_quantity
+        const total_tax = (r.total_tax || 0) + p.unit_tax_amount * p.product_quantity
+
+        return {
+          discount,
+          discount_percentage: p.discount_percentage,
+          subtotal,
+          total_tax,
+          total: subtotal + total_tax,
+        }
+      }, {})
+
+      const products = invoice.products.map(p => ({
+        ...p,
+        subtotal: p.product_price * p.product_quantity,
+        subtotal_tax: p.unit_tax_amount * p.product_quantity,
+      }))
+
+      return {
+        ...invoice,
+        discount,
+        discount_percentage,
+        subtotal,
+        total_tax,
+        total,
+        products,
+      }
+    })
+
+    return await handleResponse({ req, res: { ...res, data } })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readPaymentMethods = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findPaymentMethods })
 
     return await handleResponse({ req, res })
   } catch (error) {
@@ -29,16 +74,15 @@ module.exports.read = async event => {
 
 module.exports.create = async event => {
   const inputType = {
-    stakeholder_id: { type: ['string', 'number'] },
+    stakeholder_id: { type: ['string', 'number'], required: true },
+    payment_method: { type: { enum: types.documentsPaymentMethods }, required: true },
     project_id: { type: ['string', 'number'], required: true },
-    stakeholder_type: { type: { enum: [types.stakeholdersTypes.CLIENT_INDIVIDUAL, types.stakeholdersTypes.CLIENT_COMPANY] } },
-    stakeholder_name: { type: 'string', length: 100 },
-    stakeholder_address: { type: 'string', length: 100 },
-    stakeholder_nit: { type: 'string', length: 11 },
-    stakeholder_phone: { type: 'string', length: 20 },
+    // stakeholder_type: { type: { enum: [types.stakeholdersTypes.CLIENT_INDIVIDUAL, types.stakeholdersTypes.CLIENT_COMPANY] } },
+    // stakeholder_name: { type: 'string', length: 100 },
+    // stakeholder_address: { type: 'string', length: 100 },
+    // stakeholder_nit: { type: 'string', length: 11 },
+    // stakeholder_phone: { type: 'string', length: 20 },
     related_external_document_id: { type: ['string', 'number'] },
-    comments: { type: 'string' },
-    received_by: { type: 'string' },
     products: {
       type: 'array',
       required: true,
@@ -48,6 +92,8 @@ module.exports.create = async event => {
           product_id: { type: ['string', 'number'], required: true },
           product_quantity: { type: 'number', min: 0, required: true },
           product_price: { type: 'number', min: 0 },
+          discount_percentage: { type: 'number', min: 0 },
+          product_discount: { type: 'number', min: 0 },
         },
       },
     },
@@ -55,9 +101,8 @@ module.exports.create = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
-    const { stakeholder_id, project_id, stakeholder_type, stakeholder_nit, products } = req.body
+    const { stakeholder_id, project_id, stakeholder_type, stakeholder_nit, payment_method, products } = req.body
     const operation_type = types.operationsTypes.SELL
-
     // can(req.currentAction, operation_type)
 
     const errors = []
@@ -66,19 +111,25 @@ module.exports.create = async event => {
     const productsIds = products.map(p => p.product_id)
     const productsStocks = await db.query(storage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsStocks.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
-    const requiredFields = ['products', 'project_id']
+    const requiredFields = ['products', 'payment_method', 'project_id']
     if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     const requiredProductFields = ['product_id', 'product_quantity']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
     const [stakeholderNitUnique] = stakeholder_nit ? await db.query(storage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
     const [stakeholderIdExists] = stakeholder_id ? await db.query(storage.findStakeholder({ id: stakeholder_id })) : []
-    const [projectExists] = await db.query(storage.checkProjectExists(), [project_id])
+    const [projectExists] = project_id ? await db.query(storage.checkProjectExists(), [project_id]) : []
 
     if (Object.keys(types.operationsTypes).every(k => types.operationsTypes[k] !== operation_type))
       errors.push(
         `The field operation_type must contain one of these values: ${Object.keys(types.operationsTypes)
           .map(k => types.operationsTypes[k])
+          .join(', ')}`
+      )
+    if (Object.keys(types.documentsPaymentMethods).every(k => types.documentsPaymentMethods[k] !== payment_method))
+      errors.push(
+        `The field payment_method must contain one of these values: ${Object.keys(types.documentsPaymentMethods)
+          .map(k => types.documentsPaymentMethods[k])
           .join(', ')}`
       )
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
@@ -87,16 +138,7 @@ module.exports.create = async event => {
     if (stakeholder_id && !stakeholderIdExists) errors.push('The provided stakeholder_id is not registered')
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`The products with id ${id} is duplicated`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`The products with id ${id} is not registered`))
-    if (!projectExists) errors.push(`The provided project_id is not registered`)
-    const productsStocksMap = products.reduce((r, p) => {
-      const product = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id))
-
-      if (product?.stock) return { ...r, [p.product_id]: product.stock - p.product_quantity }
-      else return r
-    }, {})
-
-    const negativeStocks = Object.keys(productsStocksMap).flatMap(k => (productsStocksMap[k] < 0 ? k : []))
-    negativeStocks.forEach(id => errors.push(`The product with id ${id} cannot have negative stock`))
+    if (project_id && !projectExists) errors.push(`The provided project_id is not registered`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -140,26 +182,18 @@ module.exports.cancel = async event => {
   try {
     const inputType = {
       document_id: { type: ['number', 'string'], required: true },
-      cancel_reason: { type: 'string', required: true },
     }
 
     const req = await handleRequest({ event, inputType })
     const { document_id } = req.body
 
-    // can(req.currentAction, [ types.operationsTypes.SELL, types.operationsTypes.RENT ])
-
     const errors = []
-    const requiredFields = ['document_id', 'cancel_reason']
+    const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const documentMovements = document_id ? await db.query(storage.findDocumentMovements(), [document_id]) : []
-    const invalidStatusProducts = documentMovements.flatMap(pm =>
-      pm.inventory_movements__product_status !== types.productsStatus.ACTIVE ? pm.inventory_movements__product_id : []
-    )
+    const documentMovements = await db.query(storage.findDocumentMovements(), [document_id])
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (!documentMovements || !documentMovements[0]) errors.push('There is no invoice registered with the provided document_id')
-    if (invalidStatusProducts?.length > 0)
-      invalidStatusProducts.forEach(id => errors.push(`The product with id ${id} must be ${types.productsStatus.ACTIVE}`))
     if (documentMovements[0]?.document_status === types.documentsStatus.CANCELLED) errors.push('The document is already cancelled')
 
     if (errors.length > 0) throw new ValidatorException(errors)

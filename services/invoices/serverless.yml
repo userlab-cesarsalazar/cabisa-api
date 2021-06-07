@@ -39,6 +39,16 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
+  invoicesPaymentMethod:
+    handler: handler.readPaymentMethods
+    events:
+      - http:
+          path: invoices/payment-methods
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
   invoicesCreate:
     handler: handler.create
     events:
