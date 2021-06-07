@@ -39,11 +39,11 @@ const handleCreateDocument = async (req, res) => {
         ${p.product_id},
         ${p.product_price},
         ${p.product_quantity},
-        ${p.product_return_cost ?? null},
+        ${p.product_return_cost || null},
         ${p.tax_fee},
         ${p.unit_tax_amount},
-        ${p.product_discount_percentage},
-        ${p.product_discount}
+        ${p.product_discount_percentage || null},
+        ${p.product_discount || null}
       )`
   )
 
