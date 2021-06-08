@@ -37,6 +37,7 @@ const handleUpdateStock = async (req, res) => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
+    // TODO: eliminar duplicados cuando sea updateStockOn = types.actions.CANCELLED
     const updateStockPromises = stocks.map(s => res.connection.query(updateStock(), [s.stock, s.product_id]))
     await Promise.all(updateStockPromises)
   }
