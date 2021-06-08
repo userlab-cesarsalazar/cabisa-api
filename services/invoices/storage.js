@@ -49,6 +49,8 @@ const findAllBy = (fields = {}) => `
 
 const findPaymentMethods = () => `DESCRIBE documents payment_method`
 
+const findInvoiceStatus = () => `DESCRIBE documents status`
+
 const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `
   SELECT id, stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man,block_reason, created_at, created_by, updated_at, updated_by
   FROM stakeholders
@@ -107,6 +109,7 @@ module.exports = {
   checkInventoryMovementsOnApprove,
   checkProjectExists,
   findAllBy,
+  findInvoiceStatus,
   findPaymentMethods,
   findProducts,
   findDocumentMovements,
