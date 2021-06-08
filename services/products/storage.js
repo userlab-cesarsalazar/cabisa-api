@@ -19,15 +19,17 @@ const findAllBy = (fields = {}, initWhereCondition = `p.product_type = '${types.
     p.updated_at,
     p.updated_by,
     im.id AS product_history__inventory_movement_id,
-    im.operation_id AS product_history__operation_id,
-    im.product_id AS product_history__product_id,
+    imd.created_at AS product_history__created_at,
     im.quantity AS product_history__quantity,
     im.unit_cost AS product_history__unit_cost,
     im.movement_type AS product_history__movement_type,
-    im.status AS product_history__status
+    im.status AS product_history__status,
+    o.operation_type AS product_history__operation_type
   FROM products p
-  LEFT JOIN inventory_movements im ON im.product_id = p.id
   LEFT JOIN taxes t ON t.id = p.tax_id
+  LEFT JOIN inventory_movements im ON im.product_id = p.id
+  LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
+  LEFT JOIN operations o ON o.id = im.operation_id
   WHERE ${initWhereCondition} ${getWhereConditions({ fields, tableAlias: 'p' })}
 `
 

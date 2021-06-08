@@ -250,7 +250,8 @@ module.exports.update = async event => {
     if (requiredProductErrorFields) errors.push(`The fields ${requiredProductFields.join(', ')} in products are required`)
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`The products with id ${id} is duplicated`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`The products with id ${id} is not registered`))
-    if (document?.status === types.documentsStatus.CANCELLED) errors.push(`The status of the document cannot be ${types.documentsStatus.CANCELLED}`)
+    if (document?.status !== types.documentsStatus.PENDING)
+      errors.push(`The edition is only allowed when the document has status ${types.documentsStatus.PENDING}`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
