@@ -87,6 +87,12 @@ module.exports.create = async event => {
     const requiredFields = ['product_category', 'status', 'code', 'serial_number', 'unit_price', 'tax_id', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [codeExists] = await db.query(storage.checkExists({ code, product_category }))
+    if (Object.keys(types.productsStatus).every(k => types.productsStatus[k] !== status))
+      errors.push(
+        `The field status must contain one of these values: ${Object.keys(types.productsStatus)
+          .map(k => types.productsStatus[k])
+          .join(', ')}`
+      )
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (codeExists) errors.push(`The provided code is already registered`)
@@ -130,7 +136,7 @@ module.exports.update = async event => {
       description: { type: 'string', length: 255, required: true },
       image_url: { type: 'string' },
     }
-    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage })
+    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage: storage.findAllBy })
 
     const { id, product_category, status, code, serial_number, unit_price, tax_id, description, image_url, updated_by = 1 } = req.body
 
