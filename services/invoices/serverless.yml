@@ -1,0 +1,80 @@
+service: ca-invoices
+
+plugins:
+  - serverless-offline
+
+custom:
+  config: ../../envs/credentials.${self:provider.stage}.json
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  deploymentBucket:
+    name: ${file(${self:custom.config}):deploymentBucket}
+  environment:
+    STAGE: ${file(${self:custom.config}):stage}
+    ACCOUNT_ID: ${file(${self:custom.config}):awsAccountId}
+    FILE_ENVIRONMENT: ${file(${self:custom.config}):fileEnvironment}
+    RUN_LIKE: ${file(${self:custom.config}):run_like}
+    DATABASE_HOST: ${file(${self:custom.config}):dbHost}
+    DATABASE_USER: ${file(${self:custom.config}):dbUser}
+    DATABASE_NAME: ${file(${self:custom.config}):dbName}
+    DATABASE_PASSWORD: ${file(${self:custom.config}):dbPassword}
+
+package:
+  exclude:
+    - node_modules/**
+  include:
+    - ../../globals/**
+functions:
+  invoices:
+    handler: handler.read
+    events:
+      - http:
+          path: invoices
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  invoicesPaymentMethod:
+    handler: handler.readPaymentMethods
+    events:
+      - http:
+          path: invoices/payment-methods
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  invoicesStatus:
+    handler: handler.readInvoicesStatus
+    events:
+      - http:
+          path: invoices-status
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  invoicesCreate:
+    handler: handler.create
+    events:
+      - http:
+          path: invoices
+          method: post
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  invoicesCancel:
+    handler: handler.cancel
+    events:
+      - http:
+          path: invoices/cancel
+          method: put
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
