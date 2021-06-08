@@ -1,9 +1,24 @@
 const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 
-const findAllBy = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
-  SELECT id, stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man,block_reason, created_at, created_by, updated_at, updated_by
+const findAllBy = (fields = {}) => `
+  SELECT id,
+    stakeholder_type,
+    status,
+    name,
+    address,
+    nit,
+    email,
+    phone,
+    alternative_phone,
+    business_man,
+    payments_man,
+    block_reason,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
   FROM stakeholders
-  WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
+  ${getWhereConditions({ fields, hasPreviousConditions: false })}
 `
 
 const findStakeholderTypes = () => `DESCRIBE stakeholders stakeholder_type`

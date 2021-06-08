@@ -75,10 +75,7 @@ module.exports.create = async event => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const res = await db.transaction(async connection => {
-      const stakeholderCreated = await handleCreateStakeholder(req, { connection, storage })
-      return stakeholderCreated.res
-    })
+    const { res } = await db.transaction(async connection => await handleCreateStakeholder(req, { connection, storage }))
 
     return await handleResponse({ req, res })
   } catch (error) {
@@ -100,18 +97,17 @@ module.exports.update = async event => {
       business_man: { type: 'string', length: 100 },
       payments_man: { type: 'string', length: 100 },
     }
-    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage })
+    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage: storage.findAllBy })
 
     const { id, name, address, nit, email, phone, alternative_phone, business_man, payments_man, updated_by = 1 } = req.body
 
     const errors = []
     const requiredFields = ['id', 'name', 'address', 'nit', 'phone']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const [stakeholder] = await db.query(storage.checkExists({ nit, stakeholder_type: req.currentModel.stakeholder_type }))
+    const [stakeholder] = req.currentModel ? await db.query(storage.checkExists({ nit, stakeholder_type: req.currentModel.stakeholder_type })) : []
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (!req.currentModel)
-      errors.push(`The stakeholder with nit ${nit} and stakeholder_type ${req?.currentModel?.stakeholder_type} is not registered`)
+    if (!req.currentModel) errors.push(`The stakeholder with id ${id} is not registered`)
     if (stakeholder && Number(id) !== Number(stakeholder.id)) errors.push(`The provided nit is already registered`)
     if (!isEmail(email)) errors.push(`The provided email is invalid`)
 
@@ -146,14 +142,14 @@ module.exports.setStatus = async event => {
     const inputType = {
       id: { type: ['string', 'number'], required: true },
       status: { type: { enum: types.stakeholdersStatus }, required: true, defaultValue: types.stakeholdersStatus.ACTIVE },
-      block_reason: { type: 'string' },
+      // block_reason: { type: 'string' },
     }
     const req = await handleRequest({ event, inputType })
 
     const { id, status, block_reason, updated_by = 1 } = req.body
 
     const errors = []
-    const requiredFields = status === types.stakeholdersStatus.BLOCKED ? ['id', 'status', 'block_reason'] : ['id', 'status']
+    const requiredFields = status !== types.stakeholdersStatus.BLOCKED ? ['id', 'status'] : ['id', 'status'] //, 'block_reason'
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [stakeholderExists] = await db.query(storage.checkExists({ id }, '1'))
 
