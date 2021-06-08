@@ -1,10 +1,10 @@
 CREATE TABLE `users` (
   `id` int NOT NULL AUTO_INCREMENT,
   `full_name` varchar(150) NOT NULL,
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `password` VARCHAR(255) NOT NULL,
   `email` varchar(50) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `rol_id` int NOT NULL,
-  `permissions` json NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB;
 
