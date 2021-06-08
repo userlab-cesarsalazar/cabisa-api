@@ -6,7 +6,7 @@ module.exports.read = async event => {
   try {
     const req = await handleRequest({ event })
 
-    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['product_history', 'tax'] })
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['product_history'] })
 
     return await handleResponse({ req, res })
   } catch (error) {
