@@ -47,6 +47,12 @@ module.exports.create = async event => {
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (codeExists) errors.push(`The provided code is already registered`)
+    if (Object.keys(types.productsStatus).every(k => types.productsStatus[k] !== status))
+      errors.push(
+        `The field status must contain one of these values: ${Object.keys(types.productsStatus)
+          .map(k => types.productsStatus[k])
+          .join(', ')}`
+      )
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -72,7 +78,7 @@ module.exports.update = async event => {
       unit_price: { type: 'number', min: 0, required: true, defaultValue: 0 },
       description: { type: 'string', length: 255, required: true },
     }
-    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage })
+    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage: storage.findAllBy })
 
     const { id, status, code, unit_price, description, updated_by = 1 } = req.body
 
