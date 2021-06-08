@@ -104,8 +104,8 @@ module.exports.create = async event => {
         fields: {
           product_id: { type: ['string', 'number'], required: true },
           product_quantity: { type: 'number', min: 0, required: true },
-          product_price: { type: 'number', min: 0 },
-          discount_percentage: { type: 'number', min: 0 },
+          product_price: { type: 'number', min: 0, required: true },
+          product_discount_percentage: { type: 'number', min: 0 },
           product_discount: { type: 'number', min: 0 },
         },
       },
@@ -124,9 +124,9 @@ module.exports.create = async event => {
     const productsIds = products.map(p => p.product_id)
     const productsStocks = await db.query(storage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsStocks.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
-    const requiredFields = ['products', 'payment_method', 'project_id']
-    if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
-    const requiredProductFields = ['product_id', 'product_quantity']
+    const requiredFields = ['stakeholder_id', 'products', 'payment_method', 'project_id']
+    // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
+    const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
     const [stakeholderNitUnique] = stakeholder_nit ? await db.query(storage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
