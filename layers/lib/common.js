@@ -97,7 +97,7 @@ const getError = e => e.error || e.errors || e.data || e.message || e
 // todos los operadores tienen esta sintaxis $like:, $ como prefijo y : como marcador del fin del/los operador(es)
 // para usar los operadores se deben pasar como prefijo en el valor del query param
 // ademas existe el operador $or que es el unico que se puede usar en conjunto con otro operador -> $like$or:
-const getWhereConditions = ({ fields, tableAlias, hasPreviousConditions = true }) => {
+const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousConditions = true }) => {
   const operators = {
     $eq: '=',
     $ne: '<>',

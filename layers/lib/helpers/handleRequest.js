@@ -15,10 +15,10 @@ const addCurrentModel =
   async ({ dbQuery, storage, initWhereCondition, uniqueKey = ['id'], ...input }, req) => {
     const isInvalid = uniqueKey.some(k => !req.body || !req.body[k])
 
-    if (isInvalid || !dbQuery || !storage?.findAllBy) return await fn({ ...input, dbQuery, storage, initWhereCondition, uniqueKey }, req)
+    if (isInvalid || !dbQuery || !storage) return await fn({ ...input, dbQuery, storage, initWhereCondition, uniqueKey }, req)
 
     const fields = uniqueKey.reduce((r, k) => ({ ...r, [k]: req.body[k] }), {})
-    const [currentModel] = await dbQuery(storage.findAllBy(fields, initWhereCondition))
+    const [currentModel] = await dbQuery(storage(fields, initWhereCondition))
 
     return await fn({ ...input, dbQuery, storage, initWhereCondition, uniqueKey }, { ...req, currentModel })
   }
