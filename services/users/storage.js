@@ -1,9 +1,10 @@
+const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
+
 const findAllBy = (fields = {}, debug) => {
-  const whereFields = Object.keys(fields).flatMap(k => (fields[k] ? `${k} = '${fields[k]}'` : []))
   const query = `
     SELECT id, full_name, email, rol_id
     FROM users
-    WHERE is_active = 1 ${whereFields.length > 0 ? 'AND' : ''} ${whereFields.join(' AND ')}
+    WHERE is_active = 1 ${getWhereConditions({ fields, hasPreviousConditions: true })}
   `
   if (debug) console.log(query)
   return query
