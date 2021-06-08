@@ -1,79 +1,213 @@
-const mysql = require('mysql2/promise')
-const { dbConfig } = require(`${process.env['FILE_ENVIRONMENT']}/globals/dbConfig`)
-const { response, getBody, getLastId, escapeFields } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
-const { findAllBy, createProduct, updateProduct, deleteProduct } = require('./storage')
+const { db, helpers, types, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { handleRead, handleRequest, handleResponse } = helpers
+const storage = require('./storage')
 
 module.exports.read = async event => {
-  const connection = await mysql.createConnection(dbConfig)
   try {
-    const queryParams = event.queryStringParameters ? event.queryStringParameters : {}
-    const params = escapeFields(queryParams)
+    const req = await handleRequest({ event })
 
-    const [products] = await connection.execute(findAllBy(params))
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['product_history'] })
 
-    return await response(200, { message: products }, connection)
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response(400, error, connection)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readProductsStatus = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findProductsStatus })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readProductsCategories = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findProductsCategories })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readProductTaxes = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findProductsTaxes })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readProductsOptions = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findOptionsBy })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
   }
 }
 
 module.exports.create = async event => {
-  const connection = await mysql.createConnection(dbConfig)
   try {
-    const requiredFields = ['name', 'category_id', 'service_type_id']
-    const body = escapeFields(getBody(event))
-    const errorFields = requiredFields.filter(k => !body[k])
+    const inputType = {
+      product_category: { type: { enum: types.productsCategories }, required: true },
+      status: { type: { enum: types.productsStatus }, required: true },
+      code: { type: 'string', length: 50, required: true, unique: true },
+      tax_id: { type: ['number', 'string'], required: true },
+      serial_number: { type: 'string', length: 50, required: true },
+      unit_price: { type: 'number', min: 0, required: true, defaultValue: 0 },
+      description: { type: 'string', length: 255, required: true },
+      image_url: { type: 'string' },
+    }
+    const req = await handleRequest({ event, inputType })
+    const { product_category, status, code, serial_number, unit_price, tax_id, description, image_url, created_by = 1 } = req.body
+    const product_type = types.productsTypes.PRODUCT
 
-    if (errorFields.length > 0) return await response(400, { message: `The fields ${errorFields.join(', ')} are required` }, connection)
+    const errors = []
+    const requiredFields = ['product_category', 'status', 'code', 'serial_number', 'unit_price', 'tax_id', 'description']
+    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+    const [codeExists] = await db.query(storage.checkExists({ code, product_category }))
+    if (Object.keys(types.productsStatus).every(k => types.productsStatus[k] !== status))
+      errors.push(
+        `The field status must contain one of these values: ${Object.keys(types.productsStatus)
+          .map(k => types.productsStatus[k])
+          .join(', ')}`
+      )
 
-    const { name, category_id, service_type_id, description = null, code = null, serial_number = null, cost = null } = body
-    const [[product]] = await connection.execute(findAllBy({ name }))
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
+    if (codeExists) errors.push(`The provided code is already registered`)
 
-    if (product) return await response(400, { message: 'The provided name is already registered' }, connection)
+    if (errors.length > 0) throw new ValidatorException(errors)
 
-    await connection.execute(createProduct(), [name, description, code, serial_number, cost, category_id, service_type_id])
-    const [[id]] = await connection.execute(getLastId())
+    const res = await db.transaction(async connection => {
+      await connection.query(storage.createProduct(), [
+        product_type,
+        product_category,
+        status,
+        code,
+        serial_number,
+        unit_price,
+        tax_id,
+        description,
+        image_url,
+        created_by,
+      ])
 
-    return await response(201, { message: id }, connection)
+      return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Product created successfully' }
+    })
+
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response(400, error, connection)
+    return await handleResponse({ error })
   }
 }
 
 module.exports.update = async event => {
-  const connection = await mysql.createConnection(dbConfig)
   try {
-    const requiredFields = ['id', 'name', 'category_id', 'service_type_id']
-    const body = escapeFields(getBody(event))
-    const errorFields = requiredFields.filter(k => !body[k])
+    const inputType = {
+      id: { type: ['string', 'number'], required: true },
+      product_category: { type: { enum: types.productsCategories }, required: true },
+      status: { type: { enum: types.productsStatus }, required: true },
+      code: { type: 'string', length: 50, required: true, unique: true },
+      serial_number: { type: 'string', length: 50, required: true },
+      unit_price: { type: 'number', min: 0, required: true, defaultValue: 0 },
+      tax_id: { type: ['number', 'string'], required: true },
+      description: { type: 'string', length: 255, required: true },
+      image_url: { type: 'string' },
+    }
+    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage: storage.findAllBy })
 
-    if (errorFields.length > 0) return await response(400, { message: `The fields ${errorFields.join(', ')} are required` }, connection)
+    const { id, product_category, status, code, serial_number, unit_price, tax_id, description, image_url, updated_by = 1 } = req.body
 
-    const { id, name, category_id, service_type_id, description = null, code = null, serial_number = null, cost = null } = body
-    const [[product]] = await connection.execute(findAllBy({ id }))
+    const errors = []
+    const requiredFields = ['id', 'product_category', 'serial_number', 'status', 'code', 'unit_price', 'tax_id', 'description']
+    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+    const [product] = await db.query(storage.checkExists({ code, product_type: req.currentModel?.product_type }))
 
-    if (!product) return await response(400, { message: `The product with the id ${id} is not registered` }, connection)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
+    if (product && Number(id) !== Number(product.id)) errors.push(`The provided code is already registered`)
+    if (Object.keys(types.productsStatus).every(k => types.productsStatus[k] !== status))
+      errors.push(
+        `The field status must contain one of these values: ${Object.keys(types.productsStatus)
+          .map(k => types.productsStatus[k])
+          .join(', ')}`
+      )
 
-    await connection.execute(updateProduct(), [name, description, code, serial_number, cost, category_id, service_type_id, id])
+    if (errors.length > 0) throw new ValidatorException(errors)
 
-    return await response(200, { message: { id } }, connection)
+    const res = await db.transaction(async connection => {
+      await connection.query(storage.updateProduct(), [
+        product_category,
+        status,
+        code,
+        serial_number,
+        unit_price,
+        tax_id,
+        description,
+        image_url,
+        updated_by,
+        id,
+      ])
+
+      return { statusCode: 200, data: { id }, message: 'Product updated successfully' }
+    })
+
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response(400, error, connection)
+    return await handleResponse({ error })
   }
 }
 
 module.exports.delete = async event => {
-  const connection = await mysql.createConnection(dbConfig)
   try {
-    const { id } = getBody(event)
-    await connection.execute(deleteProduct(), [id])
+    const inputType = {
+      id: { type: ['string', 'number'], required: true },
+    }
+    const req = await handleRequest({ event, inputType })
 
-    return await response(200, { message: { id } }, connection)
+    const { id } = req.body
+
+    const errors = []
+    const requiredFields = ['id']
+    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+    const [productExists] = await db.query(storage.checkExists({ id, product_type: types.productsTypes.PRODUCT }, '1'))
+
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
+    if (!productExists) errors.push(`The product with id ${id} is not registered`)
+
+    if (errors.length > 0) throw new ValidatorException(errors)
+
+    const res = await db.transaction(async connection => {
+      await connection.query(storage.deleteProduct(), [id])
+
+      return { statusCode: 200, data: { id }, message: 'Product deleted successfully' }
+    })
+
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
-    return await response(400, error, connection)
+    return await handleResponse({ error })
   }
 }

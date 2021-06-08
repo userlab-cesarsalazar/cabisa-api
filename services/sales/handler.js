@@ -87,7 +87,7 @@ module.exports.create = async event => {
         fields: {
           product_id: { type: ['string', 'number'], required: true },
           product_quantity: { type: 'number', min: 0, required: true },
-          product_price: { type: 'number', min: 0, required: true },
+          product_price: { type: 'number', min: 0 },
         },
       },
     },
@@ -106,8 +106,8 @@ module.exports.create = async event => {
     const productsStocks = await db.query(storage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsStocks.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
     const requiredFields = ['stakeholder_id', 'project_id', 'products']
-    const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
-    if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
+    const requiredProductFields = ['product_id', 'product_quantity']
+    // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     if (operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
@@ -250,7 +250,9 @@ module.exports.update = async event => {
     if (requiredProductErrorFields) errors.push(`The fields ${requiredProductFields.join(', ')} in products are required`)
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`The products with id ${id} is duplicated`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`The products with id ${id} is not registered`))
-    if (document?.status === types.documentsStatus.CANCELLED) errors.push(`The status of the document cannot be ${types.documentsStatus.CANCELLED}`)
+    if (!document?.document_id) errors.push(`The document with id ${document_id} is not registered`)
+    if (document?.status !== types.documentsStatus.PENDING)
+      errors.push(`The edition is only allowed when the document has status ${types.documentsStatus.PENDING}`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -364,6 +366,7 @@ module.exports.cancel = async event => {
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (!documentMovements || !documentMovements[0]) errors.push('There is no invoice registered with the provided document_id')
     if (documentMovements[0]?.document_status === types.documentsStatus.CANCELLED) errors.push('The document is already cancelled')
+    if (documentMovements[0]?.related_internal_document_id) errors.push(`You can't cancel a sale with a related invoice`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 

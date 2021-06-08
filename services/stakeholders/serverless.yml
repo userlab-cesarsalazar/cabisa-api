@@ -1,4 +1,4 @@
-service: ca-products
+service: ca-stakeholders
 
 plugins:
   - serverless-offline
@@ -29,82 +29,62 @@ package:
   include:
     - ../../globals/**
 functions:
-  products:
+  stakeholders:
     handler: handler.read
     events:
       - http:
-          path: products
+          path: stakeholders
           method: get
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  productsCategories:
-    handler: handler.readProductsCategories
+  stakeholdersOptions:
+    handler: handler.readStakeholdersOptions
     events:
       - http:
-          path: products-categories
+          path: stakeholders-options
           method: get
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  productsStatus:
-    handler: handler.readProductsStatus
+  stakeholdersTypes:
+    handler: handler.readStakeholdersTypes
     events:
       - http:
-          path: products-status
+          path: stakeholders/types
           method: get
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  productsTaxes:
-    handler: handler.readProductTaxes
-    events:
-      - http:
-          path: products-taxes
-          method: get
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
-  productsOptions:
-    handler: handler.readProductsOptions
-    events:
-      - http:
-          path: products-options
-          method: get
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
-  productsCreate:
+  stakeholdersCreate:
     handler: handler.create
     events:
       - http:
-          path: products
+          path: stakeholders
           method: post
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  productsUpdate:
+  stakeholdersUpdate:
     handler: handler.update
     events:
       - http:
-          path: products
+          path: stakeholders
           method: put
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  productsDelete:
-    handler: handler.delete
+  stakeholdersSetStatus:
+    handler: handler.setStatus
     events:
       - http:
-          path: products
-          method: delete
+          path: stakeholders/status
+          method: put
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}

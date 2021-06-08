@@ -18,7 +18,7 @@ CREATE TABLE `stakeholders` (
   CONSTRAINT stakeholders_pk PRIMARY KEY (id),
   CONSTRAINT stakeholders_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
   CONSTRAINT stakeholders_updated_by_fk FOREIGN KEY (updated_by) REFERENCES users(id),
-  CONSTRAINT stakeholders_block_reason_check CHECK (status <> 'BLOCKED' OR block_reason IS NOT NULL),
+  -- CONSTRAINT stakeholders_block_reason_check CHECK (status <> 'BLOCKED' OR block_reason IS NOT NULL),
   CONSTRAINT stakeholders_updated_by_check CHECK (updated_at IS NULL OR updated_by IS NOT NULL),
   CONSTRAINT stakeholders_nit_stakeholder_type_unique UNIQUE (nit, stakeholder_type)
 ) ENGINE=InnoDB;

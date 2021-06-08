@@ -1,41 +1,74 @@
-const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
+const { types, getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
 
-const findAllBy = (fields = {}, debug) => {
-  const query = `
-    SELECT p.id, p.name, p.description, p.code, p.serial_number, p.cost, p.category_id, p.service_type_id, c.name AS category, st.name AS service_type 
-    FROM products p
-    INNER JOIN categories c ON p.category_id = c.id
-    INNER JOIN service_types st ON p.service_type_id = st.id
-    WHERE p.is_active = 1 ${getWhereConditions({ fields, tableName: 'p', hasPreviousConditions: true })}
-  `
-  if (debug) console.log(query)
-  return query
-}
+const findAllBy = (fields = {}, initWhereCondition = `p.product_type = '${types.productsTypes.PRODUCT}'`) => `
+  SELECT
+    p.id,
+    p.product_category,
+    p.status,
+    p.code,
+    p.serial_number,
+    p.unit_price,
+    p.tax_id,
+    t.fee AS tax_fee,
+    t.name AS tax_name,
+    p.stock,
+    p.description,
+    p.image_url,
+    p.created_at,
+    p.created_by,
+    p.updated_at,
+    p.updated_by,
+    im.id AS product_history__inventory_movement_id,
+    imd.created_at AS product_history__created_at,
+    im.quantity AS product_history__quantity,
+    im.unit_cost AS product_history__unit_cost,
+    im.movement_type AS product_history__movement_type,
+    im.status AS product_history__status,
+    o.operation_type AS product_history__operation_type
+  FROM products p
+  LEFT JOIN taxes t ON t.id = p.tax_id
+  LEFT JOIN inventory_movements im ON im.product_id = p.id
+  LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
+  LEFT JOIN operations o ON o.id = im.operation_id
+  WHERE ${initWhereCondition} ${getWhereConditions({ fields, tableAlias: 'p' })}
+`
 
-const createProduct = debug => {
-  const query = `
-    INSERT INTO products (name, description, code, serial_number, cost, category_id, service_type_id, is_active)
-    VALUES(?, ?, ?, ?, ?, ?, ?, 1)
-  `
-  if (debug) console.log(query)
-  return query
-}
+const findProductsCategories = () => `DESCRIBE products product_category`
 
-const updateProduct = debug => {
-  const query = `UPDATE products SET name = ?, description = ?, code = ?, serial_number = ?, cost = ?, category_id = ?, service_type_id = ? WHERE id = ?`
-  if (debug) console.log(query)
-  return query
-}
+const findProductsStatus = () => `DESCRIBE products status`
 
-const deleteProduct = debug => {
-  const query = 'UPDATE products SET is_active = 0 WHERE id = ?'
-  if (debug) console.log(query)
-  return query
-}
+const findProductsTaxes = () => `SELECT id, name, description, fee FROM taxes`
+
+const checkExists = (fields = {}, initWhereCondition = `p.product_type = '${types.productsTypes.PRODUCT}'`) => `
+  SELECT id FROM products p WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
+`
+
+const createProduct = () => `
+  INSERT INTO products (product_type, product_category, status, code, serial_number, unit_price, tax_id, description, image_url, created_by)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+const updateProduct = () => `
+  UPDATE products SET product_category = ?, status = ?, code = ?, serial_number = ?, unit_price = ?, tax_id = ?, description = ?, image_url = ?, updated_by = ? WHERE id = ?
+`
+
+const deleteProduct = () => `DELETE FROM products WHERE product_type = '${types.productsTypes.PRODUCT}' AND id = ?`
+
+const findOptionsBy = (fields = {}) => `
+  SELECT p.id, p.code, p.unit_price, p.description, t.fee AS tax_fee, t.name AS tax_name
+  FROM products p
+  LEFT JOIN taxes t ON t.id = p.tax_id
+  ${getWhereConditions({ fields, tableAlias: 'p', hasPreviousConditions: false })}
+`
 
 module.exports = {
+  checkExists,
   createProduct,
   deleteProduct,
   findAllBy,
+  findOptionsBy,
+  findProductsCategories,
+  findProductsStatus,
+  findProductsTaxes,
   updateProduct,
 }
