@@ -69,3 +69,13 @@ functions:
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
+
+  usersPasswordChange:
+    handler: handler.changePassword
+    events:
+      - http:
+          path: users-change-password
+          method: put
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
