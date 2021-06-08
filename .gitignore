@@ -6,6 +6,7 @@ _notes
 _scratch
 testService
 awsCognitoService/credentials.json
+migrations/database.json
 
 # Temp Files
 userListService/.sls-simulate-registry

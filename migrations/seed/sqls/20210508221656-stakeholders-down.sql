@@ -1,0 +1,1 @@
+DELETE FROM stakeholders WHERE 1;

@@ -1,8 +1,16 @@
 const mysql = require('mysql2/promise')
 const crypto = require('crypto-js')
+const AWS = require('aws-sdk')
 const { dbConfig } = require(`${process.env['FILE_ENVIRONMENT']}/globals/dbConfig`)
 const { response, getBody, getLastId, escapeFields } = require(`${process.env['FILE_ENVIRONMENT']}/globals/common`)
-const { findAllBy, createUser, updateUser, deleteUser } = require('./storage')
+const { findAllBy, createUser, updateUser } = require('./storage')
+
+AWS.config.update({
+  accessKeyId: process.env['ACCESS_KEY_ID'],
+  secretAccessKey: process.env['SECRET_ACCESS_KEY'],
+  region: process.env['REGION'],
+})
+const cognito = new AWS.CognitoIdentityServiceProvider()
 
 module.exports.read = async event => {
   const connection = await mysql.createConnection(dbConfig)
@@ -69,14 +77,54 @@ module.exports.update = async event => {
 }
 
 module.exports.delete = async event => {
-  const connection = await mysql.createConnection(dbConfig)
   try {
-    const { id } = getBody(event)
-    await connection.execute(deleteUser(), [id])
+    const { userName } = getBody(event)
 
-    return await response(200, { message: { id } }, connection)
+    let params = {
+      UserPoolId: process.env['USER_POOL_ID'],
+      Username: userName,
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      cognito.adminDeleteUser(params, (err, data) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(data)
+        }
+      })
+    })
+
+    return await response(200, { message: result })
   } catch (error) {
     console.log(error)
-    return await response(400, error, connection)
+    return await response(400, error)
+  }
+}
+
+module.exports.changePassword = async event => {
+  try {
+    const { accessToken, previousPassword, proposedPassword } = getBody(event)
+
+    let params = {
+      AccessToken: accessToken,
+      PreviousPassword: previousPassword,
+      ProposedPassword: proposedPassword,
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      cognito.changePassword(params, (err, data) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(data)
+        }
+      })
+    })
+
+    return await response(200, { message: result })
+  } catch (error) {
+    console.log(error)
+    return await response(400, error)
   }
 }

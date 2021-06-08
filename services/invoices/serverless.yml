@@ -1,4 +1,4 @@
-service: ca-users
+service: ca-invoices
 
 plugins:
   - serverless-offline
@@ -22,7 +22,6 @@ provider:
     DATABASE_USER: ${file(${self:custom.config}):dbUser}
     DATABASE_NAME: ${file(${self:custom.config}):dbName}
     DATABASE_PASSWORD: ${file(${self:custom.config}):dbPassword}
-    ENCRYPTION_KEY: ${file(${self:custom.config}):encryptionKey}
 
 package:
   exclude:
@@ -30,51 +29,51 @@ package:
   include:
     - ../../globals/**
 functions:
-  users:
+  invoices:
     handler: handler.read
     events:
       - http:
-          path: users
+          path: invoices
           method: get
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  usersCreate:
+  invoicesPaymentMethod:
+    handler: handler.readPaymentMethods
+    events:
+      - http:
+          path: invoices/payment-methods
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  invoicesStatus:
+    handler: handler.readInvoicesStatus
+    events:
+      - http:
+          path: invoices-status
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  invoicesCreate:
     handler: handler.create
     events:
       - http:
-          path: users
+          path: invoices
           method: post
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  usersUpdate:
-    handler: handler.update
+  invoicesCancel:
+    handler: handler.cancel
     events:
       - http:
-          path: users
-          method: put
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
-  usersDelete:
-    handler: handler.delete
-    events:
-      - http:
-          path: users
-          method: delete
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
-  usersPasswordChange:
-    handler: handler.changePassword
-    events:
-      - http:
-          path: users-change-password
+          path: invoices/cancel
           method: put
           cors: true
     layers:
