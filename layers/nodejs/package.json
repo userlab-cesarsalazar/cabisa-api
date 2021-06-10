@@ -9,10 +9,10 @@
     "db": "./node_modules/db-migrate/bin/db-migrate -m ./migrations"
   },
   "dependencies": {
-    "crypto-js": "^4.0.0",
+    "aws-sdk": "^2.467.0",
     "db-migrate": "^0.11.12",
     "db-migrate-mysql": "^2.1.2",
-    "moment-timezone": "^0.5.25",
-    "mysql2": "^1.6.5"
+    "lambda-warmer": "^1.2.1",
+    "moment-timezone": "^0.5.25"
   }
 }

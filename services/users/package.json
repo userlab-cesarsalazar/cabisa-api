@@ -12,7 +12,9 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.467.0",
-    "lambda-warmer": "^1.2.1"
+    "crypto-js": "^4.0.0",
+    "lambda-warmer": "^1.2.1",
+    "mysql2": "^1.6.5"
   },
   "devDependencies": {
     "serverless-offline": "^4.10.3"

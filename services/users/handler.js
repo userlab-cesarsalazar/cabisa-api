@@ -1,7 +1,11 @@
-const { db, helpers, isEmail, ValidatorException, encrypt } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
-const { handleRequest, handleResponse, handleRead } = helpers
+const crypto = require('crypto-js')
+const mysql = require('mysql2/promise')
 const AWS = require('aws-sdk')
+const { mysqlConfig, helpers, isEmail, ValidatorException, cryptoHelpers } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
+const { handleRequest, handleResponse, handleRead } = helpers
+const db = mysqlConfig(mysql)
+const { encrypt } = cryptoHelpers(crypto)
 
 AWS.config.update({
   accessKeyId: process.env['ACCESS_KEY_ID'],

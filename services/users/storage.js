@@ -1,4 +1,4 @@
-const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 
 const findAllBy = (fields = {}, initCondition = `is_active = 1`) => `
   SELECT id, full_name, email, rol_id
