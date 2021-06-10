@@ -1,6 +1,8 @@
-const { db, helpers } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const mysql = require('mysql2/promise')
+const { mysqlConfig, helpers } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
 const { handleRequest, handleResponse, handleRead } = helpers
+const db = mysqlConfig(mysql)
 
 module.exports.read = async event => {
   try {
