@@ -1,6 +1,8 @@
-const { db, helpers, types, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
-const { handleRead, handleRequest, handleResponse } = helpers
+const mysql = require('mysql2/promise')
+const { mysqlConfig, helpers, types, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
+const { handleRead, handleRequest, handleResponse } = helpers
+const db = mysqlConfig(mysql)
 
 module.exports.read = async event => {
   try {
