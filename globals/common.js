@@ -147,7 +147,7 @@ const groupJoinResult = ({ data, nestedFieldsKeys, uniqueKey = ['id'] }) => {
   const nestedFieldFlag = '__'
 
   const groupByValues = data.reduce((result, row) => {
-    const isDuplicate = result?.some(r => uniqueKey.every(uk => r[uk] === row[uk]))
+    const isDuplicate = result && result.some(r => uniqueKey.every(uk => r[uk] === row[uk]))
 
     const groupByValue = uniqueKey.reduce((r, k) => ({ ...r, [k]: row[k] }), {})
 
@@ -179,7 +179,7 @@ const groupJoinResult = ({ data, nestedFieldsKeys, uniqueKey = ['id'] }) => {
   })
 
   const dataWithoutDuplicates = dataWithoutNestedFields.reduce((result, row) => {
-    const isDuplicate = result?.some(r => uniqueKey.every(uk => r[uk] === row[uk]))
+    const isDuplicate = result && result.some(r => uniqueKey.every(uk => r[uk] === row[uk]))
 
     if (isDuplicate) return result
     else return [...result, row]
@@ -207,7 +207,7 @@ const groupJoinResult = ({ data, nestedFieldsKeys, uniqueKey = ['id'] }) => {
 const calculateProductTaxes = (products, productsStocks) => {
   return products.map(p => {
     const sameProduct = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id))
-    const product_price = p?.product_price > 0 ? p.product_price : sameProduct.product_price
+    const product_price = p && p.product_price > 0 ? p.product_price : sameProduct.product_price
 
     return {
       ...p,
