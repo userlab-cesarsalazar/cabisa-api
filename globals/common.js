@@ -1,8 +1,10 @@
-const crypto = require('crypto-js')
+const cryptoHelpers = crypto => {
+  const encrypt = (text, encryptionKey) => crypto.AES.encrypt(text, encryptionKey).toString()
 
-const encrypt = (text, encryptionKey) => crypto.AES.encrypt(text, encryptionKey).toString()
+  const decrypt = (ciphertext, encryptionKey) => crypto.AES.decrypt(ciphertext, encryptionKey).toString(crypto.enc.Utf8)
 
-const decrypt = (ciphertext, encryptionKey) => crypto.AES.decrypt(ciphertext, encryptionKey).toString(crypto.enc.Utf8)
+  return { encrypt, decrypt }
+}
 
 function ValidatorException(errors = null) {
   this.statusCode = 400
@@ -239,17 +241,16 @@ const decorate =
 
 module.exports = {
   calculateProductTaxes,
+  cryptoHelpers,
   decorate,
-  decrypt,
-  encrypt,
   escapeFields,
   getError,
   getFormattedDates,
   getWhereConditions,
   groupJoinResult,
-  validate,
   isEmail,
   isEmptyObject,
-  ValidatorException,
+  validate,
   removeEmpty,
+  ValidatorException,
 }

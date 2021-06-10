@@ -1,12 +1,13 @@
+const mysql = require('mysql2/promise')
 const {
   types,
   calculateProductTaxes,
   getFormattedDates,
   groupJoinResult,
-  db,
+  mysqlConfig,
   helpers,
   ValidatorException,
-} = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+} = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
 const {
   handleRequest,
@@ -21,6 +22,7 @@ const {
   handleCreateOperation,
   handleUpdateStock,
 } = helpers
+const db = mysqlConfig(mysql)
 
 module.exports.read = async event => {
   try {
