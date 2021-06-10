@@ -40,7 +40,7 @@ module.exports.approve = async event => {
 
     const errors = []
     const movementsMap = inventory_movements.reduce(
-      (r, im) => ({ ...r, [im.inventory_movement_id]: [...(r[im.inventory_movement_id] ?? []), im.inventory_movement_id] }),
+      (r, im) => ({ ...r, [im.inventory_movement_id]: [...(r[im.inventory_movement_id] || []), im.inventory_movement_id] }),
       {}
     )
     const movementsMapKeys = Object.keys(movementsMap) || []

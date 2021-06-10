@@ -128,7 +128,7 @@ module.exports.create = async event => {
     // can(req.currentAction, operation_type)
 
     const errors = []
-    const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] ?? []), p.product_id] }), {})
+    const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
     const productsStocks = await db.query(storage.findProducts(productsIds))
