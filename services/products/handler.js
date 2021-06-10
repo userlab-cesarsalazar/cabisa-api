@@ -145,7 +145,10 @@ module.exports.update = async event => {
     const errors = []
     const requiredFields = ['id', 'product_category', 'serial_number', 'status', 'code', 'unit_price', 'tax_id', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const [product] = await db.query(storage.checkExists({ code, product_type: req.currentModel?.product_type }))
+    const [product] =
+      req.currentModel && req.currentModel.product_type
+        ? await db.query(storage.checkExists({ code, product_type: req.currentModel.product_type }))
+        : []
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (product && Number(id) !== Number(product.id)) errors.push(`The provided code is already registered`)

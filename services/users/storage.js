@@ -1,9 +1,16 @@
 const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 
-const findAllBy = (fields = {}, initCondition = `is_active = 1`) => `
-  SELECT id, full_name, email, rol_id
-  FROM users
-  WHERE ${initCondition} ${getWhereConditions({ fields, hasPreviousConditions: true })}
+const findAllBy = (fields = {}, initCondition = `u.is_active = 1`) => `
+  SELECT
+    u.id,
+    u.full_name,
+    u.email,
+    u.rol_id,
+    r.name AS rol_name,
+    r.permissions AS permissions
+  FROM users u
+  INNER JOIN roles r ON r.id = u.rol_id
+  WHERE ${initCondition} ${getWhereConditions({ fields, tableAlias: 'u', hasPreviousConditions: true })}
 `
 
 const checkExists = (fields = {}) => `SELECT id, email FROM users ${getWhereConditions({ fields, hasPreviousConditions: false })}`

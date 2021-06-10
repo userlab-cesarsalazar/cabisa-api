@@ -150,8 +150,9 @@ module.exports.cancel = async event => {
     const documentMovements = await db.query(storage.findDocumentMovements(), [document_id])
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (!documentMovements?.length > 0) errors.push('There is no purchase registered with the provided document_id')
-    if (documentMovements[0]?.document_status === types.documentsStatus.CANCELLED) errors.push('The document is already cancelled')
+    if (!documentMovements || !documentMovements[0]) errors.push('There is no purchase registered with the provided document_id')
+    if (documentMovements[0] && documentMovements[0].document_status === types.documentsStatus.CANCELLED)
+      errors.push('The document is already cancelled')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
