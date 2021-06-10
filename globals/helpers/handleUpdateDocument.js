@@ -37,7 +37,7 @@ const handleUpdateDocument = async (req, res) => {
           ${p.product_id},
           ${p.product_price},
           ${p.product_quantity},
-          ${p.product_return_cost ?? null},
+          ${p.product_return_cost ? p.product_return_cost : null},
           ${p.tax_fee},
           ${p.unit_tax_amount}
         )`
