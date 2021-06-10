@@ -1,12 +1,13 @@
+const mysql = require('mysql2/promise')
 const {
   types,
   calculateProductTaxes,
   groupJoinResult,
-  db,
+  mysqlConfig,
   helpers,
   ValidatorException,
   getFormattedDates,
-} = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+} = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
 const {
   handleRequest,
@@ -23,6 +24,7 @@ const {
   handleUpdateDocument,
   handleDeleteInventoryMovements,
 } = helpers
+const db = mysqlConfig(mysql)
 
 const config = {
   [types.operationsTypes.SELL]: {
