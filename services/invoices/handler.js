@@ -1,4 +1,12 @@
-const { types, calculateProductTaxes, groupJoinResult, db, helpers, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/layers/lib`)
+const mysql = require('mysql2/promise')
+const {
+  types,
+  calculateProductTaxes,
+  groupJoinResult,
+  mysqlConfig,
+  helpers,
+  ValidatorException,
+} = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
 const {
   handleRequest,
@@ -13,6 +21,7 @@ const {
   handleCreateOperation,
   handleUpdateStock,
 } = helpers
+const db = mysqlConfig(mysql)
 
 module.exports.read = async event => {
   try {
