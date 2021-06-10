@@ -6,7 +6,7 @@ const findAllBy = (fields = {}, initCondition = `u.is_active = 1`) => `
     u.full_name,
     u.email,
     u.rol_id,
-    r.name AS role_name,
+    r.name AS rol_name,
     r.permissions AS permissions
   FROM users u
   INNER JOIN roles r ON r.id = u.rol_id
