@@ -133,12 +133,12 @@ module.exports.create = async event => {
       if (operation_type === types.operationsTypes.RENT) {
         const productsReturnCost = await db.query(storage.findProductReturnCost(productsIds))
 
-        if (!productsReturnCost?.length > 0) return products
+        if (!productsReturnCost || !productsReturnCost[0]) return products
 
         return products.map(p => {
           const product = productsReturnCost.find(prc => Number(prc.product_id) === Number(p.product_id))
 
-          return { ...p, product_return_cost: product?.product_return_cost ?? null }
+          return { ...p, product_return_cost: product && product.product_return_cost ? product.product_return_cost : null }
         })
       }
 
@@ -216,19 +216,27 @@ module.exports.update = async event => {
     const [documentWithDuplicates] = rawDocument
       ? groupJoinResult({ data: rawDocument, nestedFieldsKeys: ['old_inventory_movements', 'old_products'], uniqueKey: ['document_id'] })
       : []
-    const oldProductsWithoutDuplicates = documentWithDuplicates?.old_products.reduce((r, im) => {
-      const sameProduct = r.find(rv => Number(rv.product_id) === Number(im.product_id))
+    const oldProductsWithoutDuplicates =
+      documentWithDuplicates &&
+      documentWithDuplicates.old_products &&
+      documentWithDuplicates.old_products.length > 0 &&
+      documentWithDuplicates.old_products.reduce((r, im) => {
+        const sameProduct = r.find(rv => Number(rv.product_id) === Number(im.product_id))
 
-      if (sameProduct) return r
-      else return [...r, im]
-    }, [])
+        if (sameProduct) return r
+        else return [...r, im]
+      }, [])
 
-    const oldInventoryMovementsWithoutDuplicates = documentWithDuplicates?.old_inventory_movements.reduce((r, im) => {
-      const sameMovement = r.find(rv => Number(rv.inventory_movement_id) === Number(im.inventory_movement_id))
+    const oldInventoryMovementsWithoutDuplicates =
+      documentWithDuplicates &&
+      documentWithDuplicates.old_inventory_movements &&
+      documentWithDuplicates.old_inventory_movements.length > 0 &&
+      documentWithDuplicates.old_inventory_movements.reduce((r, im) => {
+        const sameMovement = r.find(rv => Number(rv.inventory_movement_id) === Number(im.inventory_movement_id))
 
-      if (sameMovement) return r
-      else return [...r, im]
-    }, [])
+        if (sameMovement) return r
+        else return [...r, im]
+      }, [])
 
     const document = {
       ...documentWithDuplicates,
@@ -241,10 +249,12 @@ module.exports.update = async event => {
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
     const productsStocks = await db.query(storage.findProducts(productsIds))
-    const productsExists = products.flatMap(p => (!productsStocks?.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
+    const productsExists = products.flatMap(p =>
+      !productsStocks || !productsStocks.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []
+    )
     const requiredFields = ['document_id', 'project_id', 'products']
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
-    if (document?.operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
+    if (document && document.operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
 
@@ -252,8 +262,8 @@ module.exports.update = async event => {
     if (requiredProductErrorFields) errors.push(`The fields ${requiredProductFields.join(', ')} in products are required`)
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`The products with id ${id} is duplicated`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`The products with id ${id} is not registered`))
-    if (!document?.document_id) errors.push(`The document with id ${document_id} is not registered`)
-    if (document?.status !== types.documentsStatus.PENDING)
+    if (!document || !document.document_id) errors.push(`The document with id ${document_id} is not registered`)
+    if (document && document.status !== types.documentsStatus.PENDING)
       errors.push(`The edition is only allowed when the document has status ${types.documentsStatus.PENDING}`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
@@ -302,12 +312,12 @@ module.exports.invoice = async event => {
     )
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (!documentDetails?.length > 0) errors.push('There is no document registered with the provided document_id')
-    if (invalidStatusProducts?.length > 0)
+    if (!documentDetails || !documentDetails[0]) errors.push('There is no document registered with the provided document_id')
+    if (invalidStatusProducts && invalidStatusProducts[0])
       invalidStatusProducts.forEach(id => errors.push(`The product with id ${id} must be ${types.productsStatus.ACTIVE}`))
-    if (documentDetails[0]?.document_status === types.documentsStatus.CANCELLED) errors.push('The document is cancelled')
-    if (documentDetails[0]?.related_internal_document_id)
-      errors.push(`The document is already related to the invoice with id ${documentDetails[0]?.related_internal_document_id}`)
+    if (documentDetails[0] && documentDetails[0].document_status === types.documentsStatus.CANCELLED) errors.push('The document is cancelled')
+    if (documentDetails[0] && documentDetails[0].related_internal_document_id)
+      errors.push(`The document is already related to the invoice with id ${documentDetails[0].related_internal_document_id}`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -367,8 +377,9 @@ module.exports.cancel = async event => {
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (!documentMovements || !documentMovements[0]) errors.push('There is no invoice registered with the provided document_id')
-    if (documentMovements[0]?.document_status === types.documentsStatus.CANCELLED) errors.push('The document is already cancelled')
-    if (documentMovements[0]?.related_internal_document_id) errors.push(`You can't cancel a sale with a related invoice`)
+    if (documentMovements[0] && documentMovements[0].document_status === types.documentsStatus.CANCELLED)
+      errors.push('The document is already cancelled')
+    if (documentMovements[0] && documentMovements[0].related_internal_document_id) errors.push(`You can't cancel a sale with a related invoice`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
