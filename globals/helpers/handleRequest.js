@@ -24,7 +24,7 @@ const addCurrentModel =
   }
 
 const addQuery = fn => async (input, req) => {
-  const rawQuery = input.event?.queryStringParameters || {}
+  const rawQuery = (input.event && input.event.queryStringParameters) || {}
   const query = escapeFields(rawQuery)
 
   return await fn(input, { ...req, query: query })

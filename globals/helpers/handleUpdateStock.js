@@ -16,14 +16,18 @@ const types = require('../types')
 const handleUpdateStock = async (req, res) => {
   const { document_id, inventory_movements = [], old_inventory_movements = [] } = req.body
 
-  const stocks = [...old_inventory_movements, ...inventory_movements]?.reduce((result, im) => {
+  const movements = [...old_inventory_movements, ...inventory_movements]
+
+  if (!movements || !movements[0]) return { req, res }
+
+  const stocks = movements.reduce((result, im) => {
     const actionType = !im.status ? types.actions.CANCELLED : types.actions.APPROVED
     const movementType = res.updateStockOn === actionType ? types.inventoryMovementsTypes.OUT : types.inventoryMovementsTypes.IN
     const addedQty = im.movement_type === movementType ? im.quantity : im.quantity * -1
     const newStock = { stock: im.stock + addedQty, product_id: im.product_id }
-    const sameProducts = result?.flatMap(s => (Number(s.product_id) === Number(im.product_id) ? s : []))
+    const sameProducts = result && result.flatMap(s => (Number(s.product_id) === Number(im.product_id) ? s : []))
 
-    if (sameProducts?.length > 0) {
+    if (sameProducts && sameProducts[0]) {
       const productStock = sameProducts[sameProducts.length - 1].stock
 
       return [...result, { ...newStock, stock: productStock + addedQty }]

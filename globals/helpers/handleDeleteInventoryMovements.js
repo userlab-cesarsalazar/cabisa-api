@@ -3,8 +3,8 @@ const handleDeleteInventoryMovements = async (req, res) => {
 
   const inventoryMovementIds = old_inventory_movements.map(oim => oim.inventory_movement_id)
 
-  if (inventoryMovementIds?.length > 0 && inventoryMovementIds[0]) await res.connection.query(deleteInventoryMovementsDetails(inventoryMovementIds))
-  if (inventoryMovementIds?.length > 0 && inventoryMovementIds[0]) await res.connection.query(deleteInventoryMovements(inventoryMovementIds))
+  if (inventoryMovementIds && inventoryMovementIds[0]) await res.connection.query(deleteInventoryMovementsDetails(inventoryMovementIds))
+  if (inventoryMovementIds && inventoryMovementIds[0]) await res.connection.query(deleteInventoryMovements(inventoryMovementIds))
 
   return { req, res }
 }

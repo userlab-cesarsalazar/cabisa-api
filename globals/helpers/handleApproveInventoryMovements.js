@@ -10,10 +10,10 @@ const { ValidatorException } = require('../common')
 const handleApproveInventoryMovements = async (req, res) => {
   const { inventory_movements, created_by = 1 } = req.body
 
-  if (!inventory_movements?.length > 0 || !inventory_movements[0]) return { req, res }
+  if (!inventory_movements || !inventory_movements[0]) return { req, res }
 
   const { inventoryMovementsIds } = inventory_movements.reduce((result, im) => {
-    const isDuplicateId = result?.inventoryMovementsIds?.some(id => id === im.inventory_movement_id)
+    const isDuplicateId = result && result.inventoryMovementsIds && result.inventoryMovementsIdssome(id => id === im.inventory_movement_id)
 
     return {
       ...result,

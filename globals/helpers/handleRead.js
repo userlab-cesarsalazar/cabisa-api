@@ -15,7 +15,7 @@ const addReadEnum =
   async (req, { data, ...res }) => {
     const row = data[0]
 
-    if (row?.Type?.substring(0, 5).toLowerCase() === 'enum(') {
+    if (row && row.Type && row.Type.substring(0, 5).toLowerCase() === 'enum(') {
       const enumValues = row.Type.substring(5, row.Type.length - 1).split(',')
       const result = enumValues.map(d => d.replaceAll(/'/gi, '').trim())
 
