@@ -2,14 +2,14 @@
 
 ## Install Dependencies
 
-- In the root folder run `npm install`
+- In the folder `layers/nodejs` run `npm install`
 - Then run `npm install` in the folder of the service you want to start
 
 ## Install DB
 
 - Go to folder `migrations` and create a `database.json` file with your DB credentials
-- In the root folder run `npm run db db:create your-db-name` to create a DB with your current config
-- Then you can run migrations `npm run db up:migrate` and seeders `npm run db up:seed`
+- Then in the folder `layers/nodejs` run `npm run db db:create your-db-name` to create a DB with your current config
+- Then you can run the migrations (in the same folder) with `npm run db up:migrate` and seeders `npm run db up:seed`
 
 ## Migrations and Seeders
 

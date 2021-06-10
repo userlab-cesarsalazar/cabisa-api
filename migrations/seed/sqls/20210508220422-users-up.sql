@@ -1,10 +1,10 @@
-INSERT INTO users (full_name, is_active, email, rol_id) VALUES
-	 ('Luis de leon',1,'ledr1993@gmail.com',1),
-	 ('luis operador',0,'ledr1993+cabisa1@gmail.com',4),
-	 ('luis de leon2',1,'ledr1993+cabisa@gmail.com',4),
-	 ('luis operador',0,'ledr1993+cabisaoperador@gmail.com',4),
-	 ('cabisa Master',1,'ledr1993+cabisaMaster@gmail.com',1),
-	 ('luisVendedor',1,'ledr1993+cabisaVendedor1@gmail.com',2);
+INSERT INTO users (full_name, password, is_active, email, rol_id) VALUES
+	 ('Luis de leon','U2FsdGVkX19y9QfFniU74E7XmsuvzRctxlxdyqbhZsU=',1,'ledr1993@gmail.com',1),
+	 ('luis operador','U2FsdGVkX19y9QfFniU74E7XmsuvzRctxlxdyqbhZsU=',0,'ledr1993+cabisa1@gmail.com',4),
+	 ('luis de leon2','U2FsdGVkX19y9QfFniU74E7XmsuvzRctxlxdyqbhZsU=',1,'ledr1993+cabisa@gmail.com',4),
+	 ('luis operador','U2FsdGVkX19y9QfFniU74E7XmsuvzRctxlxdyqbhZsU=',0,'ledr1993+cabisaoperador@gmail.com',4),
+	 ('cabisa Master','U2FsdGVkX19y9QfFniU74E7XmsuvzRctxlxdyqbhZsU=',1,'ledr1993+cabisaMaster@gmail.com',1),
+	 ('luisVendedor','U2FsdGVkX19y9QfFniU74E7XmsuvzRctxlxdyqbhZsU=',1,'ledr1993+cabisaVendedor1@gmail.com',2);
 
 -- INSERT INTO users (full_name, password, email, rol_name) VALUES ('Juan Oxenden', 'l31x3q', 'joxenden0@senate.gov', 'ADMIN');
 -- INSERT INTO users (full_name, password, email, rol_name) VALUES ('Patten Kryzhov', 'p0W8JRZ', 'pkryzhov1@1und1.de', 'SALES');

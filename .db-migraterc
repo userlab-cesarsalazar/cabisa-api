@@ -1,4 +1,4 @@
 {
   "sql-file": true,
-  "configFile": "./migrations/database.json"
+  "configFile": "../../migrations/database.json"
 }
