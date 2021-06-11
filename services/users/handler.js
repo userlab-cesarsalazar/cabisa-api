@@ -44,9 +44,9 @@ module.exports.create = async event => {
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [userExists] = await db.query(storage.checkExists({ email }))
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (userExists) errors.push(`The provided email is already registered`)
-    if (email && !isEmail(email)) errors.push(`The provided email is invalid`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (userExists) errors.push(`El email ya se encuentra registrado`)
+    if (email && !isEmail(email)) errors.push(`El email es invalido`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -56,7 +56,7 @@ module.exports.create = async event => {
       await connection.query(storage.createUser(), [fullName, cipherPassword, email, rolId])
       const id = await connection.geLastInsertId()
 
-      return { statusCode: 201, data: { id }, message: 'User created successfully' }
+      return { statusCode: 201, data: { id }, message: 'Usuario creado exitosamente' }
     })
 
     return await handleResponse({ req, res })
@@ -84,17 +84,17 @@ module.exports.update = async event => {
     const [userExists] = await db.query(storage.checkExists({ id }))
     const [emailExists] = await db.query(storage.checkExists({ email }))
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (!userExists) errors.push(`The user with id ${id} is not registered`)
-    if (emailExists && Number(emailExists.id) !== Number(id)) errors.push(`The provided email is already registered`)
-    if (email && !isEmail(email)) errors.push(`The provided email is invalid`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (!userExists) errors.push(`El usuario con id ${id} no se encuentra registrado`)
+    if (emailExists && Number(emailExists.id) !== Number(id)) errors.push(`El email no se encuentra registrado`)
+    if (email && !isEmail(email)) errors.push(`El email es invalido`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
       await connection.query(storage.updateUser(), [fullName, email, rolId, id])
 
-      return { statusCode: 200, data: { id }, message: 'User updated successfully' }
+      return { statusCode: 200, data: { id }, message: 'Usuario actualizado exitosamente' }
     })
 
     return await handleResponse({ req, res })
@@ -117,14 +117,14 @@ module.exports.delete = async event => {
     const requiredFields = ['id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
       await connection.query(storage.deleteUser(), [id])
 
-      return { statusCode: 200, data: { id }, message: 'User deleted successfully' }
+      return { statusCode: 200, data: { id }, message: 'Usuario eliminado exitosamente' }
     })
 
     return await handleResponse({ req, res })
@@ -156,7 +156,7 @@ module.exports.changePassword = async event => {
         if (err) {
           reject(err)
         } else {
-          resolve({ statusCode: 200, data, message: 'Password updated successfully' })
+          resolve({ statusCode: 200, data, message: 'Contraseña actualizada exitosamente' })
         }
       })
     })

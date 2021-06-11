@@ -37,7 +37,7 @@ const handleUpdateStock = async (req, res) => {
   }, [])
 
   if (stocks) {
-    const errors = stocks.flatMap(s => (s.stock < 0 ? `The stock for product with id ${s.product_id} cannot be less than zero` : []))
+    const errors = stocks.flatMap(s => (s.stock < 0 ? `El stock para el producto con id ${s.product_id} no puede ser menor a cero` : []))
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -48,7 +48,7 @@ const handleUpdateStock = async (req, res) => {
 
   return {
     req,
-    res: { ...res, statusCode: 200, data: { document_id, stocks }, message: 'Product stock updated successfully' },
+    res: { ...res, statusCode: 200, data: { document_id, stocks }, message: 'Stock actualizado exitosamente' },
   }
 }
 

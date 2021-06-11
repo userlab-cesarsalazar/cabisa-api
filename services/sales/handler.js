@@ -121,11 +121,11 @@ module.exports.create = async event => {
           .map(k => types.operationsTypes[k])
           .join(', ')}`
       )
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (requiredProductErrorFields) errors.push(`The fields ${requiredProductFields.join(', ')} in products are required`)
-    if (stakeholder_id && !stakeholderIdExists) errors.push('The provided stakeholder_id is not registered')
-    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`The products with id ${id} is duplicated`))
-    if (productsExists.length > 0) productsExists.forEach(id => errors.push(`The products with id ${id} is not registered`))
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos es requerido`)
+    if (stakeholder_id && !stakeholderIdExists) errors.push('El cliente no se encuentra registrado')
+    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
+    if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -258,13 +258,13 @@ module.exports.update = async event => {
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (requiredProductErrorFields) errors.push(`The fields ${requiredProductFields.join(', ')} in products are required`)
-    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`The products with id ${id} is duplicated`))
-    if (productsExists.length > 0) productsExists.forEach(id => errors.push(`The products with id ${id} is not registered`))
-    if (!document || !document.document_id) errors.push(`The document with id ${document_id} is not registered`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos son requeridos`)
+    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
+    if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
+    if (!document || !document.document_id) errors.push(`El documento con id ${document_id} no se encuentra registrado`)
     if (document && document.status !== types.documentsStatus.PENDING)
-      errors.push(`The edition is only allowed when the document has status ${types.documentsStatus.PENDING}`)
+      errors.push(`La edicion solo es permitida en documentos con status ${types.documentsStatus.PENDING}`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -311,13 +311,14 @@ module.exports.invoice = async event => {
       pm.products__product_status !== types.productsStatus.ACTIVE ? pm.products__product_id : []
     )
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (!documentDetails || !documentDetails[0]) errors.push('There is no document registered with the provided document_id')
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (!documentDetails || !documentDetails[0]) errors.push('EL documento recibido no se encuentra registrado')
     if (invalidStatusProducts && invalidStatusProducts[0])
-      invalidStatusProducts.forEach(id => errors.push(`The product with id ${id} must be ${types.productsStatus.ACTIVE}`))
-    if (documentDetails[0] && documentDetails[0].document_status === types.documentsStatus.CANCELLED) errors.push('The document is cancelled')
+      invalidStatusProducts.forEach(id => errors.push(`El producto con id ${id} debe tener status ${types.productsStatus.ACTIVE}`))
+    if (documentDetails[0] && documentDetails[0].document_status === types.documentsStatus.CANCELLED)
+      errors.push('El documento ya se encuentra cancelado')
     if (documentDetails[0] && documentDetails[0].related_internal_document_id)
-      errors.push(`The document is already related to the invoice with id ${documentDetails[0].related_internal_document_id}`)
+      errors.push(`El documento ya esta relacionado a una factura con id ${documentDetails[0].related_internal_document_id}`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -375,11 +376,11 @@ module.exports.cancel = async event => {
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const documentMovements = await db.query(storage.findDocumentMovements(), [document_id])
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (!documentMovements || !documentMovements[0]) errors.push('There is no invoice registered with the provided document_id')
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (!documentMovements || !documentMovements[0]) errors.push('No existe una factura registrada con la informacion recibida')
     if (documentMovements[0] && documentMovements[0].document_status === types.documentsStatus.CANCELLED)
-      errors.push('The document is already cancelled')
-    if (documentMovements[0] && documentMovements[0].related_internal_document_id) errors.push(`You can't cancel a sale with a related invoice`)
+      errors.push('El documento ya se encuentra cancelado')
+    if (documentMovements[0] && documentMovements[0].related_internal_document_id) errors.push(`No puede cancelar una venta sin factura asociada`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 

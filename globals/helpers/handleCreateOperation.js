@@ -6,7 +6,7 @@ const handleCreateOperation = async (req, res) => {
 
   return {
     req: { ...req, body: { ...req.body, operation_id } },
-    res: { ...res, statusCode: 201, data: { operation_id }, message: 'Operation created successfully' },
+    res: { ...res, statusCode: 201, data: { operation_id }, message: 'Operacion creada exitosamente' },
   }
 }
 

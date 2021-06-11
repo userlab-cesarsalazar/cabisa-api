@@ -13,7 +13,7 @@ const handleApproveInventoryMovements = async (req, res) => {
   if (!inventory_movements || !inventory_movements[0]) return { req, res }
 
   const { inventoryMovementsIds } = inventory_movements.reduce((result, im) => {
-    const isDuplicateId = result && result.inventoryMovementsIds && result.inventoryMovementsIdssome(id => id === im.inventory_movement_id)
+    const isDuplicateId = result && result.inventoryMovementsIds && result.inventoryMovementsIds.some(id => id === im.inventory_movement_id)
 
     return {
       ...result,
@@ -32,7 +32,7 @@ const handleApproveInventoryMovements = async (req, res) => {
     else return [...r, im]
   }, [])
 
-  const { inventoryMovements, errors } = inventoryMovementsIds.reduce((result, movementId) => {
+  const { inventoryMovements } = inventoryMovementsIds.reduce((result, movementId) => {
     const movementDetail = currentInventoryMovements.reduce((detailsResult, detail) => {
       if (Number(movementId) === Number(detail.inventory_movement_id)) {
         const approvedQty = detailsResult.quantity || 0
@@ -44,7 +44,6 @@ const handleApproveInventoryMovements = async (req, res) => {
       return detailsResult
     }, {})
 
-    const errors = []
     const inventoryMovements = {
       ...movementDetail,
       remainningQty: movementDetail.total_qty - movementDetail.quantity,
@@ -53,11 +52,8 @@ const handleApproveInventoryMovements = async (req, res) => {
     return {
       ...result,
       inventoryMovements: [...(result.inventoryMovements || []), inventoryMovements],
-      errors: [...(result.errors || []), ...errors],
     }
   }, {})
-
-  if (errors.length > 0) throw new ValidatorException(errors)
 
   const authorizeMovements = async im => {
     await res.connection.query(createInventoryMovementsDetails(), [
@@ -87,7 +83,7 @@ const handleApproveInventoryMovements = async (req, res) => {
       ...res,
       statusCode: 200,
       data: { inventory_movements: inventoryMovements },
-      message: 'Inventory movements approved successfully',
+      message: 'Movimientos de inventario aprobados exitosamente',
     },
   }
 }

@@ -53,7 +53,7 @@ const handleCreateInventoryMovements = async (req, res) => {
 
   return {
     req: { ...req, body: { ...req.body, inventory_movements } },
-    res: { ...res, statusCode: 201, data: { inventory_movements }, message: 'Inventory movements created successfully' },
+    res: { ...res, statusCode: 201, data: { inventory_movements }, message: 'Movimientos de inventario creados exitosamente' },
   }
 }
 

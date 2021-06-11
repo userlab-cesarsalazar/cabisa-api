@@ -16,7 +16,7 @@ const handleCancelDocument = async (req, res) => {
 
   return {
     req,
-    res: { ...res, statusCode: 200, data: { document_id }, message: 'Document cancelled successfully' },
+    res: { ...res, statusCode: 200, data: { document_id }, message: 'Documento cancelado exitosamente' },
   }
 }
 

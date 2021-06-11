@@ -26,7 +26,7 @@ const handleCreateStakeholder = async (req, res) => {
 
   return {
     req: { ...req, body: { ...req.body, stakeholder_id: stakeholderId } },
-    res: { ...res, statusCode: 201, data: { stakeholder_id: stakeholderId }, message: 'Stakeholder created successfully' },
+    res: { ...res, statusCode: 201, data: { stakeholder_id: stakeholderId }, message: 'Registro creado exitosamente' },
   }
 }
 
