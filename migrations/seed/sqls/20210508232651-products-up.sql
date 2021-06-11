@@ -1,5 +1,5 @@
-INSERT INTO taxes (name, fee) VALUES ('IVA', 12);
 INSERT INTO taxes (name, fee) VALUES ('EXENTO', 0);
+INSERT INTO taxes (name, fee) VALUES ('IVA', 12);
 
 INSERT INTO products (product_type, status, description, code, serial_number, unit_price, tax_id, created_at, created_by) VALUES ('SERVICE', 'ACTIVE', 'CytomX Therapeutics, Inc.', '68788-9406', '40-476-4166', 34, 1, '2020-09-01 09:45:13', 1);
 INSERT INTO products (product_type, status, description, code, serial_number, unit_price, tax_id, created_at, created_by) VALUES ('SERVICE', 'ACTIVE', 'Navios Maritime Holdings Inc.', '0409-2988', '35-603-1767', 69, 1, '2021-03-01 03:59:59', 1);
