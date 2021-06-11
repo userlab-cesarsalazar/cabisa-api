@@ -27,8 +27,8 @@ const checkExists = (
 const findTaxIdExento = () => `SELECT id FROM taxes WHERE name = 'EXENTO'`
 
 const createService = () => `
-  INSERT INTO products (status, code, unit_price, description, tax_id, created_by)
-  VALUES(?, ?, ?, ?, ?, ?)
+  INSERT INTO products (status, code, unit_price, description, tax_id, created_by, stock)
+  VALUES(?, ?, ?, ?, ?, ?, 1000)
 `
 
 const updateService = () => `
