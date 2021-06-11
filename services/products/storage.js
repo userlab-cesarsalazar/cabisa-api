@@ -54,6 +54,7 @@ const updateProduct = () => `
 
 const deleteProduct = () => `DELETE FROM products WHERE product_type = '${types.productsTypes.PRODUCT}' AND id = ?`
 
+// apply for services too
 const findOptionsBy = (fields = {}) => `
   SELECT p.id, p.code, p.unit_price, p.description, t.fee AS tax_fee, t.name AS tax_name
   FROM products p

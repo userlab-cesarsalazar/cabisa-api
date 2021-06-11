@@ -46,6 +46,7 @@ module.exports.create = async event => {
     const requiredFields = ['status', 'code', 'unit_price', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [codeExists] = await db.query(storage.checkExists({ code, product_type }))
+    const [tax] = await db.query(storage.findTaxIdExento())
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
     if (codeExists) errors.push(`The provided code is already registered`)
@@ -55,11 +56,12 @@ module.exports.create = async event => {
           .map(k => types.productsStatus[k])
           .join(', ')}`
       )
+    if (!tax || !tax.id) errors.push(`The tax 'EXENTO' doesn't exists in the DB`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.createService(), [status, code, unit_price, description, created_by])
+      await connection.query(storage.createService(), [status, code, unit_price, description, tax.id, created_by])
 
       return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Service created successfully' }
     })

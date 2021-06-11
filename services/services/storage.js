@@ -24,9 +24,11 @@ const checkExists = (
   SELECT id FROM products p WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
+const findTaxIdExento = () => `SELECT id FROM taxes WHERE name = 'EXENTO'`
+
 const createService = () => `
-  INSERT INTO products (status, code, unit_price, description, created_by)
-  VALUES(?, ?, ?, ?, ?)
+  INSERT INTO products (status, code, unit_price, description, tax_id, created_by)
+  VALUES(?, ?, ?, ?, ?, ?)
 `
 
 const updateService = () => `
@@ -41,5 +43,6 @@ module.exports = {
   deleteService,
   findAllBy,
   findServicesStatus,
+  findTaxIdExento,
   updateService,
 }
