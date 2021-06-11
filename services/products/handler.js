@@ -96,8 +96,8 @@ module.exports.create = async event => {
           .join(', ')}`
       )
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (codeExists) errors.push(`The provided code is already registered`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (codeExists) errors.push(`El codigo ya se encuentra registrado`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -115,7 +115,7 @@ module.exports.create = async event => {
         created_by,
       ])
 
-      return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Product created successfully' }
+      return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Producto creado exitosamente' }
     })
 
     return await handleResponse({ req, res })
@@ -150,8 +150,8 @@ module.exports.update = async event => {
         ? await db.query(storage.checkExists({ code, product_type: req.currentModel.product_type }))
         : []
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (product && Number(id) !== Number(product.id)) errors.push(`The provided code is already registered`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (product && Number(id) !== Number(product.id)) errors.push(`El codigo ya se encuentra registrado`)
     if (Object.keys(types.productsStatus).every(k => types.productsStatus[k] !== status))
       errors.push(
         `The field status must contain one of these values: ${Object.keys(types.productsStatus)
@@ -175,7 +175,7 @@ module.exports.update = async event => {
         id,
       ])
 
-      return { statusCode: 200, data: { id }, message: 'Product updated successfully' }
+      return { statusCode: 200, data: { id }, message: 'Producto actualizado exitosamente' }
     })
 
     return await handleResponse({ req, res })
@@ -199,15 +199,15 @@ module.exports.delete = async event => {
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [productExists] = await db.query(storage.checkExists({ id, product_type: types.productsTypes.PRODUCT }, '1'))
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (!productExists) errors.push(`The product with id ${id} is not registered`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (!productExists) errors.push(`El producto con id ${id} no se encuentra registrado`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
       await connection.query(storage.deleteProduct(), [id])
 
-      return { statusCode: 200, data: { id }, message: 'Product deleted successfully' }
+      return { statusCode: 200, data: { id }, message: 'Producto eliminado exitosamente' }
     })
 
     return await handleResponse({ req, res })

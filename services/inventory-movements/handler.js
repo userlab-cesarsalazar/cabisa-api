@@ -63,11 +63,13 @@ module.exports.approve = async event => {
     const requiredMovementFields = ['inventory_movement_id', 'quantity']
     const requiredMovementErrorFields = requiredMovementFields.some(k => inventory_movements && inventory_movements.some(im => !im[k]))
 
-    if (duplicateMovements && duplicateMovements.length > 0) duplicateMovements.forEach(id => errors.push(`The movement with id ${id} is duplicated`))
-    if (movementsExists && movementsExists.length > 0) movementsExists.forEach(id => errors.push(`The movement with id ${id} is not registered`))
-    if (requiredMovementErrorFields) errors.push(`The fields ${requiredMovementFields.join(', ')} in inventory_movements are required`)
+    if (duplicateMovements && duplicateMovements.length > 0)
+      duplicateMovements.forEach(id => errors.push(`El movimiento con id ${id} no debe estar duplicado`))
+    if (movementsExists && movementsExists.length > 0)
+      movementsExists.forEach(id => errors.push(`El movimiento con id ${id} no se encuentra registrado`))
+    if (requiredMovementErrorFields) errors.push(`Los campos: ${requiredMovementFields.join(', ')} en los movimientos de inventario son requeridos`)
     if (invalidQuantities && invalidQuantities.length > 0)
-      invalidQuantities.forEach(iq => errors.push(`The quantity for the movement with id ${iq.id} must be less than or equal to ${iq.remainning}`))
+      invalidQuantities.forEach(iq => errors.push(`La cantidad para los movimientos con id ${iq.id} debe ser menor o igual a ${iq.remainning}`))
 
     if (errors.length > 0) throw new ValidatorException(errors)
 

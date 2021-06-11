@@ -21,7 +21,7 @@ const handleApproveDocument = async (req, res) => {
       ...res,
       statusCode: 200,
       data: { operation_id: req.body.operation_id, document_id, related_internal_document_id, related_external_document_id },
-      message: 'Document approved successfully',
+      message: 'Documento aprobado exitosamente',
     },
   }
 }

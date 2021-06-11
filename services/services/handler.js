@@ -48,8 +48,8 @@ module.exports.create = async event => {
     const [codeExists] = await db.query(storage.checkExists({ code, product_type }))
     const [tax] = await db.query(storage.findTaxIdExento())
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (codeExists) errors.push(`The provided code is already registered`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (codeExists) errors.push(`El codigo ya se encuentra registrado`)
     if (Object.keys(types.productsStatus).every(k => types.productsStatus[k] !== status))
       errors.push(
         `The field status must contain one of these values: ${Object.keys(types.productsStatus)
@@ -63,7 +63,7 @@ module.exports.create = async event => {
     const res = await db.transaction(async connection => {
       await connection.query(storage.createService(), [status, code, unit_price, description, tax.id, created_by])
 
-      return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Service created successfully' }
+      return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Servicio creado exitosamente' }
     })
 
     return await handleResponse({ req, res })
@@ -91,8 +91,8 @@ module.exports.update = async event => {
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [service] = await db.query(storage.checkExists({ code }))
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (service && Number(id) !== Number(service.id)) errors.push(`The provided code is already registered`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (service && Number(id) !== Number(service.id)) errors.push(`El codigo ya se encuentra registrado`)
     if (Object.keys(types.productsStatus).every(k => types.productsStatus[k] !== status))
       errors.push(
         `The field status must contain one of these values: ${Object.keys(types.productsStatus)
@@ -105,7 +105,7 @@ module.exports.update = async event => {
     const res = await db.transaction(async connection => {
       await connection.query(storage.updateService(), [status, code, unit_price, description, updated_by, id])
 
-      return { statusCode: 200, data: { id }, message: 'Service updated successfully' }
+      return { statusCode: 200, data: { id }, message: 'Servicio actualizado exitosamente' }
     })
 
     return await handleResponse({ req, res })
@@ -129,15 +129,15 @@ module.exports.delete = async event => {
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [serviceExists] = await db.query(storage.checkExists({ id }, '1'))
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (!serviceExists) errors.push(`The service with id ${id} is not registered`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (!serviceExists) errors.push(`El servicio con id ${id} no se encuentra regisrado`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
       await connection.query(storage.deleteService(), [id])
 
-      return { statusCode: 200, data: { id }, message: 'Service deleted successfully' }
+      return { statusCode: 200, data: { id }, message: 'Servicio eliminado exitosamente' }
     })
 
     return await handleResponse({ req, res })

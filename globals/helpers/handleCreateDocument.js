@@ -51,7 +51,7 @@ const handleCreateDocument = async (req, res) => {
 
   return {
     req: { ...req, body: { ...req.body, document_id: newDocumentId, related_internal_document_id } },
-    res: { ...res, statusCode: 201, data: { document_id }, message: 'Document created successfully' },
+    res: { ...res, statusCode: 201, data: { document_id }, message: 'Documento creado exitosamente' },
   }
 }
 

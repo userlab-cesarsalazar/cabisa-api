@@ -154,13 +154,13 @@ module.exports.create = async event => {
           .map(k => types.documentsPaymentMethods[k])
           .join(', ')}`
       )
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (requiredProductErrorFields) errors.push(`The fields ${requiredProductFields.join(', ')} in products are required`)
-    if (stakeholderNitUnique) errors.push('The provided nit is already registered')
-    if (stakeholder_id && !stakeholderIdExists) errors.push('The provided stakeholder_id is not registered')
-    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`The products with id ${id} is duplicated`))
-    if (productsExists.length > 0) productsExists.forEach(id => errors.push(`The products with id ${id} is not registered`))
-    if (project_id && !projectExists) errors.push(`The provided project_id is not registered`)
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos, son requeridos`)
+    if (stakeholderNitUnique) errors.push('El nit ya se encuentra registrado')
+    if (stakeholder_id && !stakeholderIdExists) errors.push('El cliente ya se encuentra registrado')
+    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
+    if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no esta registrado`))
+    if (project_id && !projectExists) errors.push(`El proyecto no se encuentra registrado`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -214,10 +214,10 @@ module.exports.cancel = async event => {
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const documentMovements = await db.query(storage.findDocumentMovements(), [document_id])
 
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required`))
-    if (!documentMovements || !documentMovements[0]) errors.push('There is no invoice registered with the provided document_id')
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (!documentMovements || !documentMovements[0]) errors.push('No existen facturas registradas con la informacion recibida')
     if (documentMovements[0] && documentMovements[0].document_status === types.documentsStatus.CANCELLED)
-      errors.push('The document is already cancelled')
+      errors.push('El documento ya se encuentra cancelado')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
