@@ -206,10 +206,11 @@ const groupJoinResult = ({ data, nestedFieldsKeys, uniqueKey = ['id'] }) => {
 
 const calculateProductTaxes = (products, productsStocks) => {
   return products.map(p => {
-    const sameProduct = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id))
+    const sameProduct = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id)) || {}
     const product_price = p && p.product_price > 0 ? p.product_price : sameProduct.product_price
 
     return {
+      ...sameProduct,
       ...p,
       product_price,
       tax_fee: sameProduct.tax_fee,

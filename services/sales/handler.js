@@ -296,22 +296,45 @@ module.exports.update = async event => {
 
 module.exports.invoice = async event => {
   try {
-    const inputType = { document_id: { type: ['number', 'string'], required: true } }
+    const inputType = {
+      document_id: { type: ['number', 'string'], required: true },
+      payment_method: { type: { enum: types.documentsPaymentMethods }, required: true },
+      products: {
+        type: 'array',
+        required: true,
+        fields: {
+          type: 'object',
+          fields: {
+            product_id: { type: ['string', 'number'], required: true },
+            product_quantity: { type: 'number', min: 0, required: true },
+            product_price: { type: 'number', min: 0, required: true },
+            product_discount_percentage: { type: 'number', min: 0 },
+            product_discount: { type: 'number', min: 0 },
+          },
+        },
+      },
+    }
 
     const req = await handleRequest({ event, inputType })
-    const { document_id } = req.body
+    const { document_id, payment_method, products } = req.body
 
     // can(req.currentAction, types.operationsTypes.PURCHASE)
 
     const errors = []
-    const requiredFields = ['document_id']
+    const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
+    const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
+    const requiredFields = ['document_id', 'payment_method']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+    const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
+    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
     const documentDetails = document_id ? await db.query(storage.findDocumentDetails(), [document_id]) : []
     const invalidStatusProducts = documentDetails.flatMap(pm =>
       pm.products__product_status !== types.productsStatus.ACTIVE ? pm.products__product_id : []
     )
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos, son requeridos`)
+    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (!documentDetails || !documentDetails[0]) errors.push('EL documento recibido no se encuentra registrado')
     if (invalidStatusProducts && invalidStatusProducts[0])
       invalidStatusProducts.forEach(id => errors.push(`El producto con id ${id} debe tener status ${types.productsStatus.ACTIVE}`))
@@ -319,8 +342,12 @@ module.exports.invoice = async event => {
       errors.push('El documento ya se encuentra cancelado')
     if (documentDetails[0] && documentDetails[0].related_internal_document_id)
       errors.push(`El documento ya esta relacionado a una factura con id ${documentDetails[0].related_internal_document_id}`)
-
-    if (errors.length > 0) throw new ValidatorException(errors)
+    if (Object.keys(types.documentsPaymentMethods).every(k => types.documentsPaymentMethods[k] !== payment_method))
+      errors.push(
+        `The field payment_method must contain one of these values: ${Object.keys(types.documentsPaymentMethods)
+          .map(k => types.documentsPaymentMethods[k])
+          .join(', ')}`
+      )
 
     const [groupedDocumentDetails] = groupJoinResult({
       data: documentDetails,
@@ -328,12 +355,24 @@ module.exports.invoice = async event => {
       uniqueKey: ['document_id'],
     })
 
-    const products = groupedDocumentDetails.products.reduce((r, im) => {
-      const sameProduct = r.find(rv => Number(rv.product_id) === Number(im.product_id))
+    const invalidProducts =
+      groupedDocumentDetails &&
+      products &&
+      products[0] &&
+      products.flatMap(p => {
+        const isValid = groupedDocumentDetails.products.some(
+          sale => Number(sale.product_id) === Number(p.product_id) && Number(sale.product_quantity) === Number(p.product_quantity)
+        )
 
-      if (sameProduct) return r
-      else return [...r, im]
-    }, [])
+        if (isValid) return []
+        else return p
+      })
+
+    if (invalidProducts && invalidProducts[0]) errors.push(`La cantidad de productos no coincide con la registrada en la nota de servicio`)
+
+    if (errors.length > 0) throw new ValidatorException(errors)
+
+    const productsWithTaxes = calculateProductTaxes(products, groupedDocumentDetails.products)
 
     const operation_type = groupedDocumentDetails.operation_type
 
@@ -341,7 +380,7 @@ module.exports.invoice = async event => {
       const documentCreated = await handleCreateDocument(
         {
           ...req,
-          body: { ...req.body, ...groupedDocumentDetails, products, document_type: config[operation_type].finishDocument },
+          body: { ...req.body, ...groupedDocumentDetails, products: productsWithTaxes, document_type: config[operation_type].finishDocument },
         },
         { connection }
       )

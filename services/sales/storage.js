@@ -149,7 +149,8 @@ const findDocumentDetails = () => `
     COALESCE(dp.product_return_cost, dp.product_price) AS products__product_return_cost,
     dp.tax_fee AS products__tax_fee,
     dp.unit_tax_amount AS products__unit_tax_amount,
-    p.status AS products__product_status
+    p.status AS products__product_status,
+    p.stock AS products__product_stock
   FROM documents d
   LEFT JOIN documents_products dp ON dp.document_id = d.id
   LEFT JOIN products p ON p.id = dp.product_id
