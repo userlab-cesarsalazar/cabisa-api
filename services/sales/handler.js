@@ -373,14 +373,14 @@ module.exports.invoice = async event => {
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const productsWithTaxes = calculateProductTaxes(products, groupedDocumentDetails.products)
-
     const operation_type = groupedDocumentDetails.operation_type
+    const document_type = config[operation_type].finishDocument
 
     const { res } = await db.transaction(async connection => {
       const documentCreated = await handleCreateDocument(
         {
           ...req,
-          body: { ...req.body, ...groupedDocumentDetails, products: productsWithTaxes, document_type: config[operation_type].finishDocument },
+          body: { ...req.body, ...groupedDocumentDetails, products: productsWithTaxes, document_type },
         },
         { connection }
       )

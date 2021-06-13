@@ -27,7 +27,10 @@ const findAllBy = (fields = {}) => `
       ELSE 0
     END) AS has_related_invoice,
     s.id AS stakeholder_id,
+    s.stakeholder_type AS stakeholder_type,
     s.name AS stakeholder_name,
+    s.nit AS stakeholder_nit,
+    s.email AS stakeholder_email,
     s.business_man AS stakeholder_business_man,
     s.address AS stakeholder_address,
     s.phone AS stakeholder_phone,
@@ -39,6 +42,8 @@ const findAllBy = (fields = {}) => `
     dp.product_price AS products__unit_price,
     dp.product_quantity AS products__quantity,
     dp.product_return_cost AS products__product_return_cost,
+    dp.tax_fee AS products__tax_fee,
+    dp.unit_tax_amount AS products__unit_tax_amount,
     prod.code AS products__code,
     prod.serial_number AS products__serial_number,
     prod.description AS products__description
