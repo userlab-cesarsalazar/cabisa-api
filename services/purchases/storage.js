@@ -45,6 +45,7 @@ const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.st
 const findProducts = whereIn => `
   SELECT
     p.id AS product_id,
+    p.product_type,
     p.stock,
     p.unit_price AS product_price,
     t.fee AS tax_fee

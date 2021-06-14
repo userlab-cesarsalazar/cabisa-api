@@ -28,7 +28,7 @@ const addReadEnum =
 const addGroupJoinResult =
   fn =>
   async (req, { nestedFieldsKeys, uniqueKey, data, ...res }) => {
-    const groupedData = groupJoinResult({ data: data, nestedFieldsKeys, uniqueKey })
+    const groupedData = nestedFieldsKeys ? groupJoinResult({ data, nestedFieldsKeys, uniqueKey }) : data
 
     return await fn(req, { ...res, nestedFieldsKeys, uniqueKey, statusCode: 200, data: groupedData })
   }
