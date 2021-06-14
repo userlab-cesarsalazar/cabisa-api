@@ -129,25 +129,7 @@ module.exports.create = async event => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const getProductsReturnCost = async () => {
-      if (operation_type === types.operationsTypes.RENT) {
-        const productsReturnCost = await db.query(storage.findProductReturnCost(productsIds))
-
-        if (!productsReturnCost || !productsReturnCost[0]) return products
-
-        return products.map(p => {
-          const product = productsReturnCost.find(prc => Number(prc.product_id) === Number(p.product_id))
-
-          return { ...p, product_return_cost: product && product.product_return_cost ? product.product_return_cost : null }
-        })
-      }
-
-      return products
-    }
-
-    const productsWithReturnCost = await getProductsReturnCost()
-
-    const productsWithTaxes = calculateProductTaxes(productsWithReturnCost, productsStocks)
+    const productsWithTaxes = calculateProductTaxes(products, productsStocks)
 
     const { res } = await db.transaction(async connection => {
       const stakeholderCreated = await handleCreateStakeholder(
@@ -235,7 +217,11 @@ module.exports.update = async event => {
         const sameMovement = r.find(rv => Number(rv.inventory_movement_id) === Number(im.inventory_movement_id))
 
         if (sameMovement) return r
-        else return [...r, im]
+        else {
+          const product = oldProductsWithoutDuplicates.find(op => Number(op.product_id) === Number(im.product_id)) || {}
+          const inventoryMovement = { ...im, ...product, stock: product.stock || 0 }
+          return [...r, inventoryMovement]
+        }
       }, [])
 
     const document = {
@@ -419,7 +405,7 @@ module.exports.cancel = async event => {
     if (!documentMovements || !documentMovements[0]) errors.push('No existe una factura registrada con la informacion recibida')
     if (documentMovements[0] && documentMovements[0].document_status === types.documentsStatus.CANCELLED)
       errors.push('El documento ya se encuentra cancelado')
-    if (documentMovements[0] && documentMovements[0].related_internal_document_id) errors.push(`No puede cancelar una venta sin factura asociada`)
+    if (documentMovements[0] && documentMovements[0].related_internal_document_id) errors.push(`No puede cancelar una venta con factura asociada`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 

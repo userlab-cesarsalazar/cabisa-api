@@ -38,7 +38,6 @@ CREATE TABLE `documents_products` (
   `product_id` INT NOT NULL,
   `product_price` DOUBLE NOT NULL,
   `product_quantity` INT NOT NULL,
-  `product_return_cost` DOUBLE,
   `tax_fee` DECIMAL(5,2) NOT NULL,
   `unit_tax_amount` DOUBLE NOT NULL,
   `discount_percentage` DECIMAL(5,2) DEFAULT NULL,

@@ -41,7 +41,6 @@ const findAllBy = (fields = {}) => `
     prod.status AS products__status,
     dp.product_price AS products__unit_price,
     dp.product_quantity AS products__quantity,
-    dp.product_return_cost AS products__product_return_cost,
     dp.tax_fee AS products__tax_fee,
     dp.unit_tax_amount AS products__unit_tax_amount,
     prod.code AS products__code,
@@ -65,20 +64,6 @@ const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.st
   SELECT id, stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man,block_reason, created_at, created_by, updated_at, updated_by
   FROM stakeholders
   WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
-`
-
-const findProductReturnCost = whereIn => `
-  SELECT im.product_id, im.unit_cost AS product_return_cost
-  FROM inventory_movements im
-  WHERE im.id IN (
-    (
-      SELECT MAX(subim.id) AS id
-      FROM inventory_movements subim
-      WHERE subim.movement_type = 'IN' AND subim.status = 'APPROVED' AND subim.product_id IN (${whereIn.join(', ')})
-      GROUP BY subim.product_id
-    )
-  )
-  ORDER BY id DESC
 `
 
 const findProducts = whereIn => `
@@ -119,11 +104,9 @@ const findDocument = () => `
     im.unit_cost AS old_inventory_movements__unit_cost,
     im.movement_type AS old_inventory_movements__movement_type,
     im.status AS old_inventory_movements__status,
-    p.stock AS old_inventory_movements__stock,
     dp.product_id AS old_products__product_id,
     dp.product_price AS old_products__product_price,
     dp.product_quantity AS old_products__product_quantity,
-    dp.product_return_cost AS old_products__product_return_cost,
     dp.tax_fee AS old_products__tax_fee,
     dp.unit_tax_amount AS old_products__unit_tax_amount,
     p.stock AS old_products__stock
@@ -151,7 +134,6 @@ const findDocumentDetails = () => `
     dp.product_id AS products__product_id,
     dp.product_quantity AS products__product_quantity,
     dp.product_price AS products__product_price,
-    COALESCE(dp.product_return_cost, dp.product_price) AS products__product_return_cost,
     dp.tax_fee AS products__tax_fee,
     dp.unit_tax_amount AS products__unit_tax_amount,
     p.status AS products__product_status,
@@ -197,7 +179,6 @@ module.exports = {
   findDocumentDetails,
   findDocumentMovements,
   findProducts,
-  findProductReturnCost,
   findSalesStatus,
   findStakeholder,
 }

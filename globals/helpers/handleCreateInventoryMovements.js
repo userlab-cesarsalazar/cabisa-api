@@ -10,7 +10,7 @@ const handleCreateInventoryMovements = async (req, res) => {
     [types.documentsTypes.RENT_INVOICE]: [types.inventoryMovementsTypes.IN],
   }
 
-  const { products, document_type, operation_id, operation_type } = req.body
+  const { products, document_type, operation_id } = req.body
 
   if (!operation_id) return { req, res }
 
@@ -18,12 +18,7 @@ const handleCreateInventoryMovements = async (req, res) => {
 
   const inventoryMovements = movementTypes.reduce((movementsResult, movement_type) => {
     const movements = products.map(p => {
-      const unit_cost =
-        movement_type === types.inventoryMovementsTypes.IN
-          ? operation_type === types.operationsTypes.RENT
-            ? p.product_return_cost
-            : p.product_price
-          : null
+      const unit_cost = movement_type === types.inventoryMovementsTypes.IN ? p.product_price : null
 
       return { operation_id, product_id: p.product_id, quantity: p.product_quantity, unit_cost, movement_type }
     })
