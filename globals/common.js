@@ -142,7 +142,9 @@ const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousCondition
 }
 
 const groupJoinResult = ({ data, nestedFieldsKeys, uniqueKey = ['id'] }) => {
-  if (!data || data.length === 0 || !nestedFieldsKeys) return data
+  if (nestedFieldsKeys) throw new Error('The argument nestedFieldsKeys is required in groupJoinResult')
+
+  if (!data || data.length === 0) return []
 
   const nestedFieldFlag = '__'
 
