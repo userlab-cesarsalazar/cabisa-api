@@ -89,7 +89,7 @@ module.exports.create = async event => {
         fields: {
           product_id: { type: ['string', 'number'], required: true },
           product_quantity: { type: 'number', min: 0, required: true },
-          product_price: { type: 'number', min: 0 },
+          product_price: { type: 'number', min: 0, required: true },
         },
       },
     },
@@ -105,10 +105,10 @@ module.exports.create = async event => {
     const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
-    const productsStocks = await db.query(storage.findProducts(productsIds))
-    const productsExists = products.flatMap(p => (!productsStocks.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
+    const productsFromDB = await db.query(storage.findProducts(productsIds))
+    const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
     const requiredFields = ['stakeholder_id', 'project_id', 'products']
-    const requiredProductFields = ['product_id', 'product_quantity']
+    const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     if (operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -129,7 +129,7 @@ module.exports.create = async event => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const productsWithTaxes = calculateProductTaxes(products, productsStocks)
+    const productsWithTaxes = calculateProductTaxes(products, productsFromDB)
 
     const { res } = await db.transaction(async connection => {
       const stakeholderCreated = await handleCreateStakeholder(
@@ -234,9 +234,9 @@ module.exports.update = async event => {
     const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
-    const productsStocks = await db.query(storage.findProducts(productsIds))
+    const productsFromDB = await db.query(storage.findProducts(productsIds))
     const productsExists = products.flatMap(p =>
-      !productsStocks || !productsStocks.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []
+      !productsFromDB || !productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []
     )
     const requiredFields = ['document_id', 'project_id', 'products']
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
@@ -254,7 +254,7 @@ module.exports.update = async event => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const productsWithTaxes = calculateProductTaxes(products, productsStocks)
+    const productsWithTaxes = calculateProductTaxes(products, productsFromDB)
 
     const formattedDates = getFormattedDates({ start_date, end_date })
 
@@ -402,7 +402,7 @@ module.exports.cancel = async event => {
     const documentMovements = await db.query(storage.findDocumentMovements(), [document_id])
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (!documentMovements || !documentMovements[0]) errors.push('No existe una factura registrada con la informacion recibida')
+    if (!documentMovements || !documentMovements[0]) errors.push('No existe una venta registrada con la informacion recibida')
     if (documentMovements[0] && documentMovements[0].document_status === types.documentsStatus.CANCELLED)
       errors.push('El documento ya se encuentra cancelado')
     if (documentMovements[0] && documentMovements[0].related_internal_document_id) errors.push(`No puede cancelar una venta con factura asociada`)

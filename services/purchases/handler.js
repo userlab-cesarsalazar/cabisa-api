@@ -73,8 +73,8 @@ module.exports.create = async event => {
     const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
-    const productsStocks = await db.query(storage.findProducts(productsIds))
-    const productsExists = products.flatMap(p => (!productsStocks.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
+    const productsFromDB = await db.query(storage.findProducts(productsIds))
+    const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
     const requiredFields = ['stakeholder_id', 'products', 'related_external_document_id']
     // if (!stakeholder_id) requiredFields.push('stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     const requiredProductFields = ['product_id', 'product_quantity']
@@ -95,10 +95,12 @@ module.exports.create = async event => {
     if (stakeholder_id && !stakeholderIdExists) errors.push('El proveedor no se encuentra registrado')
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`El producto con id ${id} se ecuentra duplicado`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
+    if (productsFromDB && productsFromDB.some(pdb => pdb.product_type === types.productsTypes.SERVICE))
+      errors.push('Una compra no puede incluir servicios')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const productsWithTaxes = calculateProductTaxes(products, productsStocks)
+    const productsWithTaxes = calculateProductTaxes(products, productsFromDB)
     const formattedDates = getFormattedDates({ start_date })
 
     const { res } = await db.transaction(async connection => {

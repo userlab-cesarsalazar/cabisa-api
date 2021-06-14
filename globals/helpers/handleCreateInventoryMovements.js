@@ -1,5 +1,23 @@
 const types = require('../types')
 
+// req.body: {
+//   document_type,
+//   operation_id,
+//   products: [
+//     {
+//       product_id,
+//       product_type,
+//       stock,
+//       product_price,
+//       tax_fee,
+//       product_quantity,
+//       product_discount_percentage,
+//       product_discount,
+//       unit_tax_amount,
+//     },
+//   ],
+// }
+
 const handleCreateInventoryMovements = async (req, res) => {
   // if both are needed, keep the order in the next array, first 'OUT' then 'IN'
   // [inventoryMovementsTypes.OUT, inventoryMovementsTypes.IN],
@@ -17,7 +35,9 @@ const handleCreateInventoryMovements = async (req, res) => {
   const movementTypes = config[document_type]
 
   const inventoryMovements = movementTypes.reduce((movementsResult, movement_type) => {
-    const movements = products.map(p => {
+    const movements = products.flatMap(p => {
+      if (p.product_type === types.productsTypes.SERVICE) return []
+
       const unit_cost = movement_type === types.inventoryMovementsTypes.IN ? p.product_price : null
 
       return { operation_id, product_id: p.product_id, quantity: p.product_quantity, unit_cost, movement_type }

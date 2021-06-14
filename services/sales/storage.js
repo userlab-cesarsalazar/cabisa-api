@@ -69,6 +69,7 @@ const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.st
 const findProducts = whereIn => `
   SELECT
     p.id AS product_id,
+    p.product_type,
     p.stock,
     p.unit_price AS product_price,
     t.fee AS tax_fee
@@ -136,6 +137,7 @@ const findDocumentDetails = () => `
     dp.product_price AS products__product_price,
     dp.tax_fee AS products__tax_fee,
     dp.unit_tax_amount AS products__unit_tax_amount,
+    p.product_type AS products__product_type,
     p.status AS products__product_status,
     p.stock AS products__product_stock
   FROM documents d

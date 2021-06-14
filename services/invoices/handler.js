@@ -131,8 +131,8 @@ module.exports.create = async event => {
     const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
-    const productsStocks = await db.query(storage.findProducts(productsIds))
-    const productsExists = products.flatMap(p => (!productsStocks.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
+    const productsFromDB = await db.query(storage.findProducts(productsIds))
+    const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
     const requiredFields = ['stakeholder_id', 'products', 'payment_method', 'project_id']
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
@@ -164,7 +164,7 @@ module.exports.create = async event => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const productsWithTaxes = calculateProductTaxes(products, productsStocks)
+    const productsWithTaxes = calculateProductTaxes(products, productsFromDB)
 
     const { res } = await db.transaction(async connection => {
       const stakeholderCreated = await handleCreateStakeholder({ ...req, body: { ...req.body, products: productsWithTaxes } }, { connection })
