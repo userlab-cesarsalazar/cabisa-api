@@ -90,6 +90,7 @@ module.exports.update = async event => {
   try {
     const inputType = {
       id: { type: ['string', 'number'], required: true },
+      stakeholder_type: { type: { enum: types.stakeholdersTypes }, required: true },
       name: { type: 'string', length: 100, required: true },
       address: { type: 'string', length: 100, required: true },
       nit: { type: 'string', length: 11, required: true },
@@ -101,22 +102,29 @@ module.exports.update = async event => {
     }
     const req = await handleRequest({ event, inputType, dbQuery: db.query, storage: storage.findAllBy })
 
-    const { id, name, address, nit, email, phone, alternative_phone, business_man, payments_man, updated_by = 1 } = req.body
+    const { id, stakeholder_type, name, address, nit, email, phone, alternative_phone, business_man, payments_man, updated_by = 1 } = req.body
 
     const errors = []
-    const requiredFields = ['id', 'name', 'address', 'nit', 'phone']
+    const requiredFields = ['id', 'stakeholder_type', 'name', 'address', 'nit', 'phone']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const [stakeholder] = req.currentModel ? await db.query(storage.checkExists({ nit, stakeholder_type: req.currentModel.stakeholder_type })) : []
+    const [stakeholder] = await db.query(storage.checkExists({ nit, stakeholder_type }))
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (!req.currentModel) errors.push(`El stakeholder con id ${id} no se encuentra registrado`)
     if (stakeholder && Number(id) !== Number(stakeholder.id)) errors.push(`El nit ya se encuentra registrado`)
     if (!isEmail(email)) errors.push(`El email es invalido`)
+    if (Object.keys(types.stakeholdersTypes).every(k => types.stakeholdersTypes[k] !== stakeholder_type))
+      errors.push(
+        `The field stakeholder_type must contain one of these values: ${Object.keys(types.stakeholdersTypes)
+          .map(k => types.stakeholdersTypes[k])
+          .join(', ')}`
+      )
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
       await connection.query(storage.updateStakeholder(), [
+        stakeholder_type,
         name,
         address,
         nit,
@@ -129,7 +137,7 @@ module.exports.update = async event => {
         id,
       ])
 
-      return { statusCode: 200, data: { id }, message: 'Stakeholder creado exitosamente' }
+      return { statusCode: 200, data: { id }, message: 'Stakeholder actualizado exitosamente' }
     })
 
     return await handleResponse({ req, res })

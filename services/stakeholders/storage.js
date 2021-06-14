@@ -29,7 +29,17 @@ const checkExists = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
 
 const updateStakeholder = () => `
   UPDATE stakeholders
-  SET name = ?, address = ?, nit = ?, email = ?, phone = ?, alternative_phone = ?, business_man = ?, payments_man = ?, updated_by = ?
+  SET
+    stakeholder_type = ?,
+    name = ?,
+    address = ?,
+    nit = ?,
+    email = ?,
+    phone = ?,
+    alternative_phone = ?,
+    business_man = ?,
+    payments_man = ?,
+    updated_by = ?
   WHERE id = ?
 `
 
