@@ -37,7 +37,6 @@ const handleUpdateDocument = async (req, res) => {
           ${p.product_id},
           ${p.product_price},
           ${p.product_quantity},
-          ${p.product_return_cost ? p.product_return_cost : null},
           ${p.tax_fee},
           ${p.unit_tax_amount}
         )`
@@ -72,12 +71,11 @@ const deleteDocumentProducts = productIds => `
 
 const updateDocumentsProducts = valuesArray => `
   INSERT INTO documents_products
-  (document_id, product_id, product_price, product_quantity, product_return_cost, tax_fee, unit_tax_amount)
+  (document_id, product_id, product_price, product_quantity, tax_fee, unit_tax_amount)
   VALUES ${valuesArray.join(', ')}
   ON DUPLICATE KEY UPDATE
     product_price = VALUES(product_price),
     product_quantity = VALUES(product_quantity),
-    product_return_cost = VALUES(product_return_cost),
     tax_fee = VALUES(tax_fee),
     unit_tax_amount = VALUES(unit_tax_amount)
 `

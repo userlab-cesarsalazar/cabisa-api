@@ -39,7 +39,6 @@ const handleCreateDocument = async (req, res) => {
         ${p.product_id},
         ${p.product_price},
         ${p.product_quantity},
-        ${p.product_return_cost || null},
         ${p.tax_fee},
         ${p.unit_tax_amount},
         ${p.product_discount_percentage || null},
@@ -62,7 +61,7 @@ const createDocument = () => `
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products
-  (document_id, product_id, product_price, product_quantity, product_return_cost, tax_fee, unit_tax_amount, discount_percentage, unit_discount_amount)
+  (document_id, product_id, product_price, product_quantity, tax_fee, unit_tax_amount, discount_percentage, unit_discount_amount)
   VALUES ${valuesArray.join(', ')}
 `
 
