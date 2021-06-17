@@ -46,6 +46,8 @@ const handleCreateInventoryMovements = async (req, res) => {
     return [...movementsResult, ...movements]
   }, [])
 
+  if (!inventoryMovements || !inventoryMovements[0]) return { req, res }
+
   const inventoryMovmentsQueryValues = inventoryMovements.reduce((result, im) => {
     const insertValues = `(${im.operation_id}, ${im.product_id}, ${im.quantity}, ${im.unit_cost}, '${im.movement_type}')`
     const operationsIds = (result && result.whereConditions && result.whereConditions.operationsIds) || []
