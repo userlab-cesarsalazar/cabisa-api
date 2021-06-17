@@ -130,7 +130,7 @@ const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousCondition
       value = fieldValue.substring(fieldValue.indexOf(':') + 1)
     }
 
-    if (!operators[paramOperator]) throw new Error(`The provided operator doesn't exist`)
+    if (!operators[paramOperator]) throw new Error(`The provided operator doesn't exists`)
 
     const previousCondition = !hasPreviousConditions && i === 0 ? 'WHERE ' : prefixOperator
     const field = tableAlias ? `${tableAlias}.${k}` : k

@@ -23,6 +23,12 @@ const documentsTypes = {
   RENT_INVOICE: 'RENT_INVOICE',
 }
 
+const documentsServiceType = {
+  MACHINERY: 'MACHINERY',
+  EQUIPMENT: 'EQUIPMENT',
+  SERVICE: 'SERVICE',
+}
+
 const documentsStatus = {
   PENDING: 'PENDING',
   CANCELLED: 'CANCELLED',
@@ -89,6 +95,7 @@ const usersStatus = {
 module.exports = {
   actions,
   documentsPaymentMethods,
+  documentsServiceType,
   documentsStatus,
   documentsTypes,
   inventoryMovementsStatus,
