@@ -92,8 +92,17 @@ const usersStatus = {
   BLOCKED: 'BLOCKED',
 }
 
+const creditsPolicy = {
+  creditDaysEnum: {
+    ONE_WEEK: 7,
+    TWO_WEEKS: 15,
+    ONE_MONTH: 30,
+  },
+}
+
 module.exports = {
   actions,
+  creditsPolicy,
   documentsPaymentMethods,
   documentsServiceType,
   documentsStatus,

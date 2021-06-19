@@ -42,6 +42,12 @@ const mysqlConfig = mysql => {
         return result[0].id
       }
 
+      connection.query = async (sql, values, log = true) => {
+        if (log) console.log(connection.format(sql, values))
+
+        return await connection.execute(sql, values)
+      }
+
       const result = await func(connection)
 
       await connection.commit()

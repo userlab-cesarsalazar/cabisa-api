@@ -1,9 +1,9 @@
 -- PROJECTS
-INSERT INTO projects (stakeholder_id, name, description, business_man, created_by)
-VALUES (1, 'Our first project', 'An interesting project', 'Random name', 1);
+INSERT INTO projects (id, stakeholder_id, name, start_date, end_date, created_by)
+VALUES (1, 1, 'Our first project', '2020-06-18 01:15:15', '2021-06-18 01:15:15', 1);
 
-INSERT INTO projects (stakeholder_id, name, description, business_man, created_by)
-VALUES (2, 'Another great project', 'Detailed description', 'Businessman name', 1);
+INSERT INTO projects (id, stakeholder_id, name, start_date, created_by)
+VALUES (2, 2, 'Another great project', '2020-06-25 01:15:15', 1);
 
 -- DOCUMENTS
 INSERT INTO documents (document_type, stakeholder_id, operation_id, related_external_document_id, status, created_at, created_by, updated_at, updated_by)

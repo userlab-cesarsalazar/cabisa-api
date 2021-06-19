@@ -1,4 +1,4 @@
-const { decorate, escapeFields } = require('../common')
+const { decorate, escapeFields, groupJoinResult } = require('../common')
 
 const addLog =
   fn =>
@@ -12,15 +12,20 @@ const addLog =
 
 const addCurrentModel =
   fn =>
-  async ({ dbQuery, storage, initWhereCondition, uniqueKey = ['id'], ...input }, req) => {
+  async ({ dbQuery, storage, initWhereCondition, uniqueKey = ['id'], nestedFieldsKeys = null, ...input }, req) => {
     const isInvalid = uniqueKey.some(k => !req.body || !req.body[k])
 
-    if (isInvalid || !dbQuery || !storage) return await fn({ ...input, dbQuery, storage, initWhereCondition, uniqueKey }, req)
+    if (isInvalid || !dbQuery || !storage) return await fn({ ...input, dbQuery, storage, initWhereCondition, uniqueKey, nestedFieldsKeys }, req)
 
     const fields = uniqueKey.reduce((r, k) => ({ ...r, [k]: req.body[k] }), {})
-    const [currentModel] = await dbQuery(storage(fields, initWhereCondition))
+    const currentModelCollection = await dbQuery(storage(fields, initWhereCondition))
 
-    return await fn({ ...input, dbQuery, storage, initWhereCondition, uniqueKey }, { ...req, currentModel })
+    const currentModelArray = nestedFieldsKeys
+      ? groupJoinResult({ data: currentModelCollection, nestedFieldsKeys, uniqueKey })
+      : currentModelCollection
+    const currentModel = currentModelArray[0]
+
+    return await fn({ ...input, dbQuery, storage, initWhereCondition, uniqueKey, nestedFieldsKeys }, { ...req, currentModel })
   }
 
 const addQuery = fn => async (input, req) => {

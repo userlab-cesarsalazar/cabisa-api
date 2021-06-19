@@ -21,6 +21,7 @@ const findAllBy = (fields = {}) => {
       d.total_invoice,
       d.service_type,
       d.payment_method,
+      d.credit_days,
       d.created_at,
       d.created_by,
       d.updated_at,

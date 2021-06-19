@@ -144,7 +144,7 @@ const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousCondition
 const groupJoinResult = ({ data, nestedFieldsKeys, uniqueKey = ['id'] }) => {
   if (!nestedFieldsKeys) throw new Error('The argument nestedFieldsKeys is required in groupJoinResult')
 
-  if (!data || data.length === 0) return []
+  if (!data || !data[0]) return []
 
   const nestedFieldFlag = '__'
 
@@ -225,7 +225,7 @@ const getFormattedDates = dates =>
   Object.keys(dates).reduce(
     (r, k) => ({
       ...r,
-      [k]: dates[k].replace(/T/i, ' ').replace(/Z/i, ''),
+      [k]: dates[k] ? dates[k].replace(/T/i, ' ').replace(/Z/i, '') : null,
     }),
     {}
   )
