@@ -39,22 +39,42 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  projectsStatus:
-    handler: handler.readProjectsStatus
-    events:
-      - http:
-          path: projects-status
-          method: get
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
   projectsOptions:
     handler: handler.readProjectsOptions
     events:
       - http:
           path: projects-options
           method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  projectsCreate:
+    handler: handler.create
+    events:
+      - http:
+          path: projects
+          method: post
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  projectsUpdate:
+    handler: handler.update
+    events:
+      - http:
+          path: projects
+          method: put
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  projectsDelete:
+    handler: handler.delete
+    events:
+      - http:
+          path: projects
+          method: delete
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
