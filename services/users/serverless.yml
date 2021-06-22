@@ -40,6 +40,16 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
+  roles:
+    handler: handler.readRoles
+    events:
+      - http:
+          path: users/roles
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
   usersCreate:
     handler: handler.create
     events:
@@ -55,6 +65,16 @@ functions:
     events:
       - http:
           path: users
+          method: put
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  permissionsUpdate:
+    handler: handler.updatePermissions
+    events:
+      - http:
+          path: users/permissions
           method: put
           cors: true
     layers:

@@ -1,24 +1,29 @@
 const crypto = require('crypto-js')
 const mysql = require('mysql2/promise')
-const AWS = require('aws-sdk')
 const { mysqlConfig, helpers, isEmail, ValidatorException, cryptoHelpers } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
 const { handleRequest, handleResponse, handleRead } = helpers
 const db = mysqlConfig(mysql)
-const { encrypt } = cryptoHelpers(crypto)
-
-AWS.config.update({
-  accessKeyId: process.env['ACCESS_KEY_ID'],
-  secretAccessKey: process.env['SECRET_ACCESS_KEY'],
-  region: process.env['REGION'],
-})
-const cognito = new AWS.CognitoIdentityServiceProvider()
+const { encrypt, decrypt } = cryptoHelpers(crypto)
 
 module.exports.read = async event => {
   try {
     const req = await handleRequest({ event })
 
     const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readRoles = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findRoles })
 
     return await handleResponse({ req, res })
   } catch (error) {
@@ -53,7 +58,7 @@ module.exports.create = async event => {
     const cipherPassword = encrypt(password, process.env['ENCRYPTION_KEY'])
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.createUser(), [fullName, cipherPassword, email, rolId])
+      await connection.query(storage.createUser(), [fullName, cipherPassword, email, rolId, rolId])
       const id = await connection.geLastInsertId()
 
       return { statusCode: 201, data: { id }, message: 'Usuario creado exitosamente' }
@@ -73,26 +78,43 @@ module.exports.update = async event => {
       fullName: { type: 'string', required: true },
       email: { type: 'email', required: true },
       rolId: { type: 'string', length: 20, required: true },
+      previousPassword: { type: 'string' },
+      proposedPassword: { type: 'string' },
     }
     const req = await handleRequest({ event, inputType })
 
-    const { id, fullName, email, rolId } = req.body
+    const { id, fullName, email, rolId, previousPassword, proposedPassword } = req.body
 
     const errors = []
     const requiredFields = ['id', 'fullName', 'email', 'rolId']
+    // if (previousPassword) requiredFields.push('proposedPassword')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [userExists] = await db.query(storage.checkExists({ id }))
     const [emailExists] = await db.query(storage.checkExists({ email }))
+    // const previousPasswordFromDB = userExists && userExists.password
+    // const plainTextPassword = decrypt(previousPasswordFromDB, process.env['ENCRYPTION_KEY'])
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (!userExists) errors.push(`El usuario con id ${id} no se encuentra registrado`)
     if (emailExists && Number(emailExists.id) !== Number(id)) errors.push(`El email no se encuentra registrado`)
     if (email && !isEmail(email)) errors.push(`El email es invalido`)
+    // if (plainTextPassword !== previousPassword) errors.push('La contraseña actual no coincide con la registrada anteriormente')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
       await connection.query(storage.updateUser(), [fullName, email, rolId, id])
+
+      // if (previousPassword && proposedPassword) {
+      //   await handleCognitoChangePassword(
+      //     {
+      //       accessToken: req.accessToken,
+      //       previousPassword: encrypt(previousPassword, process.env['ENCRYPTION_KEY']),
+      //       proposedPassword: encrypt(proposedPassword, process.env['ENCRYPTION_KEY']),
+      //     },
+      //     connection
+      //   )
+      // }
 
       return { statusCode: 200, data: { id }, message: 'Usuario actualizado exitosamente' }
     })
@@ -134,31 +156,53 @@ module.exports.delete = async event => {
   }
 }
 
-module.exports.changePassword = async event => {
+module.exports.updatePermissions = async event => {
   try {
     const inputType = {
-      accessToken: { type: ['string', 'number'], required: true },
-      previousPassword: { type: 'string', required: true },
-      proposedPassword: { type: 'string', required: true },
+      id: { type: ['string', 'number'], required: true },
+      permissions: {
+        type: 'array',
+        required: true,
+        fields: {
+          type: 'object',
+          fields: {
+            id: { type: ['string', 'number'], required: true },
+            name: { type: 'string', required: true },
+            edit: { type: 'boolean' },
+            view: { type: 'boolean' },
+            create: { type: 'boolean' },
+            delete: { type: 'boolean' },
+          },
+        },
+      },
     }
-    const req = await handleRequest({ event, inputType })
+    const req = await handleRequest({ event, inputType, dbQuery: db.query, storage: storage.findAllBy })
 
-    const { accessToken, previousPassword, proposedPassword } = req.body
+    const { id, permissions } = req.body
 
-    const params = {
-      AccessToken: accessToken,
-      PreviousPassword: previousPassword,
-      ProposedPassword: proposedPassword,
-    }
+    const errors = []
+    const requiredFields = ['id', 'permissions']
+    const requiredPermissionsFields = ['id', 'name']
+    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+    const requiredPermissionsErrorFields = requiredPermissionsFields.some(k => permissions.some(p => !p[k]))
 
-    const res = await new Promise((resolve, reject) => {
-      cognito.changePassword(params, (err, data) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve({ statusCode: 200, data, message: 'Contraseña actualizada exitosamente' })
-        }
-      })
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (requiredPermissionsErrorFields) errors.push(`Los campos ${requiredPermissionsFields.join(', ')} son requeridos en todos los permisos`)
+    if (!req.currentModel.id) errors.push(`El usuario con id ${id} no se encuentra registrado`)
+
+    if (errors.length > 0) throw new ValidatorException(errors)
+
+    const newPermissions = req.currentModel.permissions.map(oldPerm => {
+      const samePermissions = permissions.find(perm => Number(perm.id) === Number(oldPerm.id))
+
+      if (samePermissions) return { ...oldPerm, ...samePermissions }
+      else return oldPerm
+    })
+
+    const res = await db.transaction(async connection => {
+      await connection.query(storage.updatePermissions(), [newPermissions, id])
+
+      return { statusCode: 200, data: { id }, message: 'Permisos actualizados exitosamente' }
     })
 
     return await handleResponse({ req, res })
@@ -166,4 +210,81 @@ module.exports.changePassword = async event => {
     console.log(error)
     return await handleResponse({ error })
   }
+}
+
+module.exports.changePassword = async event => {
+  try {
+    const inputType = {
+      previousPassword: { type: 'string', required: true },
+      proposedPassword: { type: 'string', required: true },
+    }
+    // TODO: obtener el accessToken del event
+    const req = await handleRequest({ event, inputType })
+    const userId = req.accessToken && req.accessToken.userId
+
+    const { previousPassword, proposedPassword } = req.body
+
+    const errors = []
+    const requiredFields = ['previousPassword', 'proposedPassword']
+    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+    const [previousPasswordFromDB] = await db.query(storage.findPassword(), [userId])
+    const plainTextPassword = decrypt(previousPasswordFromDB, process.env['ENCRYPTION_KEY'])
+
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (!userId) errors.push('Invalid access token! Requires userId')
+    if (plainTextPassword !== previousPassword) errors.push('La contraseña actual no coincide con la registrada anteriormente')
+
+    if (errors.length > 0) throw new ValidatorException(errors)
+
+    const res = await db.transaction(async connection => {
+      return await handleCognitoChangePassword(
+        {
+          accessToken: req.accessToken,
+          previousPassword: encrypt(previousPassword, process.env['ENCRYPTION_KEY']),
+          proposedPassword: encrypt(proposedPassword, process.env['ENCRYPTION_KEY']),
+        },
+        connection
+      )
+    })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+const handleCognitoChangePassword = async ({ accessToken, previousPassword, proposedPassword }, connection) => {
+  if (!accessToken) throw new Error('Invalid access token')
+  if (!previousPassword || !proposedPassword) throw new Error('Invalid password')
+
+  const cognitoResponse = await cognitoChangePasswordService({
+    AccessToken: accessToken,
+    PreviousPassword: previousPassword,
+    ProposedPassword: proposedPassword,
+  })
+
+  // TODO: verificar si hubo error en cognito.changePassword
+  if (!cognitoResponse) throw new Error('Cognito error')
+
+  await connection.query(storage.updatePassword(), [proposedPassword, userId])
+
+  return { statusCode: 200, data: { id: accessToken.userId }, message: 'Contraseña actualizada exitosamente' }
+}
+
+const cognitoChangePasswordService = ({ AccessToken, PreviousPassword, ProposedPassword }) => {
+  return new Promise((resolve, reject) => {
+    const AWS = require('aws-sdk')
+    AWS.config.update({
+      accessKeyId: process.env['ACCESS_KEY_ID'],
+      secretAccessKey: process.env['SECRET_ACCESS_KEY'],
+      region: process.env['REGION'],
+    })
+    const cognito = new AWS.CognitoIdentityServiceProvider()
+
+    cognito.changePassword({ AccessToken, PreviousPassword, ProposedPassword }, (error, data) => {
+      if (error) reject(error)
+      else resolve(data)
+    })
+  })
 }
