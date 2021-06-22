@@ -285,6 +285,15 @@ module.exports.invoice = async event => {
     const inputType = {
       document_id: { type: ['number', 'string'], required: true },
       payment_method: { type: { enum: types.documentsPaymentMethods }, required: true },
+      service_type: { type: { enum: types.documentsServiceType }, required: true },
+      credit_days: { type: { enum: types.creditsPolicy.creditDaysEnum } },
+      total_invoice: { type: 'number', min: 0, required: true },
+      // stakeholder_type: { type: { enum: [types.stakeholdersTypes.CLIENT_INDIVIDUAL, types.stakeholdersTypes.CLIENT_COMPANY] } },
+      // stakeholder_name: { type: 'string', length: 100 },
+      // stakeholder_address: { type: 'string', length: 100 },
+      // stakeholder_nit: { type: 'string', length: 11 },
+      // stakeholder_phone: { type: 'string', length: 20 },
+      related_external_document_id: { type: ['string', 'number'] },
       products: {
         type: 'array',
         required: true,
@@ -302,14 +311,14 @@ module.exports.invoice = async event => {
     }
 
     const req = await handleRequest({ event, inputType })
-    const { document_id, payment_method, products } = req.body
+    const { document_id, payment_method, credit_days, service_type, total_invoice, products } = req.body
 
     // can(req.currentAction, types.operationsTypes.PURCHASE)
 
     const errors = []
     const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
-    const requiredFields = ['document_id', 'payment_method']
+    const requiredFields = ['document_id', 'payment_method', 'service_type', 'total_invoice']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
@@ -328,10 +337,23 @@ module.exports.invoice = async event => {
       errors.push('El documento ya se encuentra cancelado')
     if (documentDetails[0] && documentDetails[0].related_internal_document_id)
       errors.push(`El documento ya esta relacionado a una factura con id ${documentDetails[0].related_internal_document_id}`)
+    if (total_invoice < 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
     if (Object.keys(types.documentsPaymentMethods).every(k => types.documentsPaymentMethods[k] !== payment_method))
       errors.push(
         `The field payment_method must contain one of these values: ${Object.keys(types.documentsPaymentMethods)
           .map(k => types.documentsPaymentMethods[k])
+          .join(', ')}`
+      )
+    if (credit_days && Object.keys(types.creditsPolicy.creditDaysEnum).every(k => types.creditsPolicy.creditDaysEnum[k] !== credit_days))
+      errors.push(
+        `The field credit_days must contain one of these values: ${Object.keys(types.creditsPolicy.creditDaysEnum)
+          .map(k => types.creditsPolicy.creditDaysEnum[k])
+          .join(', ')}`
+      )
+    if (Object.keys(types.documentsServiceType).every(k => types.documentsServiceType[k] !== service_type))
+      errors.push(
+        `The field service_type must contain one of these values: ${Object.keys(types.documentsServiceType)
+          .map(k => types.documentsServiceType[k])
           .join(', ')}`
       )
 
@@ -366,7 +388,7 @@ module.exports.invoice = async event => {
       const documentCreated = await handleCreateDocument(
         {
           ...req,
-          body: { ...req.body, ...groupedDocumentDetails, products: productsWithTaxes, document_type },
+          body: { ...groupedDocumentDetails, ...req.body, products: productsWithTaxes, document_type },
         },
         { connection }
       )
@@ -391,6 +413,7 @@ module.exports.cancel = async event => {
   try {
     const inputType = {
       document_id: { type: ['number', 'string'], required: true },
+      cancel_reason: { type: 'string' },
     }
 
     const req = await handleRequest({ event, inputType })
@@ -416,7 +439,7 @@ module.exports.cancel = async event => {
     })
 
     const { res } = await db.transaction(async connection => {
-      const documentCancelled = await handleCancelDocument({ ...req, body: { ...req.body, ...groupedDocumentMovements } }, { connection })
+      const documentCancelled = await handleCancelDocument({ ...req, body: { ...groupedDocumentMovements, ...req.body } }, { connection })
 
       return await handleUpdateStock(documentCancelled.req, { ...documentCancelled.res, updateStockOn: types.actions.CANCELLED })
     })

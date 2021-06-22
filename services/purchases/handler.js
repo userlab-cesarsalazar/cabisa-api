@@ -139,6 +139,7 @@ module.exports.cancel = async event => {
   try {
     const inputType = {
       document_id: { type: ['number', 'string'], required: true },
+      cancel_reason: { type: 'string' },
     }
 
     const req = await handleRequest({ event, inputType })
@@ -165,7 +166,7 @@ module.exports.cancel = async event => {
     })
 
     const { res } = await db.transaction(async connection => {
-      const documentCancelled = await handleCancelDocument({ ...req, body: { ...req.body, ...groupedDocumentMovements } }, { connection })
+      const documentCancelled = await handleCancelDocument({ ...req, body: { ...groupedDocumentMovements, ...req.body } }, { connection })
 
       return await handleUpdateStock(documentCancelled.req, { ...documentCancelled.res, updateStockOn: types.actions.CANCELLED })
     })
