@@ -23,6 +23,12 @@ const documentsTypes = {
   RENT_INVOICE: 'RENT_INVOICE',
 }
 
+const documentsServiceType = {
+  MACHINERY: 'MACHINERY',
+  EQUIPMENT: 'EQUIPMENT',
+  SERVICE: 'SERVICE',
+}
+
 const documentsStatus = {
   PENDING: 'PENDING',
   CANCELLED: 'CANCELLED',
@@ -86,9 +92,19 @@ const usersStatus = {
   BLOCKED: 'BLOCKED',
 }
 
+const creditsPolicy = {
+  creditDaysEnum: {
+    ONE_WEEK: 7,
+    TWO_WEEKS: 15,
+    ONE_MONTH: 30,
+  },
+}
+
 module.exports = {
   actions,
+  creditsPolicy,
   documentsPaymentMethods,
+  documentsServiceType,
   documentsStatus,
   documentsTypes,
   inventoryMovementsStatus,

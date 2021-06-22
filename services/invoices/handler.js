@@ -94,11 +94,42 @@ module.exports.readInvoicesStatus = async event => {
   }
 }
 
+module.exports.readInvoiceServiceType = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findInvoiceServiceType })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.readCreditDays = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const data = Object.keys(types.creditsPolicy.creditDaysEnum).map(k => types.creditsPolicy.creditDaysEnum[k])
+
+    const res = { statusCode: 200, data }
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
 module.exports.create = async event => {
   const inputType = {
     stakeholder_id: { type: ['string', 'number'], required: true },
     payment_method: { type: { enum: types.documentsPaymentMethods }, required: true },
     project_id: { type: ['string', 'number'], required: true },
+    service_type: { type: { enum: types.documentsServiceType }, required: true },
+    credit_days: { type: { enum: types.creditsPolicy.creditDaysEnum } },
+    total_invoice: { type: 'number', min: 0, required: true },
     // stakeholder_type: { type: { enum: [types.stakeholdersTypes.CLIENT_INDIVIDUAL, types.stakeholdersTypes.CLIENT_COMPANY] } },
     // stakeholder_name: { type: 'string', length: 100 },
     // stakeholder_address: { type: 'string', length: 100 },
@@ -123,7 +154,8 @@ module.exports.create = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
-    const { stakeholder_id, project_id, stakeholder_type, stakeholder_nit, payment_method, products } = req.body
+    const { stakeholder_id, project_id, stakeholder_type, stakeholder_nit, payment_method, credit_days, service_type, total_invoice, products } =
+      req.body
     const operation_type = types.operationsTypes.SELL
     // can(req.currentAction, operation_type)
 
@@ -133,7 +165,7 @@ module.exports.create = async event => {
     const productsIds = products.map(p => p.product_id)
     const productsFromDB = await db.query(storage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
-    const requiredFields = ['stakeholder_id', 'products', 'payment_method', 'project_id']
+    const requiredFields = ['stakeholder_id', 'products', 'payment_method', 'project_id', 'service_type', 'total_invoice']
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -154,6 +186,18 @@ module.exports.create = async event => {
           .map(k => types.documentsPaymentMethods[k])
           .join(', ')}`
       )
+    if (credit_days && Object.keys(types.creditsPolicy.creditDaysEnum).every(k => types.creditsPolicy.creditDaysEnum[k] !== credit_days))
+      errors.push(
+        `The field credit_days must contain one of these values: ${Object.keys(types.creditsPolicy.creditDaysEnum)
+          .map(k => types.creditsPolicy.creditDaysEnum[k])
+          .join(', ')}`
+      )
+    if (Object.keys(types.documentsServiceType).every(k => types.documentsServiceType[k] !== service_type))
+      errors.push(
+        `The field service_type must contain one of these values: ${Object.keys(types.documentsServiceType)
+          .map(k => types.documentsServiceType[k])
+          .join(', ')}`
+      )
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos, son requeridos`)
     if (stakeholderNitUnique) errors.push('El nit ya se encuentra registrado')
@@ -161,6 +205,7 @@ module.exports.create = async event => {
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no esta registrado`))
     if (project_id && !projectExists) errors.push(`El proyecto no se encuentra registrado`)
+    if (total_invoice < 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -204,6 +249,7 @@ module.exports.cancel = async event => {
   try {
     const inputType = {
       document_id: { type: ['number', 'string'], required: true },
+      cancel_reason: { type: 'string' },
     }
 
     const req = await handleRequest({ event, inputType })
@@ -228,7 +274,7 @@ module.exports.cancel = async event => {
     })
 
     const { res } = await db.transaction(async connection => {
-      const documentCancelled = await handleCancelDocument({ ...req, body: { ...req.body, ...groupedDocumentMovements } }, { connection })
+      const documentCancelled = await handleCancelDocument({ ...req, body: { ...groupedDocumentMovements, ...req.body } }, { connection })
 
       return await handleUpdateStock(documentCancelled.req, { ...documentCancelled.res, updateStockOn: types.actions.CANCELLED })
     })

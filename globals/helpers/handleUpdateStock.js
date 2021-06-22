@@ -36,12 +36,20 @@ const handleUpdateStock = async (req, res) => {
     return [...(result || []), newStock]
   }, [])
 
-  if (stocks) {
-    const errors = stocks.flatMap(s => (s.stock < 0 ? `El stock para el producto con id ${s.product_id} no puede ser menor a cero` : []))
+  if (stocks && stocks[0]) {
+    const invalidProductsIds = stocks.flatMap(s => (s.stock < 0 ? s.product_id : []))
 
-    if (errors.length > 0) throw new ValidatorException(errors)
+    if (invalidProductsIds.length > 0) {
+      const [invalidProductsFromDB] = await res.connection.query(findInvalidProductsNames(invalidProductsIds))
+      const invalidProductsNames = invalidProductsFromDB.map(p => p.description)
+      const errors = [`Stock insuficiente para los productos: ${invalidProductsNames.join(', ')}`]
 
-    // TODO: eliminar duplicados
+      errors.push('Por favor, incluya una cantidad menor o registre una compra para aumentar el stock actual')
+
+      throw new ValidatorException(errors)
+    }
+
+    // TODO: eliminar duplicados en stocks
     const updateStockPromises = stocks.map(s => res.connection.query(updateStock(), [s.stock, s.product_id]))
     await Promise.all(updateStockPromises)
   }
@@ -53,5 +61,7 @@ const handleUpdateStock = async (req, res) => {
 }
 
 const updateStock = () => `UPDATE products SET stock = ? WHERE id = ?`
+
+const findInvalidProductsNames = invalidProductsIds => `SELECT description FROM products WHERE id IN (${invalidProductsIds.join(', ')})`
 
 module.exports = handleUpdateStock
