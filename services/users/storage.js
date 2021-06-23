@@ -26,7 +26,7 @@ const createUser = () => `
   VALUES(?, ?, ?, ?, 1, (SELECT permissions FROM roles WHERE id = ?))
 `
 
-const updatePermissions = () => `UPDATE users SET permissions = ? WHERE id = ?`
+const updatePermissions = (newPermissions, id) => `UPDATE users SET permissions = '${newPermissions}' WHERE id = ${id}`
 
 const findPassword = () => `SELECT password FROM users WHERE id = ?`
 

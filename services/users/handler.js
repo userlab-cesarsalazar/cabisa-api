@@ -81,6 +81,7 @@ module.exports.update = async event => {
       previousPassword: { type: 'string' },
       proposedPassword: { type: 'string' },
     }
+    // TODO: si se cambia el rolId entonces se deben reescribir los permisos de la tabla users con los del nuevo rol
     const req = await handleRequest({ event, inputType })
 
     const { id, fullName, email, rolId, previousPassword, proposedPassword } = req.body
@@ -200,7 +201,8 @@ module.exports.updatePermissions = async event => {
     })
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.updatePermissions(), [newPermissions, id])
+      const newPermissionsStringified = JSON.stringify(newPermissions)
+      await connection.query(storage.updatePermissions(newPermissionsStringified, id))
 
       return { statusCode: 200, data: { id }, message: 'Permisos actualizados exitosamente' }
     })
