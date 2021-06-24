@@ -63,22 +63,24 @@ const setStatusStakeholder = () => 'UPDATE stakeholders SET status = ?, block_re
 
 const deleteProjects = projectIds => `DELETE FROM projects WHERE stakeholder_id = ? AND id IN (${projectIds.join(', ')})`
 
-const updateProjects = () => `UPDATE projects SET start_date = ?, end_date = ?, name = ?, updated_by = ? WHERE stakeholder_id = ? AND id = ?`
-
-const createProjects = createProjectValues => `
-  INSERT INTO projects (stakeholder_id, start_date, end_date, name, created_by)
-  VALUES ${createProjectValues.join(', ')}
+const crupdateProjects = valuesArray => `
+  INSERT INTO projects (id, stakeholder_id, start_date, end_date, name, created_by)
+  VALUES ${valuesArray.join(', ')}
+  ON DUPLICATE KEY UPDATE
+    start_date = VALUES(start_date),
+    end_date = VALUES(end_date),
+    name = VALUES(name),
+    created_by = VALUES(created_by)
 `
 
 module.exports = {
   checkExists,
-  createProjects,
+  crupdateProjects,
   deleteProjects,
   findAllBy,
   findOptionsBy,
   findProjectsOptionsBy,
   findStakeholderTypes,
   setStatusStakeholder,
-  updateProjects,
   updateStakeholder,
 }

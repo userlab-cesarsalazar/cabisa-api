@@ -68,15 +68,37 @@ module.exports.create = async event => {
       alternative_phone: { type: 'string', length: 20 },
       business_man: { type: 'string', length: 100 },
       payments_man: { type: 'string', length: 100 },
+      projects: {
+        type: 'array',
+        fields: {
+          type: 'object',
+          fields: {
+            id: { type: ['string', 'number'] },
+            start_date: { type: 'string', required: true },
+            end_date: { type: 'string' },
+            name: { type: 'string', required: true },
+          },
+        },
+      },
     }
     const req = await handleRequest({ event, inputType })
 
-    const { stakeholder_type, nit, email } = req.body
+    const { stakeholder_type, nit, email, projects, created_by = 1 } = req.body
 
     const errors = []
     const requiredFields = ['stakeholder_type', 'name', 'address', 'nit', 'phone']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [stakeholderExists] = await db.query(storage.checkExists({ nit, stakeholder_type }))
+    const projectsMap =
+      projects && projects[0]
+        ? projects.reduce((r, p) => {
+            if (!p.name) return r
+            return { ...r, [p.name]: [...(r[p.name] || []), p.name] }
+          }, {})
+        : {}
+    const duplicateProjects = Object.keys(projectsMap)[0] && Object.keys(projectsMap).flatMap(k => (projectsMap[k].length > 1 ? k : []))
+    const requiredProjectFields = projects && projects[0] ? ['start_date', 'name'] : []
+    const requiredProjectErrorFields = requiredProjectFields.some(k => projects.some(p => !p[k]))
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (stakeholderExists) errors.push(`El nit ya se ecuentra registrado`)
@@ -87,10 +109,19 @@ module.exports.create = async event => {
           .map(k => types.stakeholdersTypes[k])
           .join(', ')}`
       )
+    if (requiredProjectErrorFields) errors.push(`Los campos ${requiredProjectFields.join(', ')} en proyectos, son requeridos`)
+    if (duplicateProjects && duplicateProjects[0]) duplicateProjects.forEach(name => errors.push(`El proyecto ${name} no deben estar duplicados`))
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const { res } = await db.transaction(async connection => await handleCreateStakeholder(req, { connection, storage }))
+    const res = await db.transaction(async connection => {
+      const stakeholderCreated = await handleCreateStakeholder(req, { connection, storage })
+      const { stakeholder_id } = stakeholderCreated.res.data
+
+      await crupdateProjects({ stakeholderId: stakeholder_id, crupdatedBy: created_by, projects }, connection)
+
+      return stakeholderCreated.res
+    })
 
     return await handleResponse({ req, res })
   } catch (error) {
@@ -139,8 +170,8 @@ module.exports.update = async event => {
     const projectsMap =
       projects && projects[0]
         ? projects.reduce((r, p) => {
-            if (!p.id) return r
-            return { ...r, [p.id]: [...(r[p.id] || []), p.id] }
+            if (!p.name) return r
+            return { ...r, [p.name]: [...(r[p.name] || []), p.name] }
           }, {})
         : {}
     const duplicateProjects = Object.keys(projectsMap)[0] && Object.keys(projectsMap).flatMap(k => (projectsMap[k].length > 1 ? k : []))
@@ -161,8 +192,7 @@ module.exports.update = async event => {
           .map(k => types.stakeholdersTypes[k])
           .join(', ')}`
       )
-    if (duplicateProjects && duplicateProjects[0])
-      duplicateProjects.forEach(id => errors.push(`Los proyectos con id ${id} no deben estar duplicados`))
+    if (duplicateProjects && duplicateProjects[0]) duplicateProjects.forEach(name => errors.push(`El proyecto ${name} no deben estar duplicados`))
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -181,7 +211,7 @@ module.exports.update = async event => {
       ])
 
       const crupdatedProjects = await crupdateProjects(
-        { stakeholderId: id, updatedBy: updated_by, oldProjects: req.currentModel.projects, projects },
+        { stakeholderId: id, crupdatedBy: updated_by, oldProjects: req.currentModel.projects, projects },
         connection
       )
 
@@ -235,63 +265,31 @@ module.exports.setStatus = async event => {
   }
 }
 
-const crupdateProjects = async ({ stakeholderId, updatedBy, oldProjects, projects }, connection) => {
-  if (!stakeholderId) return
-
-  const createdBy = updatedBy
+const crupdateProjects = async ({ stakeholderId, crupdatedBy, projects, oldProjects }, connection) => {
+  if (!stakeholderId || !crupdatedBy) throw new Error('Missing parameter on crupdateProjects')
 
   const deleteProjectIds =
-    oldProjects && oldProjects[0] && oldProjects[0].name
-      ? oldProjects.flatMap(op => (projects && projects[0] && projects.some(p => Number(p.id) === Number(op.id)) ? [] : op.id))
-      : []
+    oldProjects &&
+    oldProjects[0] &&
+    oldProjects[0].id &&
+    oldProjects.flatMap(op => (projects && projects[0] && projects.some(p => Number(p.id) === Number(op.id)) ? [] : op.id))
 
-  const { updateProjects, insertProjects } =
-    projects && projects[0]
-      ? projects.reduce((r, p) => {
-          const projectExistsAlready = oldProjects && oldProjects[0] && oldProjects[0].name && oldProjects.some(op => Number(op.id) === Number(p.id))
+  const crupdateProjectsValues =
+    projects &&
+    projects[0] &&
+    projects.map(p => {
+      const { start_date, end_date } = getFormattedDates({ start_date: p.start_date, end_date: p.end_date })
 
-          const formattedDates = getFormattedDates({ start_date: p.start_date, end_date: p.end_date })
-          const project = { ...p, ...formattedDates }
-
-          if (projectExistsAlready) return { ...r, updateProjects: [...(r.updateProjects || []), project] }
-          else return { ...r, insertProjects: [...(r.insertProjects || []), project] }
-        }, {})
-      : {}
-
-  const createProjectsValues =
-    insertProjects &&
-    insertProjects[0] &&
-    insertProjects.map(
-      p => `
-    (
-      ${stakeholderId},
-      ${p.start_date ? `'${p.start_date}'` : null},
-      ${p.end_date ? `'${p.end_date}'` : null},
-      ${p.name ? `'${p.name}'` : null},
-      ${createdBy}
-    )
-  `
-    )
+      return `(
+        ${p.id ? p.id : null},
+        ${stakeholderId ? stakeholderId : null},
+        ${start_date ? `'${start_date}'` : null},
+        ${end_date ? `'${end_date}'` : null},
+        ${p.name ? `'${p.name}'` : null},
+        ${crupdatedBy}
+      )`
+    })
 
   if (deleteProjectIds && deleteProjectIds[0]) await connection.query(storage.deleteProjects(deleteProjectIds), [stakeholderId])
-  if (createProjectsValues && createProjectsValues[0]) if (createProjectsValues) await connection.query(storage.createProjects(createProjectsValues))
-
-  if (updateProjects && updateProjects[0]) {
-    const updateProjectPromises = updateProjects.map(p =>
-      connection.query(storage.updateProjects(), [
-        p.start_date ? p.start_date : null,
-        p.end_date ? p.end_date : null,
-        p.name ? p.name : null,
-        updatedBy,
-        stakeholderId,
-        p.id,
-      ])
-    )
-
-    await Promise.all(updateProjectPromises)
-  }
-
-  const [crupdatedProjects] = await connection.query(storage.findProjectsOptionsBy({ stakeholder_id: stakeholderId }))
-
-  return crupdatedProjects
+  if (crupdateProjectsValues && crupdateProjectsValues[0]) await connection.query(storage.crupdateProjects(crupdateProjectsValues))
 }
