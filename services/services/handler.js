@@ -57,6 +57,7 @@ module.exports.create = async event => {
           .join(', ')}`
       )
     if (!tax || !tax.id) errors.push(`The tax 'EXENTO' doesn't exists in the DB`)
+    if (unit_price < 0) errors.push(`El precio debe ser un monto mayor o igual a cero`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -99,6 +100,7 @@ module.exports.update = async event => {
           .map(k => types.productsStatus[k])
           .join(', ')}`
       )
+    if (unit_price < 0) errors.push(`El precio debe ser un monto mayor o igual a cero`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 

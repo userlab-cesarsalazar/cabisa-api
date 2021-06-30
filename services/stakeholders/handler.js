@@ -115,7 +115,7 @@ module.exports.create = async event => {
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
-      const stakeholderCreated = await handleCreateStakeholder(req, { connection, storage })
+      const stakeholderCreated = await handleCreateStakeholder(req, { connection })
       const { stakeholder_id } = stakeholderCreated.res.data
 
       await crupdateProjects({ stakeholderId: stakeholder_id, crupdatedBy: created_by, projects }, connection)
