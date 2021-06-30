@@ -94,7 +94,7 @@ module.exports.create = async event => {
       errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor o igual a cero`)
     if (stakeholderNitUnique) errors.push('El nit ya se encuentra registrado')
     if (stakeholder_id && !stakeholderIdExists) errors.push('El proveedor no se encuentra registrado')
-    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`El producto con id ${id} se ecuentra duplicado`))
+    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`El producto con id ${id} se encuentra duplicado`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
     if (productsFromDB && productsFromDB.some(pdb => pdb.product_type === types.productsTypes.SERVICE))
       errors.push('Una compra no puede incluir servicios')

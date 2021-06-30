@@ -101,7 +101,7 @@ module.exports.create = async event => {
     const requiredProjectErrorFields = requiredProjectFields.some(k => projects.some(p => !p[k]))
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (stakeholderExists) errors.push(`El nit ya se ecuentra registrado`)
+    if (stakeholderExists) errors.push(`El nit ya se encuentra registrado`)
     if (email && !isEmail(email)) errors.push(`El email es invalido`)
     if (Object.keys(types.stakeholdersTypes).every(k => types.stakeholdersTypes[k] !== stakeholder_type))
       errors.push(
