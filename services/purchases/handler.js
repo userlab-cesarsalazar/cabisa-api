@@ -79,7 +79,7 @@ module.exports.create = async event => {
     // if (!stakeholder_id) requiredFields.push('stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     const requiredProductFields = ['product_id', 'product_quantity']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k]))
+    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] < 0))
     const [stakeholderNitUnique] = stakeholder_nit ? await db.query(storage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
     const [stakeholderIdExists] = stakeholder_id ? await db.query(storage.findStakeholder({ id: stakeholder_id })) : []
 
@@ -90,10 +90,11 @@ module.exports.create = async event => {
           .join(', ')}`
       )
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos son requeridos`)
+    if (requiredProductErrorFields)
+      errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor o igual a cero`)
     if (stakeholderNitUnique) errors.push('El nit ya se encuentra registrado')
     if (stakeholder_id && !stakeholderIdExists) errors.push('El proveedor no se encuentra registrado')
-    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`El producto con id ${id} se ecuentra duplicado`))
+    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`El producto con id ${id} se encuentra duplicado`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
     if (productsFromDB && productsFromDB.some(pdb => pdb.product_type === types.productsTypes.SERVICE))
       errors.push('Una compra no puede incluir servicios')

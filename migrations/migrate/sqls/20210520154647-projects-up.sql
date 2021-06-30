@@ -4,6 +4,7 @@ CREATE TABLE `projects` (
   `name` VARCHAR(255) DEFAULT NULL,
   `start_date` TIMESTAMP,
   `end_date` TIMESTAMP,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` INT NOT NULL,
   `updated_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

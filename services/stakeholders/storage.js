@@ -1,6 +1,6 @@
 const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 
-const findAllBy = (fields = {}) => `
+const findAllBy = (fields = {}, initWhereCondition = `p.is_active = 1`) => `
   SELECT 
     s.id,
     s.stakeholder_type,
@@ -25,7 +25,7 @@ const findAllBy = (fields = {}) => `
     p.created_at AS projects__created_at
   FROM stakeholders s
   LEFT JOIN projects p ON p.stakeholder_id = s.id
-  ${getWhereConditions({ fields, tableAlias: 's', hasPreviousConditions: false })}
+  WHERE ${initWhereCondition} ${getWhereConditions({ fields, tableAlias: 's' })}
 `
 
 const findStakeholderTypes = () => `DESCRIBE stakeholders stakeholder_type`
@@ -36,8 +36,8 @@ const findOptionsBy = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) =>
   WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
-const findProjectsOptionsBy = (fields = {}) => `
-  SELECT id, name FROM projects ${getWhereConditions({ fields, hasPreviousConditions: false })}
+const findProjectsOptionsBy = (fields = {}, initWhereCondition = `is_active = 1`) => `
+  SELECT id, name FROM projects WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
 const checkExists = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
@@ -61,7 +61,9 @@ const updateStakeholder = () => `
 
 const setStatusStakeholder = () => 'UPDATE stakeholders SET status = ?, block_reason = ?, updated_by = ? WHERE id = ?'
 
-const deleteProjects = projectIds => `DELETE FROM projects WHERE stakeholder_id = ? AND id IN (${projectIds.join(', ')})`
+const deleteProjects = projectIds => `
+  UPDATE projects SET is_active = 0 WHERE stakeholder_id = ? AND id IN (${projectIds.join(', ')})
+`
 
 const crupdateProjects = valuesArray => `
   INSERT INTO projects (id, stakeholder_id, start_date, end_date, name, created_by)

@@ -1,6 +1,6 @@
 const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 
-const findAllBy = (fields = {}) => `
+const findAllBy = (fields = {}, initWhereCondition = `is_active = 1`) => `
   SELECT
     id,
     stakeholder_id,
@@ -12,15 +12,15 @@ const findAllBy = (fields = {}) => `
     updated_at,
     updated_by
   FROM projects
-  ${getWhereConditions({ fields, hasPreviousConditions: false })}
+  WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
-const findOptionsBy = (fields = {}) => `
-  SELECT id, name FROM projects ${getWhereConditions({ fields, hasPreviousConditions: false })}
+const findOptionsBy = (fields = {}, initWhereCondition = `is_active = 1`) => `
+  SELECT id, name FROM projects WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
-const checkExists = (fields = {}) => `
-  SELECT id FROM projects ${getWhereConditions({ fields, hasPreviousConditions: false })}
+const checkExists = (fields = {}, initWhereCondition = `is_active = 1`) => `
+  SELECT id FROM projects WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
 const createProject = () => `
@@ -42,7 +42,7 @@ const updateProject = () => `
   UPDATE projects SET name = ?, start_date = ?, end_date = ?, updated_by = ? WHERE id = ?
 `
 
-const deleteProject = () => `DELETE FROM projects WHERE id = ?`
+const deleteProject = () => `UPDATE projects SET is_active = 0 WHERE id = ?`
 
 module.exports = {
   checkExists,

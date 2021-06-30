@@ -98,6 +98,7 @@ module.exports.create = async event => {
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (codeExists) errors.push(`El codigo ya se encuentra registrado`)
+    if (unit_price < 0) errors.push(`El precio debe ser un monto mayor o igual a cero`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -158,6 +159,7 @@ module.exports.update = async event => {
           .map(k => types.productsStatus[k])
           .join(', ')}`
       )
+    if (unit_price < 0) errors.push(`El precio debe ser un monto mayor o igual a cero`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 

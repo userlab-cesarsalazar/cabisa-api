@@ -69,7 +69,9 @@ module.exports.approve = async event => {
       movementsExists.forEach(id => errors.push(`El movimiento con id ${id} no se encuentra registrado`))
     if (requiredMovementErrorFields) errors.push(`Los campos: ${requiredMovementFields.join(', ')} en los movimientos de inventario son requeridos`)
     if (invalidQuantities && invalidQuantities.length > 0)
-      invalidQuantities.forEach(iq => errors.push(`La cantidad para los movimientos con id ${iq.id} debe ser menor o igual a ${iq.remainning}`))
+      invalidQuantities.forEach(iq =>
+        errors.push(`La cantidad para los movimientos con id ${iq.id} debe ser mayor a 0 y menor o igual a ${iq.remainning}`)
+      )
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
