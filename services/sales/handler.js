@@ -112,7 +112,7 @@ module.exports.create = async event => {
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     if (operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] < 0))
+    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
     const [stakeholderIdExists] = stakeholder_id ? await db.query(storage.findStakeholder({ id: stakeholder_id })) : []
 
     if (Object.keys(types.operationsTypes).every(k => types.operationsTypes[k] !== operation_type))
@@ -122,8 +122,7 @@ module.exports.create = async event => {
           .join(', ')}`
       )
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (requiredProductErrorFields)
-      errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor o igual a cero`)
+    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (stakeholder_id && !stakeholderIdExists) errors.push('El cliente no se encuentra registrado')
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
@@ -243,11 +242,10 @@ module.exports.update = async event => {
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     if (document && document.operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] < 0))
+    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (requiredProductErrorFields)
-      errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor o igual a cero`)
+    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
     if (!document || !document.document_id) errors.push(`El documento con id ${document_id} no se encuentra registrado`)
@@ -323,15 +321,14 @@ module.exports.invoice = async event => {
     const requiredFields = ['document_id', 'payment_method', 'service_type', 'total_invoice']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
-    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] < 0))
+    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
     const documentDetails = document_id ? await db.query(storage.findDocumentDetails(), [document_id]) : []
     const invalidStatusProducts = documentDetails.flatMap(pm =>
       pm.products__product_status !== types.productsStatus.ACTIVE ? pm.products__product_id : []
     )
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (requiredProductErrorFields)
-      errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor o igual a cero`)
+    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (!documentDetails || !documentDetails[0]) errors.push('EL documento recibido no se encuentra registrado')
     if (invalidStatusProducts && invalidStatusProducts[0])
@@ -340,7 +337,7 @@ module.exports.invoice = async event => {
       errors.push('El documento ya se encuentra cancelado')
     if (documentDetails[0] && documentDetails[0].related_internal_document_id)
       errors.push(`El documento ya esta relacionado a una factura con id ${documentDetails[0].related_internal_document_id}`)
-    if (total_invoice < 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
+    if (total_invoice <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
     if (Object.keys(types.documentsPaymentMethods).every(k => types.documentsPaymentMethods[k] !== payment_method))
       errors.push(
         `The field payment_method must contain one of these values: ${Object.keys(types.documentsPaymentMethods)
