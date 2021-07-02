@@ -169,7 +169,7 @@ module.exports.create = async event => {
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] < 0))
+    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
     const [stakeholderNitUnique] = stakeholder_nit ? await db.query(storage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
     const [stakeholderIdExists] = stakeholder_id ? await db.query(storage.findStakeholder({ id: stakeholder_id })) : []
     const [projectExists] = project_id ? await db.query(storage.checkProjectExists(), [project_id]) : []
@@ -199,14 +199,13 @@ module.exports.create = async event => {
           .join(', ')}`
       )
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (requiredProductErrorFields)
-      errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor o igual a cero`)
+    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (stakeholderNitUnique) errors.push('El nit ya se encuentra registrado')
     if (stakeholder_id && !stakeholderIdExists) errors.push('El cliente ya se encuentra registrado')
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no esta registrado`))
     if (project_id && !projectExists) errors.push(`El proyecto no se encuentra registrado`)
-    if (total_invoice < 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
+    if (total_invoice <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
