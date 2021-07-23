@@ -39,26 +39,30 @@ module.exports.create = async event => {
       password: { type: 'string', length: 100, required: true },
       email: { type: 'email', required: true },
       rolId: { type: 'string', length: 20, required: true },
+      sales_commission: { type: 'number', min: 0, max: 100 },
     }
     const req = await handleRequest({ event, inputType })
 
-    const { fullName, password, email, rolId } = req.body
+    const { fullName, password, email, rolId, sales_commission = null } = req.body
 
     const errors = []
     const requiredFields = ['fullName', 'password', 'email', 'rolId']
+    if (Number(rolId) === 2) requiredFields.push('sales_commission')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [userExists] = await db.query(storage.checkExists({ email }))
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (userExists) errors.push(`El email ya se encuentra registrado`)
     if (email && !isEmail(email)) errors.push(`El email es invalido`)
+    if (sales_commission && (sales_commission < 0 || sales_commission > 100))
+      errors.push('El porcentaje de comision debe estar en un rango entre 0 y 100')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const cipherPassword = encrypt(password, process.env['ENCRYPTION_KEY'])
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.createUser(), [fullName, cipherPassword, email, rolId, rolId])
+      await connection.query(storage.createUser(), [fullName, cipherPassword, email, sales_commission, rolId, rolId])
       const id = await connection.geLastInsertId()
 
       return { statusCode: 201, data: { id }, message: 'Usuario creado exitosamente' }
@@ -77,6 +81,7 @@ module.exports.update = async event => {
       id: { type: ['string', 'number'], required: true },
       fullName: { type: 'string', required: true },
       email: { type: 'email', required: true },
+      sales_commission: { type: 'number', min: 0, max: 100 },
       rolId: { type: 'string', length: 20, required: true },
       previousPassword: { type: 'string' },
       proposedPassword: { type: 'string' },
@@ -84,11 +89,12 @@ module.exports.update = async event => {
     // TODO: si se cambia el rolId entonces se deben reescribir los permisos de la tabla users con los del nuevo rol
     const req = await handleRequest({ event, inputType })
 
-    const { id, fullName, email, rolId, previousPassword, proposedPassword } = req.body
+    const { id, fullName, email, sales_commission = null, rolId, previousPassword, proposedPassword } = req.body
 
     const errors = []
     const requiredFields = ['id', 'fullName', 'email', 'rolId']
     // if (previousPassword) requiredFields.push('proposedPassword')
+    if (Number(rolId) === 2) requiredFields.push('sales_commission')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [userExists] = await db.query(storage.checkExists({ id }))
     const [emailExists] = await db.query(storage.checkExists({ email }))
@@ -100,11 +106,13 @@ module.exports.update = async event => {
     if (emailExists && Number(emailExists.id) !== Number(id)) errors.push(`El email no se encuentra registrado`)
     if (email && !isEmail(email)) errors.push(`El email es invalido`)
     // if (plainTextPassword !== previousPassword) errors.push('La contraseña actual no coincide con la registrada anteriormente')
+    if (sales_commission && (sales_commission < 0 || sales_commission > 100))
+      errors.push('El porcentaje de comision debe estar en un rango entre 0 y 100')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.updateUser(), [fullName, email, rolId, id])
+      await connection.query(storage.updateUser(), [fullName, email, sales_commission, rolId, id])
 
       // if (previousPassword && proposedPassword) {
       //   await handleCognitoChangePassword(
