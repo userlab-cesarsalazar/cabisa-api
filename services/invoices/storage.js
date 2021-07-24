@@ -18,6 +18,7 @@ const findAllBy = (fields = {}) => {
       d.operation_id,
       d.status,
       d.cancel_reason,
+      d.description,
       d.total_invoice,
       d.service_type,
       d.payment_method,

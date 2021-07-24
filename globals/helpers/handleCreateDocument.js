@@ -17,6 +17,7 @@ const handleCreateDocument = async (req, res) => {
     service_type = null,
     payment_method = null,
     credit_days = null,
+    description = null,
     products,
     created_by = 1,
   } = req.body
@@ -36,6 +37,7 @@ const handleCreateDocument = async (req, res) => {
     service_type,
     payment_method,
     credit_days,
+    description,
     created_by,
   ])
   const newDocumentId = await res.connection.geLastInsertId()
@@ -77,9 +79,10 @@ const createDocument = () => `
       service_type,
       payment_method,
       credit_days,
+      description,
       created_by
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products
