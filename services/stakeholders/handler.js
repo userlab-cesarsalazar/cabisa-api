@@ -68,6 +68,7 @@ module.exports.create = async event => {
       alternative_phone: { type: 'string', length: 20 },
       business_man: { type: 'string', length: 100 },
       payments_man: { type: 'string', length: 100 },
+      credit_limit: { type: 'number', min: 0 },
       projects: {
         type: 'array',
         fields: {
@@ -83,7 +84,7 @@ module.exports.create = async event => {
     }
     const req = await handleRequest({ event, inputType })
 
-    const { stakeholder_type, nit, email, projects, created_by = 1 } = req.body
+    const { stakeholder_type, nit, email, projects, credit_limit, created_by = 1 } = req.body
 
     const errors = []
     const requiredFields = ['stakeholder_type', 'name', 'address', 'nit', 'phone']
@@ -111,6 +112,7 @@ module.exports.create = async event => {
       )
     if (requiredProjectErrorFields) errors.push(`Los campos ${requiredProjectFields.join(', ')} en proyectos, son requeridos`)
     if (duplicateProjects && duplicateProjects[0]) duplicateProjects.forEach(name => errors.push(`El proyecto ${name} no deben estar duplicados`))
+    if (credit_limit && credit_limit < 0) errors.push('El limite de credito debe ser superior a cero')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -143,6 +145,7 @@ module.exports.update = async event => {
       alternative_phone: { type: 'string', length: 20 },
       business_man: { type: 'string', length: 100 },
       payments_man: { type: 'string', length: 100 },
+      credit_limit: { type: 'number', min: 0 },
       projects: {
         type: 'array',
         fields: {
@@ -164,7 +167,7 @@ module.exports.update = async event => {
       nestedFieldsKeys: ['projects'],
     })
 
-    const { id, stakeholder_type, name, address, nit, email, phone, business_man, payments_man, projects, updated_by = 1 } = req.body
+    const { id, stakeholder_type, name, address, nit, email, phone, business_man, payments_man, projects, credit_limit, updated_by = 1 } = req.body
 
     const errors = []
     const projectsMap =
@@ -193,6 +196,7 @@ module.exports.update = async event => {
           .join(', ')}`
       )
     if (duplicateProjects && duplicateProjects[0]) duplicateProjects.forEach(name => errors.push(`El proyecto ${name} no deben estar duplicados`))
+    if (credit_limit && credit_limit < 0) errors.push('El limite de credito debe ser superior a cero')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -206,6 +210,7 @@ module.exports.update = async event => {
         phone,
         business_man,
         payments_man,
+        credit_limit,
         updated_by,
         id,
       ])
