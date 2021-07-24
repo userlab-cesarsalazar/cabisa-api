@@ -74,6 +74,7 @@ module.exports.create = async event => {
     related_external_document_id: { type: ['string', 'number'] },
     comments: { type: 'string' },
     received_by: { type: 'string' },
+    dispatched_by: { type: 'string' },
     // operation_type: {
     //   type: { enum: types.operationsTypes },
     //   required: true,
@@ -173,6 +174,7 @@ module.exports.update = async event => {
     related_external_document_id: { type: 'string' },
     comments: { type: 'string' },
     received_by: { type: 'string' },
+    dispatched_by: { type: 'string' },
     start_date: { type: 'string' },
     end_date: { type: 'string' },
     products: {

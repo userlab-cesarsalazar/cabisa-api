@@ -1,6 +1,6 @@
 // importante especificar el document_type del documento a crear
 
-// req.body: { stakeholder_id, project_id, document_type, comments, received_by, start_date, end_date, service_type, payment_method, credit_days, products }
+// req.body: { stakeholder_id, project_id, document_type, comments, received_by, dispatched_by, start_date, end_date, service_type, payment_method, credit_days, description, products }
 
 const handleCreateDocument = async (req, res) => {
   const {
@@ -10,6 +10,7 @@ const handleCreateDocument = async (req, res) => {
     project_id = null,
     comments = null,
     received_by = null,
+    dispatched_by = null,
     start_date = null,
     end_date = null,
     cancel_reason = null,
@@ -30,6 +31,7 @@ const handleCreateDocument = async (req, res) => {
     project_id,
     comments,
     received_by,
+    dispatched_by,
     start_date,
     end_date,
     cancel_reason,
@@ -72,6 +74,7 @@ const createDocument = () => `
       project_id,
       comments,
       received_by,
+      dispatched_by,
       start_date,
       end_date,
       cancel_reason,
@@ -82,7 +85,7 @@ const createDocument = () => `
       description,
       created_by
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products
