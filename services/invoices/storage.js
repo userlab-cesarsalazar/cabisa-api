@@ -38,6 +38,7 @@ const findAllBy = (fields = {}) => {
       dp.unit_tax_amount AS products__unit_tax_amount,
       dp.discount_percentage AS products__discount_percentage,
       dp.unit_discount_amount AS products__unit_discount_amount,
+      dp.parent_product_id AS products__parent_product_id,
       prod.code AS products__code,
       prod.serial_number AS products__serial_number,
       prod.description AS products__description,

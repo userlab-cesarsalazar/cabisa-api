@@ -31,9 +31,10 @@ module.exports.read = async event => {
 
     const data = res.data.map(invoice => {
       const { discount, discount_percentage, subtotal, total_tax, total } = invoice.products.reduce((r, p) => {
-        const discount = (r.discount || 0) + p.unit_discount_amount * p.product_quantity
-        const subtotal = (r.subtotal || 0) + p.product_price * p.product_quantity
-        const total_tax = (r.total_tax || 0) + p.unit_tax_amount * p.product_quantity
+        const productQuantity = p.service_type === types.documentsServiceType.SERVICE && !p.parent_product_id ? 1 : p.product_quantity
+        const discount = (r.discount || 0) + p.unit_discount_amount * productQuantity
+        const subtotal = (r.subtotal || 0) + p.product_price * productQuantity
+        const total_tax = (r.total_tax || 0) + p.unit_tax_amount * productQuantity
 
         return {
           discount,
@@ -44,11 +45,15 @@ module.exports.read = async event => {
         }
       }, {})
 
-      const products = invoice.products.map(p => ({
-        ...p,
-        subtotal: p.product_price * p.product_quantity,
-        subtotal_tax: p.unit_tax_amount * p.product_quantity,
-      }))
+      const products = invoice.products.map(p => {
+        const productQuantity = p.service_type === types.documentsServiceType.SERVICE && !p.parent_product_id ? 1 : p.product_quantity
+
+        return {
+          ...p,
+          subtotal: p.product_price * productQuantity,
+          subtotal_tax: p.unit_tax_amount * productQuantity,
+        }
+      })
 
       return {
         ...invoice,
@@ -148,6 +153,7 @@ module.exports.create = async event => {
           product_price: { type: 'number', min: 0, required: true },
           product_discount_percentage: { type: 'number', min: 0 },
           product_discount: { type: 'number', min: 0 },
+          parent_product_id: { type: ['string', 'number'] },
         },
       },
     },
@@ -161,7 +167,11 @@ module.exports.create = async event => {
     // can(req.currentAction, operation_type)
 
     const errors = []
-    const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
+    const productsMap = products.reduce((r, p) => {
+      if (p.parent_product_id) return r
+
+      return { ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }
+    }, {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
     const productsFromDB = await db.query(storage.findProducts(productsIds))
@@ -207,6 +217,32 @@ module.exports.create = async event => {
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no esta registrado`))
     if (project_id && !projectExists) errors.push(`El proyecto no se encuentra registrado`)
     if (total_invoice <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
+    // validar que si service_type === types.documentsServiceType.SERVICE
+    // - Los que tienen parent_product_id deben tener product_type === types.productsTypes.PRODUCT
+    // - Los que NO tienen parent_product_id deben tener product_type === types.productsTypes.SERVICE y product_quantity = 1
+    if (service_type === types.documentsServiceType.SERVICE) {
+      products.forEach(p => {
+        const sameProduct = productsFromDB.find(ps => Number(ps.product_id) === Number(p.product_id)) || {}
+        const newProduct = { ...p, ...sameProduct }
+
+        if (newProduct.parent_product_id && newProduct.product_type !== types.productsTypes.PRODUCT)
+          errors.push(
+            `The child product of the product with id ${newProduct.parent_product_id} must have a product_type equal to: ${types.productsTypes.PRODUCT}`
+          )
+
+        if (!newProduct.parent_product_id) {
+          const hasChildProduct = products.some(p => Number(p.parent_product_id) === Number(newProduct.product_id))
+
+          if (newProduct.product_type !== types.productsTypes.SERVICE)
+            errors.push(`The parent product with id ${newProduct.product_id} must have a product_type equal to: ${types.productsTypes.SERVICE}`)
+
+          if (Number(newProduct.product_quantity) !== 1)
+            errors.push(`The parent product with id ${newProduct.product_id} must have a product_quantity equal to one`)
+
+          if (!hasChildProduct) errors.push(`The parent product with id ${newProduct.product_id} must have a linked child product`)
+        }
+      })
+    }
 
     if (errors.length > 0) throw new ValidatorException(errors)
 

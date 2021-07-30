@@ -39,6 +39,7 @@ CREATE TABLE `documents` (
 ) ENGINE=InnoDB;
 
 CREATE TABLE `documents_products` (
+  `id` INT NOT NULL AUTO_INCREMENT,
   `document_id` INT NOT NULL,
   `product_id` INT NOT NULL,
   `product_price` DOUBLE NOT NULL,
@@ -47,7 +48,8 @@ CREATE TABLE `documents_products` (
   `unit_tax_amount` DOUBLE NOT NULL,
   `discount_percentage` DECIMAL(5,2) DEFAULT NULL,
   `unit_discount_amount` DOUBLE DEFAULT NULL,
-  CONSTRAINT documents_products_document_id_product_id_pk PRIMARY KEY (document_id, product_id),
+  `parent_product_id` INT DEFAULT NULL,
+  CONSTRAINT documents_products_id_pk PRIMARY KEY (id),
   CONSTRAINT documents_products_product_id_fk FOREIGN KEY (product_id) REFERENCES products(id),
   CONSTRAINT documents_products_document_id_fk FOREIGN KEY (document_id) REFERENCES documents(id) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT documents_products_tax_fee_check CHECK (tax_fee BETWEEN 0.00 AND 100.00),
