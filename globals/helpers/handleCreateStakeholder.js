@@ -1,7 +1,7 @@
 const types = require('../types')
 
 const handleCreateStakeholder = async (req, res) => {
-  const { stakeholder_id, stakeholder_type, email, alternative_phone, business_man, payments_man, created_by = 1 } = req.body
+  const { stakeholder_id, stakeholder_type, email, alternative_phone, business_man, payments_man, credit_limit, created_by = 1 } = req.body
   const name = req.body.stakeholder_name || req.body.name
   const address = req.body.stakeholder_address || req.body.address
   const nit = req.body.stakeholder_nit || req.body.nit
@@ -19,6 +19,7 @@ const handleCreateStakeholder = async (req, res) => {
     alternative_phone,
     business_man,
     payments_man,
+    credit_limit,
     created_by,
   ])
 
@@ -32,8 +33,8 @@ const handleCreateStakeholder = async (req, res) => {
 
 const createStakeholder = () => `
   INSERT INTO stakeholders
-  (stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man, created_by)
-  VALUES(?, '${types.stakeholdersStatus.ACTIVE}', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  (stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man, credit_limit, created_by)
+  VALUES(?, '${types.stakeholdersStatus.ACTIVE}', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 module.exports = handleCreateStakeholder

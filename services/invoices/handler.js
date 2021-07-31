@@ -136,6 +136,7 @@ module.exports.create = async event => {
     // stakeholder_nit: { type: 'string', length: 11 },
     // stakeholder_phone: { type: 'string', length: 20 },
     related_external_document_id: { type: ['string', 'number'] },
+    description: { type: 'string' },
     products: {
       type: 'array',
       required: true,

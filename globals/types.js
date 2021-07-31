@@ -12,6 +12,8 @@ const actions = {
 const documentsPaymentMethods = {
   CARD: 'CARD',
   CASH: 'CASH',
+  CHECK: 'CHECK',
+  DEPOSIT: 'DEPOSIT',
   TRANSFER: 'TRANSFER',
 }
 

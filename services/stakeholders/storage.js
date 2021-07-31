@@ -1,6 +1,6 @@
 const { getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 
-const findAllBy = (fields = {}, initWhereCondition = `p.is_active = 1`) => `
+const findAllBy = (fields = {}, initWhereCondition = `(p.is_active = 1 OR p.is_active IS NULL)`) => `
   SELECT 
     s.id,
     s.stakeholder_type,
@@ -13,6 +13,7 @@ const findAllBy = (fields = {}, initWhereCondition = `p.is_active = 1`) => `
     s.alternative_phone,
     s.business_man,
     s.payments_man,
+    s.credit_limit,
     s.block_reason,
     s.created_at,
     s.created_by,
@@ -55,6 +56,7 @@ const updateStakeholder = () => `
     phone = ?,
     business_man = ?,
     payments_man = ?,
+    credit_limit = ?,
     updated_by = ?
   WHERE id = ?
 `

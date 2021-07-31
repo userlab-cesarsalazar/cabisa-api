@@ -96,6 +96,26 @@ const isEmptyObject = obj => {
 
 const getError = e => e.error || e.errors || e.data || e.message || e
 
+const getPaginationSQL = fields => {
+  const operators = {
+    $limit: 'LIMIT',
+    $offset: 'OFFSET',
+  }
+
+  const sortedFields = Object.keys(fields)
+    .sort()
+    .reduce((r, k) => ({ ...r, [k]: fields[k] }), {})
+
+  return Object.keys(sortedFields).reduce(
+    (r, k) => {
+      if (operators[k]) return { ...r, paginationSQL: `${r.paginationSQL}${operators[k]} ${fields[k]} ` }
+
+      return { ...r, whereConditionsFields: { ...r.whereConditionsFields, [k]: fields[k] } }
+    },
+    { whereConditionsFields: {}, paginationSQL: '' }
+  )
+}
+
 // todos los operadores tienen esta sintaxis $like:, $ como prefijo y : como marcador del fin del/los operador(es)
 // para usar los operadores se deben pasar como prefijo en el valor del query param
 // ademas existe el operador $or que es el unico que se puede usar en conjunto con otro operador -> $like$or:
@@ -111,7 +131,9 @@ const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousCondition
     $notlike: 'NOT LIKE',
   }
 
-  const whereConditions = Object.keys(fields).flatMap((k, i) => {
+  const { whereConditionsFields, paginationSQL } = getPaginationSQL(fields)
+
+  const whereConditions = Object.keys(whereConditionsFields).flatMap((k, i) => {
     const fieldValue = fields[k] && String(fields[k])
 
     if (!fieldValue) return []
@@ -138,7 +160,7 @@ const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousCondition
     return ` ${previousCondition} ${field} ${operators[paramOperator]} '${value}'`
   })
 
-  return whereConditions.join('')
+  return `${whereConditions.join('')} ${paginationSQL}`
 }
 
 const groupJoinResult = ({ data, nestedFieldsKeys, uniqueKey = ['id'] }) => {
