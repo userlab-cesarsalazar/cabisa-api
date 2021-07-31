@@ -5,6 +5,7 @@ const {
   groupJoinResult,
   mysqlConfig,
   helpers,
+  validators,
   ValidatorException,
 } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
@@ -21,6 +22,7 @@ const {
   handleCreateOperation,
   handleUpdateStock,
 } = helpers
+const { parentChildProductsValidator } = validators
 const db = mysqlConfig(mysql)
 
 module.exports.read = async event => {
@@ -217,31 +219,9 @@ module.exports.create = async event => {
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no esta registrado`))
     if (project_id && !projectExists) errors.push(`El proyecto no se encuentra registrado`)
     if (total_invoice <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
-    // validar que si service_type === types.documentsServiceType.SERVICE
-    // - Los que tienen parent_product_id deben tener product_type === types.productsTypes.PRODUCT
-    // - Los que NO tienen parent_product_id deben tener product_type === types.productsTypes.SERVICE y product_quantity = 1
     if (service_type === types.documentsServiceType.SERVICE) {
-      products.forEach(p => {
-        const sameProduct = productsFromDB.find(ps => Number(ps.product_id) === Number(p.product_id)) || {}
-        const newProduct = { ...p, ...sameProduct }
-
-        if (newProduct.parent_product_id && newProduct.product_type !== types.productsTypes.PRODUCT)
-          errors.push(
-            `The child product of the product with id ${newProduct.parent_product_id} must have a product_type equal to: ${types.productsTypes.PRODUCT}`
-          )
-
-        if (!newProduct.parent_product_id) {
-          const hasChildProduct = products.some(p => Number(p.parent_product_id) === Number(newProduct.product_id))
-
-          if (newProduct.product_type !== types.productsTypes.SERVICE)
-            errors.push(`The parent product with id ${newProduct.product_id} must have a product_type equal to: ${types.productsTypes.SERVICE}`)
-
-          if (Number(newProduct.product_quantity) !== 1)
-            errors.push(`The parent product with id ${newProduct.product_id} must have a product_quantity equal to one`)
-
-          if (!hasChildProduct) errors.push(`The parent product with id ${newProduct.product_id} must have a linked child product`)
-        }
-      })
+      const parentChildProductsErrors = parentChildProductsValidator(products, productsFromDB)
+      parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
     }
 
     if (errors.length > 0) throw new ValidatorException(errors)

@@ -13,6 +13,7 @@ const findAllBy = (fields = {}, initWhereCondition = `is_active = 1`) => `
     updated_by
   FROM projects
   WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
+  ORDER BY id DESC
 `
 
 const findOptionsBy = (fields = {}, initWhereCondition = `is_active = 1`) => `

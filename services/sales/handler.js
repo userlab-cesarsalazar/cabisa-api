@@ -5,6 +5,7 @@ const {
   groupJoinResult,
   mysqlConfig,
   helpers,
+  validators,
   ValidatorException,
   getFormattedDates,
 } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
@@ -24,6 +25,7 @@ const {
   handleUpdateDocument,
   handleDeleteInventoryMovements,
 } = helpers
+const { parentChildProductsValidator } = validators
 const db = mysqlConfig(mysql)
 
 const config = {
@@ -75,6 +77,7 @@ module.exports.create = async event => {
     comments: { type: 'string' },
     received_by: { type: 'string' },
     dispatched_by: { type: 'string' },
+    service_type: { type: { enum: types.documentsServiceType }, required: true },
     // operation_type: {
     //   type: { enum: types.operationsTypes },
     //   required: true,
@@ -91,6 +94,7 @@ module.exports.create = async event => {
           product_id: { type: ['string', 'number'], required: true },
           product_quantity: { type: 'number', min: 0, required: true },
           product_price: { type: 'number', min: 0, required: true },
+          parent_product_id: { type: ['string', 'number'] },
         },
       },
     },
@@ -99,16 +103,20 @@ module.exports.create = async event => {
   try {
     const req = await handleRequest({ event, inputType })
     const operation_type = types.operationsTypes.RENT
-    const { stakeholder_id, products } = req.body
+    const { stakeholder_id, service_type, products } = req.body
     // can(req.currentAction, operation_type)
 
     const errors = []
-    const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
+    const productsMap = products.reduce((r, p) => {
+      if (p.parent_product_id) return r
+
+      return { ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }
+    }, {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
     const productsFromDB = await db.query(storage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
-    const requiredFields = ['stakeholder_id', 'project_id', 'products']
+    const requiredFields = ['stakeholder_id', 'project_id', 'service_type', 'products']
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     if (operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
@@ -122,11 +130,21 @@ module.exports.create = async event => {
           .map(k => types.operationsTypes[k])
           .join(', ')}`
       )
+    if (Object.keys(types.documentsServiceType).every(k => types.documentsServiceType[k] !== service_type))
+      errors.push(
+        `The field service_type must contain one of these values: ${Object.keys(types.documentsServiceType)
+          .map(k => types.documentsServiceType[k])
+          .join(', ')}`
+      )
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (stakeholder_id && !stakeholderIdExists) errors.push('El cliente no se encuentra registrado')
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
+    if (service_type === types.documentsServiceType.SERVICE) {
+      const parentChildProductsErrors = parentChildProductsValidator(products, productsFromDB)
+      parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
+    }
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -177,6 +195,7 @@ module.exports.update = async event => {
     dispatched_by: { type: 'string' },
     start_date: { type: 'string' },
     end_date: { type: 'string' },
+    service_type: { type: { enum: types.documentsServiceType }, required: true },
     products: {
       type: 'array',
       required: true,
@@ -186,6 +205,7 @@ module.exports.update = async event => {
           product_id: { type: ['string', 'number'], required: true },
           product_quantity: { type: 'number', min: 0, required: true },
           product_price: { type: 'number', min: 0, required: true },
+          parent_product_id: { type: ['string', 'number'] },
         },
       },
     },
@@ -193,7 +213,7 @@ module.exports.update = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
-    const { document_id, products, start_date, end_date } = req.body
+    const { document_id, products, start_date, end_date, service_type } = req.body
     // can(req.currentAction, operation_type)
 
     const rawDocument = document_id && (await db.query(storage.findDocument(), [document_id]))
@@ -233,14 +253,18 @@ module.exports.update = async event => {
     }
 
     const errors = []
-    const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
+    const productsMap = products.reduce((r, p) => {
+      if (p.parent_product_id) return r
+
+      return { ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }
+    }, {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
     const productsFromDB = await db.query(storage.findProducts(productsIds))
     const productsExists = products.flatMap(p =>
       !productsFromDB || !productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []
     )
-    const requiredFields = ['document_id', 'project_id', 'products']
+    const requiredFields = ['document_id', 'project_id', 'products', 'service_type']
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     if (document && document.operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -253,6 +277,16 @@ module.exports.update = async event => {
     if (!document || !document.document_id) errors.push(`El documento con id ${document_id} no se encuentra registrado`)
     if (document && document.status !== types.documentsStatus.PENDING)
       errors.push(`La edicion solo es permitida en documentos con status ${types.documentsStatus.PENDING}`)
+    if (Object.keys(types.documentsServiceType).every(k => types.documentsServiceType[k] !== service_type))
+      errors.push(
+        `The field service_type must contain one of these values: ${Object.keys(types.documentsServiceType)
+          .map(k => types.documentsServiceType[k])
+          .join(', ')}`
+      )
+    if (service_type === types.documentsServiceType.SERVICE) {
+      const parentChildProductsErrors = parentChildProductsValidator(products, productsFromDB)
+      parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
+    }
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -307,6 +341,7 @@ module.exports.invoice = async event => {
             product_price: { type: 'number', min: 0, required: true },
             product_discount_percentage: { type: 'number', min: 0 },
             product_discount: { type: 'number', min: 0 },
+            parent_product_id: { type: ['string', 'number'] },
           },
         },
       },
@@ -318,7 +353,11 @@ module.exports.invoice = async event => {
     // can(req.currentAction, types.operationsTypes.PURCHASE)
 
     const errors = []
-    const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
+    const productsMap = products.reduce((r, p) => {
+      if (p.parent_product_id) return r
+
+      return { ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }
+    }, {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const requiredFields = ['document_id', 'payment_method', 'service_type', 'total_invoice']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -379,6 +418,10 @@ module.exports.invoice = async event => {
       })
 
     if (invalidProducts && invalidProducts[0]) errors.push(`La cantidad de productos no coincide con la registrada en la nota de servicio`)
+    if (service_type === types.documentsServiceType.SERVICE) {
+      const parentChildProductsErrors = parentChildProductsValidator(products, productsFromDB)
+      parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
+    }
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
