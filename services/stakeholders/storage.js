@@ -27,7 +27,7 @@ const findAllBy = (fields = {}, initWhereCondition = `(p.is_active = 1 OR p.is_a
   FROM stakeholders s
   LEFT JOIN projects p ON p.stakeholder_id = s.id
   WHERE ${initWhereCondition} ${getWhereConditions({ fields, tableAlias: 's' })}
-  ORDER BY id DESC
+  ORDER BY s.id DESC
 `
 
 const findStakeholderTypes = () => `DESCRIBE stakeholders stakeholder_type`

@@ -54,7 +54,7 @@ const findAllBy = (fields = {}) => {
       d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
       d.document_type = '${types.documentsTypes.RENT_INVOICE}'
     ) ${whereConditions}
-    ORDER BY id DESC
+    ORDER BY d.id DESC
   `
 }
 

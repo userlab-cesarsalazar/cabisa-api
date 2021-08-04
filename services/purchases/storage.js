@@ -34,7 +34,7 @@ const findAllBy = (fields = {}) => `
   LEFT JOIN documents_products dp ON dp.document_id = d.id
   LEFT JOIN products p ON p.id = dp.product_id
   WHERE d.document_type = '${types.documentsTypes.PURCHASE_ORDER}' ${getWhereConditions({ fields, tableAlias: 'd' })}
-  ORDER BY id DESC
+  ORDER BY d.id DESC
 `
 
 const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `

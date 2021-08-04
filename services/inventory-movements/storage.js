@@ -14,7 +14,7 @@ const findAllBy = (fields = {}) => `
   LEFT JOIN operations o ON o.id = im.operation_id
   LEFT JOIN documents d ON d.operation_id = o.id
   ${getWhereConditions({ fields, tableAlias: 'im', hasPreviousConditions: false })}
-  ORDER BY id DESC
+  ORDER BY im.id DESC
 `
 
 const checkInventoryMovementsOnApprove = whereIn => `

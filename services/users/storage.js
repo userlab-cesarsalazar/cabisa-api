@@ -12,7 +12,7 @@ const findAllBy = (fields = {}, initCondition = `u.is_active = 1`) => `
   FROM users u
   INNER JOIN roles r ON r.id = u.rol_id
   WHERE ${initCondition} ${getWhereConditions({ fields, tableAlias: 'u' })}
-  ORDER BY id DESC
+  ORDER BY u.id DESC
 `
 
 const findRoles = (fields = {}, initCondition = `is_active = 1`) => `

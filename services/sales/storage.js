@@ -58,7 +58,7 @@ const findAllBy = (fields = {}) => `
     d.document_type = '${types.documentsTypes.SELL_PRE_INVOICE}' OR
     d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}'
   ) ${getWhereConditions({ fields, tableAlias: 'd' })}
-  ORDER BY id DESC
+  ORDER BY d.id DESC
 `
 
 const findSalesStatus = () => `DESCRIBE documents status`

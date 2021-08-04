@@ -31,7 +31,7 @@ const findAllBy = (fields = {}, initWhereCondition = `p.product_type = '${types.
   LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
   LEFT JOIN operations o ON o.id = im.operation_id
   WHERE ${initWhereCondition} ${getWhereConditions({ fields, tableAlias: 'p' })}
-  ORDER BY id DESC
+  ORDER BY p.id DESC
 `
 
 const findProductsCategories = () => `DESCRIBE products product_category`
