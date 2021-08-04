@@ -359,6 +359,8 @@ module.exports.invoice = async event => {
       return { ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }
     }, {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
+    const productsIds = products.map(p => p.product_id)
+    const productsFromDB = await db.query(storage.findProducts(productsIds))
     const requiredFields = ['document_id', 'payment_method', 'service_type', 'total_invoice']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
@@ -417,7 +419,7 @@ module.exports.invoice = async event => {
         else return p
       })
 
-    if (invalidProducts && invalidProducts[0]) errors.push(`La cantidad de productos no coincide con la registrada en la nota de servicio`)
+    if (invalidProducts && invalidProducts[0]) errors.push(`La cantidad de productos no coincide con los registrados en la nota de servicio`)
     if (service_type === types.documentsServiceType.SERVICE) {
       const parentChildProductsErrors = parentChildProductsValidator(products, productsFromDB)
       parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
