@@ -57,7 +57,7 @@ const handleUpdateDocument = async (req, res) => {
     document_id,
   ])
 
-  const deleteProductIds = old_products.flatMap(op => (products.some(p => Number(p.product_id) === Number(op.product_id)) ? [] : op.product_id))
+  const deleteProductIds = old_products.map(op => Number(op.product_id))
   const updateDocumentsProductsValues = products.map(
     p =>
       `(  
@@ -73,7 +73,7 @@ const handleUpdateDocument = async (req, res) => {
         )`
   )
 
-  if (deleteProductIds.length > 0) await res.connection.query(deleteDocumentProducts(deleteProductIds), [document_id])
+  await res.connection.query(deleteDocumentProducts(deleteProductIds), [document_id])
   await res.connection.query(updateDocumentsProducts(updateDocumentsProductsValues))
 
   return {
