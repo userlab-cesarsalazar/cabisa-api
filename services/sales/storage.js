@@ -15,6 +15,7 @@ const findAllBy = (fields = {}) => `
     d.start_date,
     d.end_date,
     d.cancel_reason,
+    d.service_type AS service_type,
     u.full_name AS creator_name,
     d.created_at,
     d.created_by,
@@ -43,6 +44,7 @@ const findAllBy = (fields = {}) => `
     dp.product_quantity AS products__quantity,
     dp.tax_fee AS products__tax_fee,
     dp.unit_tax_amount AS products__unit_tax_amount,
+    dp.parent_product_id AS products__parent_product_id,
     prod.code AS products__code,
     prod.serial_number AS products__serial_number,
     prod.description AS products__description
@@ -56,6 +58,7 @@ const findAllBy = (fields = {}) => `
     d.document_type = '${types.documentsTypes.SELL_PRE_INVOICE}' OR
     d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}'
   ) ${getWhereConditions({ fields, tableAlias: 'd' })}
+  ORDER BY d.id DESC
 `
 
 const findSalesStatus = () => `DESCRIBE documents status`
@@ -94,6 +97,7 @@ const findDocument = () => `
     d.dispatched_by AS dispatched_by,
     d.start_date AS start_date,
     d.end_date AS end_date,
+    d.service_type AS service_type,
     d.cancel_reason AS cancel_reason,
     d.created_at AS created_at,
     d.created_by AS created_by,
@@ -111,6 +115,7 @@ const findDocument = () => `
     dp.product_quantity AS old_products__product_quantity,
     dp.tax_fee AS old_products__tax_fee,
     dp.unit_tax_amount AS old_products__unit_tax_amount,
+    dp.parent_product_id AS old_products__parent_product_id,
     p.stock AS old_products__stock
   FROM documents d
   LEFT JOIN documents_products dp ON dp.document_id = d.id
@@ -148,6 +153,7 @@ const findDocumentDetails = () => `
     dp.product_price AS products__product_price,
     dp.tax_fee AS products__tax_fee,
     dp.unit_tax_amount AS products__unit_tax_amount,
+    dp.parent_product_id AS products__parent_product_id,
     p.product_type AS products__product_type,
     p.status AS products__product_status,
     p.stock AS products__product_stock

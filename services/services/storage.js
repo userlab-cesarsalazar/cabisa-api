@@ -13,6 +13,7 @@ const findAllBy = (fields = {}, initWhereCondition = `p.product_type = '${types.
     p.updated_by
   FROM products p
   WHERE ${initWhereCondition} ${getWhereConditions({ fields, tableAlias: 'p' })}
+  ORDER BY p.id DESC
 `
 
 const findServicesStatus = () => `DESCRIBE products status`

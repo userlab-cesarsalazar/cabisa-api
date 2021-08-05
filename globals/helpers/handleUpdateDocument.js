@@ -57,7 +57,7 @@ const handleUpdateDocument = async (req, res) => {
     document_id,
   ])
 
-  const deleteProductIds = old_products.flatMap(op => (products.some(p => Number(p.product_id) === Number(op.product_id)) ? [] : op.product_id))
+  const deleteProductIds = old_products.map(op => Number(op.product_id))
   const updateDocumentsProductsValues = products.map(
     p =>
       `(  
@@ -68,11 +68,12 @@ const handleUpdateDocument = async (req, res) => {
           ${p.tax_fee},
           ${p.unit_tax_amount},
           ${p.product_discount_percentage || null},
-          ${p.product_discount || null}
+          ${p.product_discount || null},
+          ${p.parent_product_id || null}
         )`
   )
 
-  if (deleteProductIds.length > 0) await res.connection.query(deleteDocumentProducts(deleteProductIds), [document_id])
+  await res.connection.query(deleteDocumentProducts(deleteProductIds), [document_id])
   await res.connection.query(updateDocumentsProducts(updateDocumentsProductsValues))
 
   return {
@@ -106,8 +107,17 @@ const deleteDocumentProducts = productIds => `
 `
 
 const updateDocumentsProducts = valuesArray => `
-  INSERT INTO documents_products
-  (document_id, product_id, product_price, product_quantity, tax_fee, unit_tax_amount, discount_percentage, unit_discount_amount)
+  INSERT INTO documents_products (
+    document_id,
+    product_id,
+    product_price,
+    product_quantity,
+    tax_fee,
+    unit_tax_amount,
+    discount_percentage,
+    unit_discount_amount,
+    parent_product_id
+  )
   VALUES ${valuesArray.join(', ')}
   ON DUPLICATE KEY UPDATE
     product_price = VALUES(product_price),
@@ -115,7 +125,8 @@ const updateDocumentsProducts = valuesArray => `
     tax_fee = VALUES(tax_fee),
     unit_tax_amount = VALUES(unit_tax_amount),
     discount_percentage = VALUES(discount_percentage),
-    unit_discount_amount = VALUES(unit_discount_amount)
+    unit_discount_amount = VALUES(unit_discount_amount),
+    parent_product_id = VALUES(parent_product_id)
 `
 
 module.exports = handleUpdateDocument
