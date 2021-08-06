@@ -23,6 +23,7 @@ const findAllBy = (fields = {}) => {
       d.service_type,
       d.payment_method,
       d.credit_days,
+      d.credit_status,
       d.created_at,
       d.created_by,
       d.updated_at,
@@ -63,6 +64,8 @@ const findPaymentMethods = () => `DESCRIBE documents payment_method`
 const findInvoiceStatus = () => `DESCRIBE documents status`
 
 const findInvoiceServiceType = () => `DESCRIBE documents service_type`
+
+const findCreditStatus = () => `DESCRIBE documents credit_status`
 
 const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `
   SELECT id, stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man,block_reason, created_at, created_by, updated_at, updated_by
@@ -119,14 +122,33 @@ const findDocumentMovements = () => `
     )
 `
 
+const findRelatedDocument = () => `
+  SELECT id, credit_days, related_internal_document_id
+  FROM documents
+  WHERE
+    id = ? AND (
+      document_type = '${types.documentsTypes.SELL_INVOICE}' OR
+      document_type = '${types.documentsTypes.RENT_INVOICE}'
+    )
+`
+
+const updateInvoiceStatus = () => `
+  UPDATE documents
+  SET credit_status = ?
+  WHERE id = ?
+`
+
 module.exports = {
   checkInventoryMovementsOnApprove,
   checkProjectExists,
   findAllBy,
+  findCreditStatus,
   findInvoiceServiceType,
   findInvoiceStatus,
   findPaymentMethods,
   findProducts,
   findDocumentMovements,
+  findRelatedDocument,
   findStakeholder,
+  updateInvoiceStatus,
 }

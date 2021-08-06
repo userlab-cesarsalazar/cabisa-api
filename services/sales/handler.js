@@ -373,7 +373,7 @@ module.exports.invoice = async event => {
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
-    if (!documentDetails || !documentDetails[0]) errors.push('EL documento recibido no se encuentra registrado')
+    if (!documentDetails || !documentDetails[0]) errors.push('El documento recibido no se encuentra registrado')
     if (invalidStatusProducts && invalidStatusProducts[0])
       invalidStatusProducts.forEach(id => errors.push(`El producto con id ${id} debe tener status ${types.productsStatus.ACTIVE}`))
     if (documentDetails[0] && documentDetails[0].document_status === types.documentsStatus.CANCELLED)

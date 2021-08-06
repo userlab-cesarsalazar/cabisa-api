@@ -129,6 +129,19 @@ module.exports.readCreditDays = async event => {
   }
 }
 
+module.exports.readCreditStatus = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findCreditStatus })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
 module.exports.create = async event => {
   const inputType = {
     stakeholder_id: { type: ['string', 'number'], required: true },
@@ -256,6 +269,51 @@ module.exports.create = async event => {
     })
 
     return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.updateCreditStatus = async event => {
+  try {
+    const inputType = {
+      document_id: { type: ['number', 'string'], required: true },
+      credit_status: { type: { enum: types.creditsPolicy.creditStatusEnum }, required: true },
+    }
+
+    const req = await handleRequest({ event, inputType })
+    const { document_id, credit_status } = req.body
+
+    const errors = []
+    const requiredFields = ['document_id', 'credit_status']
+    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
+    const [document] = await db.query(storage.findRelatedDocument(), [document_id])
+
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (!document || !document.id)
+      errors.push(`El documento debe ser del tipo ${types.documentsTypes.SELL_INVOICE} o ${types.documentsTypes.RENT_INVOICE}`)
+    if (!document || !document.credit_days) errors.push(`El documento debe estar asociado a un credito`)
+    if (Object.keys(types.creditsPolicy.creditStatusEnum).every(k => types.creditsPolicy.creditStatusEnum[k] !== credit_status))
+      errors.push(
+        `The field credit_status must contain one of these values: ${Object.keys(types.creditsPolicy.creditStatusEnum)
+          .map(k => types.creditsPolicy.creditStatusEnum[k])
+          .join(', ')}`
+      )
+
+    if (errors.length > 0) throw new ValidatorException(errors)
+
+    await db.transaction(async connection => {
+      await connection.query(storage.updateInvoiceStatus(), [credit_status, document_id])
+
+      if (document.related_internal_document_id)
+        await connection.query(storage.updateInvoiceStatus(), [credit_status, document.related_internal_document_id])
+    })
+
+    return await handleResponse({
+      req,
+      res: { statusCode: 200, data: { document_id, credit_status }, message: 'Documento actualizado exitosamente' },
+    })
   } catch (error) {
     console.log(error)
     return await handleResponse({ error })

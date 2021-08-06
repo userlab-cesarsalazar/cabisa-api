@@ -1,3 +1,4 @@
+const { creditsPolicy } = require('../types')
 // importante especificar el document_type del documento a crear
 
 // req.body: { stakeholder_id, project_id, document_type, comments, received_by, dispatched_by, start_date, end_date, service_type, payment_method, credit_days, description, products }
@@ -39,6 +40,7 @@ const handleCreateDocument = async (req, res) => {
     service_type,
     payment_method,
     credit_days,
+    Number(credit_days) > 0 ? creditsPolicy.creditStatusEnum.UNPAID : null,
     description,
     created_by,
   ])
@@ -83,10 +85,11 @@ const createDocument = () => `
       service_type,
       payment_method,
       credit_days,
+      credit_status,
       description,
       created_by
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products
