@@ -138,11 +138,32 @@ const updateInvoiceStatus = () => `
   WHERE id = ?
 `
 
+const findDocumentsWithDefaultCredits = () => `
+  SELECT d.id, d.stakeholder_id, d.created_by, d.updated_by
+  FROM documents d
+  WHERE (
+      d.document_type = 'SELL_INVOICE' OR
+      d.document_type = 'RENT_INVOICE'
+    )
+    AND DATEDIFF(NOW(), d.created_at) > d.credit_days
+    AND d.credit_status = '${types.creditsPolicy.creditStatusEnum.UNPAID}'
+`
+
+const bulkUpdateCreditStatus = creditStatusValues => `
+  INSERT INTO documents (id, stakeholder_id, credit_status, created_by, updated_by)
+    VALUES ${creditStatusValues.join(',')}
+    ON DUPLICATE KEY UPDATE
+      credit_status = VALUES(credit_status),
+      updated_by = VALUES(updated_by)
+`
+
 module.exports = {
+  bulkUpdateCreditStatus,
   checkInventoryMovementsOnApprove,
   checkProjectExists,
   findAllBy,
   findCreditStatus,
+  findDocumentsWithDefaultCredits,
   findInvoiceServiceType,
   findInvoiceStatus,
   findPaymentMethods,

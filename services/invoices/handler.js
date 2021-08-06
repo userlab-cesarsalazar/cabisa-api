@@ -360,3 +360,26 @@ module.exports.cancel = async event => {
     return await handleResponse({ error })
   }
 }
+
+module.exports.cronUpdateCreditDefaultStatus = async () => {
+  try {
+    const creditStatus = types.creditsPolicy.creditStatusEnum.DEFAULT
+    const documents = await db.query(storage.findDocumentsWithDefaultCredits())
+
+    if (documents.length > 0) {
+      const creditStatusValues = documents.map(
+        d => `(${d.id}, ${d.stakeholder_id}, '${creditStatus}', ${d.created_by}, ${d.updated_by || d.created_by})`
+      )
+
+      await db.query(storage.bulkUpdateCreditStatus(creditStatusValues))
+    }
+
+    return await handleResponse({
+      req: {},
+      res: { statusCode: 200, data: { documents: documents.map(d => d.id) }, message: 'Documento actualizado exitosamente' },
+    })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}

@@ -118,3 +118,13 @@ functions:
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
+
+  updateCreditDefaultStatus:
+    handler: handler.cronUpdateCreditDefaultStatus
+    events:
+      - http:
+          path: invoices/credit-default-status
+          method: put
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
