@@ -67,6 +67,7 @@ const escapeFields = (data = {}, fieldsToExclude = []) => {
       .replace(/\$/g, '\\$')
       .replace(/'/g, "\\'")
       .replace(/"/g, '\\"')
+      .trim()
   }
 
   let escapedBody = {}
