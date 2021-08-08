@@ -15,7 +15,10 @@ const handleCreateDocument = async (req, res) => {
     start_date = null,
     end_date = null,
     cancel_reason = null,
-    total_invoice = null,
+    subtotal_amount = null,
+    total_discount_amount = null,
+    total_tax_amount = null,
+    total_amount = null,
     service_type = null,
     payment_method = null,
     credit_days = null,
@@ -36,7 +39,10 @@ const handleCreateDocument = async (req, res) => {
     start_date,
     end_date,
     cancel_reason,
-    total_invoice,
+    subtotal_amount,
+    total_discount_amount,
+    total_tax_amount,
+    total_amount,
     service_type,
     payment_method,
     credit_days,
@@ -81,7 +87,10 @@ const createDocument = () => `
       start_date,
       end_date,
       cancel_reason,
-      total_invoice,
+      subtotal_amount,
+      total_discount_amount,
+      total_tax_amount,
+      total_amount,
       service_type,
       payment_method,
       credit_days,
@@ -89,7 +98,7 @@ const createDocument = () => `
       description,
       created_by
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products
