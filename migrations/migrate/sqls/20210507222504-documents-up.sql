@@ -13,7 +13,10 @@ CREATE TABLE `documents` (
   `start_date` TIMESTAMP,
   `end_date` TIMESTAMP,
   `cancel_reason` TEXT DEFAULT NULL,
-  `total_invoice` DOUBLE DEFAULT NULL,
+  `subtotal_amount` DOUBLE DEFAULT NULL,
+  `total_discount_amount` DOUBLE DEFAULT NULL,
+  `total_tax_amount` DOUBLE DEFAULT NULL,
+  `total_amount` DOUBLE DEFAULT NULL,
   `description` TEXT DEFAULT NULL,
   `service_type` ENUM('MACHINERY','EQUIPMENT','SERVICE') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `payment_method` ENUM('CARD','TRANSFER','CASH','DEPOSIT','CHECK') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
@@ -34,7 +37,9 @@ CREATE TABLE `documents` (
   CONSTRAINT documents_start_date_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'RENT_PRE_INVOICE') OR start_date IS NOT NULL),
   CONSTRAINT documents_end_date_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'RENT_PRE_INVOICE') OR end_date IS NOT NULL),
   CONSTRAINT documents_payment_method_check CHECK (document_type <> 'SELL_INVOICE' OR payment_method IS NOT NULL),
-  CONSTRAINT documents_total_invoice_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'SELL_INVOICE') OR total_invoice IS NOT NULL),
+  CONSTRAINT documents_subtotal_amount_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'RENT_PRE_INVOICE' AND document_type <> 'SELL_INVOICE' AND document_type <> 'SELL_PRE_INVOICE') OR subtotal_amount IS NOT NULL),
+  CONSTRAINT documents_total_discount_amount_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'SELL_INVOICE') OR total_discount_amount IS NOT NULL),
+  CONSTRAINT documents_total_amount_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'SELL_INVOICE') OR total_amount IS NOT NULL),
   CONSTRAINT documents_service_type_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'SELL_INVOICE') OR service_type IS NOT NULL),
   CONSTRAINT documents_credit_status_check CHECK (credit_days IS NULL OR credit_status IS NOT NULL)
   -- CONSTRAINT documents_cancel_reason_check CHECK (status <> 'CANCELLED' OR cancel_reason IS NOT NULL)
