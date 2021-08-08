@@ -46,7 +46,7 @@ const handleApproveInventoryMovements = async (req, res) => {
 
     const inventoryMovements = {
       ...movementDetail,
-      remainningQty: movementDetail.total_qty - movementDetail.quantity,
+      remainningQty: movementDetail.total_qty - movementDetail.quantity - movementDetail.approved_qty,
     }
 
     return {
@@ -89,11 +89,18 @@ const handleApproveInventoryMovements = async (req, res) => {
 }
 
 const findInventoryMovementsDetails = whereIn => `
-  SELECT im.id AS inventory_movement_id, imd.quantity AS approved_qty, im.quantity AS total_qty, im.movement_type, p.id AS product_id, p.stock
+  SELECT
+    im.id AS inventory_movement_id,
+    SUM(imd.quantity) AS approved_qty,
+    im.quantity AS total_qty,
+    im.movement_type,
+    p.id AS product_id,
+    p.stock
   FROM inventory_movements im
   LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
   LEFT JOIN products p ON p.id = im.product_id
   WHERE im.id IN (${whereIn.join(', ')})
+  GROUP BY im.id, imd.inventory_movement_id
 `
 
 const createInventoryMovementsDetails = () => `
