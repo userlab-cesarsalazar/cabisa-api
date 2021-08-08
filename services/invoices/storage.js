@@ -19,7 +19,10 @@ const findAllBy = (fields = {}) => {
       d.status,
       d.cancel_reason,
       d.description,
-      d.total_invoice,
+      d.subtotal_amount,
+      d.total_discount_amount,
+      d.total_tax_amount,
+      d.total_amount,
       d.service_type,
       d.payment_method,
       d.credit_days,
@@ -67,24 +70,6 @@ const findInvoiceServiceType = () => `DESCRIBE documents service_type`
 
 const findCreditStatus = () => `DESCRIBE documents credit_status`
 
-const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `
-  SELECT id, stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man,block_reason, created_at, created_by, updated_at, updated_by
-  FROM stakeholders
-  WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
-`
-
-const findProducts = whereIn => `
-  SELECT
-    p.id AS product_id,
-    p.product_type,
-    p.stock,
-    p.unit_price AS product_price,
-    t.fee AS tax_fee
-  FROM products p
-  LEFT JOIN taxes t ON t.id = p.tax_id
-  WHERE p.id IN (${whereIn.join(', ')})
-`
-
 const checkProjectExists = () => `SELECT id FROM projects WHERE id = ?`
 
 const checkInventoryMovementsOnApprove = whereIn => `
@@ -96,30 +81,6 @@ const checkInventoryMovementsOnApprove = whereIn => `
     im.status <> '${types.inventoryMovementsStatus.APPROVED}' AND
     im.id IN (${whereIn.join(', ')})
   GROUP BY im.id, imd.inventory_movement_id
-`
-
-const findDocumentMovements = () => `
-  SELECT
-    d.id AS document_id,
-    d.related_internal_document_id AS related_internal_document_id,
-    d.document_type AS document_type,
-    d.status AS document_status,
-    d.operation_id AS operation_id,
-    im.id AS inventory_movements__inventory_movement_id,
-    im.movement_type AS inventory_movements__movement_type,
-    im.product_id AS inventory_movements__product_id,
-    im.quantity AS inventory_movements__quantity,
-    p.stock AS inventory_movements__stock,
-    p.status AS inventory_movements__product_status
-  FROM documents d
-  LEFT JOIN operations o ON o.id = d.operation_id
-  LEFT JOIN inventory_movements im ON im.operation_id = o.id
-  LEFT JOIN products p ON p.id = im.product_id
-  WHERE
-    d.id = ? AND (
-      d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
-      d.document_type = '${types.documentsTypes.RENT_INVOICE}'
-    )
 `
 
 const findRelatedDocument = () => `
@@ -167,9 +128,6 @@ module.exports = {
   findInvoiceServiceType,
   findInvoiceStatus,
   findPaymentMethods,
-  findProducts,
-  findDocumentMovements,
   findRelatedDocument,
-  findStakeholder,
   updateInvoiceStatus,
 }
