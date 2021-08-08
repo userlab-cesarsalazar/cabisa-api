@@ -1,5 +1,6 @@
 const mysql = require('mysql2/promise')
 const {
+  commonStorage,
   types,
   calculateProductTaxes,
   groupJoinResult,
@@ -149,7 +150,10 @@ module.exports.create = async event => {
     project_id: { type: ['string', 'number'], required: true },
     service_type: { type: { enum: types.documentsServiceType }, required: true },
     credit_days: { type: { enum: types.creditsPolicy.creditDaysEnum } },
-    total_invoice: { type: 'number', min: 0, required: true },
+    subtotal_amount: { type: 'number', min: 1, required: true },
+    total_discount_amount: { type: 'number', required: true },
+    total_tax_amount: { type: 'number', required: true },
+    total_amount: { type: 'number', min: 0, required: true },
     // stakeholder_type: { type: { enum: [types.stakeholdersTypes.CLIENT_INDIVIDUAL, types.stakeholdersTypes.CLIENT_COMPANY] } },
     // stakeholder_name: { type: 'string', length: 100 },
     // stakeholder_address: { type: 'string', length: 100 },
@@ -176,8 +180,20 @@ module.exports.create = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
-    const { stakeholder_id, project_id, stakeholder_type, stakeholder_nit, payment_method, credit_days, service_type, total_invoice, products } =
-      req.body
+    const {
+      stakeholder_id,
+      project_id,
+      stakeholder_type,
+      stakeholder_nit,
+      payment_method,
+      credit_days,
+      service_type,
+      total_discount_amount,
+      total_tax_amount,
+      subtotal_amount = 0,
+      total_amount,
+      products,
+    } = req.body
     const operation_type = types.operationsTypes.SELL
     // can(req.currentAction, operation_type)
 
@@ -189,16 +205,22 @@ module.exports.create = async event => {
     }, {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
-    const productsFromDB = await db.query(storage.findProducts(productsIds))
+    const productsFromDB = await db.query(commonStorage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
-    const requiredFields = ['stakeholder_id', 'products', 'payment_method', 'project_id', 'service_type', 'total_invoice']
+    const requiredFields = ['stakeholder_id', 'products', 'payment_method', 'project_id', 'service_type', 'subtotal_amount', 'total_amount']
+    if (Number(total_discount_amount) !== 0) requiredFields.push('total_discount_amount')
+    if (Number(total_tax_amount) !== 0) requiredFields.push('total_tax_amount')
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
-    const [stakeholderNitUnique] = stakeholder_nit ? await db.query(storage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
-    const [stakeholderIdExists] = stakeholder_id ? await db.query(storage.findStakeholder({ id: stakeholder_id })) : []
+    const [stakeholderNitUnique] = stakeholder_nit ? await db.query(commonStorage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
+    const [stakeholderIdExists] = stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: stakeholder_id })) : []
     const [projectExists] = project_id ? await db.query(storage.checkProjectExists(), [project_id]) : []
+    const stakeholderCredits = stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(), [stakeholder_id]) : []
+    const currentCredit = stakeholderCredits && stakeholderCredits[0] ? stakeholderCredits.reduce((r, v) => r + v.credit_amount, 0) : 0
+    const isInvalidCreditAmount =
+      stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit + subtotal_amount > stakeholderIdExists.credit_limit
 
     if (Object.keys(types.operationsTypes).every(k => types.operationsTypes[k] !== operation_type))
       errors.push(
@@ -231,11 +253,15 @@ module.exports.create = async event => {
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no esta registrado`))
     if (project_id && !projectExists) errors.push(`El proyecto no se encuentra registrado`)
-    if (total_invoice <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
+    if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)
+    if (total_amount <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
     if (service_type === types.documentsServiceType.SERVICE) {
       const parentChildProductsErrors = parentChildProductsValidator(products, productsFromDB)
       parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
     }
+    if (credit_days && (!stakeholderIdExists || !stakeholderIdExists.credit_limit))
+      errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
+    if (credit_days && isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -333,7 +359,10 @@ module.exports.cancel = async event => {
     const errors = []
     const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const documentMovements = await db.query(storage.findDocumentMovements(), [document_id])
+    const documentMovements = await db.query(
+      commonStorage.findDocumentMovements([types.documentsTypes.SELL_INVOICE, types.documentsTypes.RENT_INVOICE]),
+      [document_id]
+    )
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (!documentMovements || !documentMovements[0]) errors.push('No existen facturas registradas con la informacion recibida')
