@@ -29,6 +29,16 @@ package:
   include:
     - ../../globals/**
 functions:
+  invoicesVersion:
+    handler: handler.readServiceVersion
+    events:
+      - http:
+          path: invoices/version
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
   invoices:
     handler: handler.read
     events:
@@ -79,6 +89,16 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
+  invoicesCrediStatus:
+    handler: handler.readCreditStatus
+    events:
+      - http:
+          path: invoices/credit-status
+          method: get
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
   invoicesCreate:
     handler: handler.create
     events:
@@ -89,11 +109,31 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
+  updateCreditStatus:
+    handler: handler.updateCreditStatus
+    events:
+      - http:
+          path: invoices/credit-status
+          method: put
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
   invoicesCancel:
     handler: handler.cancel
     events:
       - http:
           path: invoices/cancel
+          method: put
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  updateCreditDefaultStatus:
+    handler: handler.cronUpdateCreditDefaultStatus
+    events:
+      - http:
+          path: invoices/credit-default-status
           method: put
           cors: true
     layers:

@@ -1,5 +1,6 @@
 const mysql = require('mysql2/promise')
 const {
+  commonStorage,
   types,
   calculateProductTaxes,
   groupJoinResult,
@@ -85,6 +86,7 @@ module.exports.create = async event => {
     project_id: { type: ['string', 'number'], required: true },
     start_date: { type: 'string' },
     end_date: { type: 'string' },
+    subtotal_amount: { type: 'number', min: 1, required: true },
     products: {
       type: 'array',
       required: true,
@@ -103,7 +105,7 @@ module.exports.create = async event => {
   try {
     const req = await handleRequest({ event, inputType })
     const operation_type = types.operationsTypes.RENT
-    const { stakeholder_id, service_type, products } = req.body
+    const { stakeholder_id, service_type, subtotal_amount = 0, products } = req.body
     // can(req.currentAction, operation_type)
 
     const errors = []
@@ -114,15 +116,19 @@ module.exports.create = async event => {
     }, {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
-    const productsFromDB = await db.query(storage.findProducts(productsIds))
+    const productsFromDB = await db.query(commonStorage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
-    const requiredFields = ['stakeholder_id', 'project_id', 'service_type', 'products']
+    const requiredFields = ['stakeholder_id', 'project_id', 'service_type', 'products', 'subtotal_amount']
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     if (operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
-    const [stakeholderIdExists] = stakeholder_id ? await db.query(storage.findStakeholder({ id: stakeholder_id })) : []
+    const [stakeholderIdExists] = stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: stakeholder_id })) : []
+    const stakeholderCredits = stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(), [stakeholder_id]) : []
+    const currentCredit = stakeholderCredits && stakeholderCredits[0] ? stakeholderCredits.reduce((r, v) => r + v.credit_amount, 0) : 0
+    const isInvalidCreditAmount =
+      stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit + subtotal_amount > stakeholderIdExists.credit_limit
 
     if (Object.keys(types.operationsTypes).every(k => types.operationsTypes[k] !== operation_type))
       errors.push(
@@ -145,6 +151,10 @@ module.exports.create = async event => {
       const parentChildProductsErrors = parentChildProductsValidator(products, productsFromDB)
       parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
     }
+    if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)
+    if (!stakeholderIdExists || !stakeholderIdExists.credit_limit)
+      errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
+    if (isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -196,6 +206,7 @@ module.exports.update = async event => {
     start_date: { type: 'string' },
     end_date: { type: 'string' },
     service_type: { type: { enum: types.documentsServiceType }, required: true },
+    subtotal_amount: { type: 'number', min: 1, required: true },
     products: {
       type: 'array',
       required: true,
@@ -213,7 +224,7 @@ module.exports.update = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
-    const { document_id, products, start_date, end_date, service_type } = req.body
+    const { document_id, products, start_date, end_date, subtotal_amount = 0, service_type } = req.body
     // can(req.currentAction, operation_type)
 
     const rawDocument = document_id && (await db.query(storage.findDocument(), [document_id]))
@@ -260,15 +271,25 @@ module.exports.update = async event => {
     }, {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
-    const productsFromDB = await db.query(storage.findProducts(productsIds))
+    const productsFromDB = await db.query(commonStorage.findProducts(productsIds))
     const productsExists = products.flatMap(p =>
       !productsFromDB || !productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []
     )
-    const requiredFields = ['document_id', 'project_id', 'products', 'service_type']
+    const requiredFields = ['document_id', 'project_id', 'products', 'service_type', 'subtotal_amount']
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     if (document && document.operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
+    const [stakeholderIdExists] =
+      document && document.stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: document.stakeholder_id })) : []
+    const stakeholderCredits =
+      document && document.stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(), [document.stakeholder_id]) : []
+    const currentCredit =
+      stakeholderCredits && stakeholderCredits[0]
+        ? stakeholderCredits.reduce((r, v) => (Number(document_id) === Number(v.id) ? r : r + v.credit_amount), 0)
+        : 0
+    const isInvalidCreditAmount =
+      stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit + subtotal_amount > stakeholderIdExists.credit_limit
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
@@ -287,6 +308,10 @@ module.exports.update = async event => {
       const parentChildProductsErrors = parentChildProductsValidator(products, productsFromDB)
       parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
     }
+    if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)
+    if (!stakeholderIdExists || !stakeholderIdExists.credit_limit)
+      errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
+    if (isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -323,13 +348,17 @@ module.exports.invoice = async event => {
       payment_method: { type: { enum: types.documentsPaymentMethods }, required: true },
       service_type: { type: { enum: types.documentsServiceType }, required: true },
       credit_days: { type: { enum: types.creditsPolicy.creditDaysEnum } },
-      total_invoice: { type: 'number', min: 0, required: true },
+      subtotal_amount: { type: 'number', min: 1, required: true },
+      total_discount_amount: { type: 'number', required: true },
+      total_tax_amount: { type: 'number', required: true },
+      total_amount: { type: 'number', min: 0, required: true },
       // stakeholder_type: { type: { enum: [types.stakeholdersTypes.CLIENT_INDIVIDUAL, types.stakeholdersTypes.CLIENT_COMPANY] } },
       // stakeholder_name: { type: 'string', length: 100 },
       // stakeholder_address: { type: 'string', length: 100 },
       // stakeholder_nit: { type: 'string', length: 11 },
       // stakeholder_phone: { type: 'string', length: 20 },
       related_external_document_id: { type: ['string', 'number'] },
+      description: { type: 'string' },
       products: {
         type: 'array',
         required: true,
@@ -348,7 +377,17 @@ module.exports.invoice = async event => {
     }
 
     const req = await handleRequest({ event, inputType })
-    const { document_id, payment_method, credit_days, service_type, total_invoice, products } = req.body
+    const {
+      document_id,
+      payment_method,
+      credit_days,
+      service_type,
+      subtotal_amount = 0,
+      total_discount_amount,
+      total_tax_amount,
+      total_amount,
+      products,
+    } = req.body
 
     // can(req.currentAction, types.operationsTypes.PURCHASE)
 
@@ -360,12 +399,14 @@ module.exports.invoice = async event => {
     }, {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
-    const productsFromDB = await db.query(storage.findProducts(productsIds))
-    const requiredFields = ['document_id', 'payment_method', 'service_type', 'total_invoice']
+    const productsFromDB = await db.query(commonStorage.findProducts(productsIds))
+    const requiredFields = ['document_id', 'payment_method', 'service_type', 'subtotal_amount', 'total_amount']
+    if (Number(total_discount_amount) !== 0) requiredFields.push('total_discount_amount')
+    if (Number(total_tax_amount) !== 0) requiredFields.push('total_tax_amount')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
-    const documentDetails = document_id ? await db.query(storage.findDocumentDetails(), [document_id]) : []
+    const documentDetails = document_id ? await db.query(storage.findDocument(), [document_id]) : []
     const invalidStatusProducts = documentDetails.flatMap(pm =>
       pm.products__product_status !== types.productsStatus.ACTIVE ? pm.products__product_id : []
     )
@@ -373,24 +414,19 @@ module.exports.invoice = async event => {
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
-    if (!documentDetails || !documentDetails[0]) errors.push('EL documento recibido no se encuentra registrado')
+    if (!documentDetails || !documentDetails[0]) errors.push('El documento recibido no se encuentra registrado')
     if (invalidStatusProducts && invalidStatusProducts[0])
       invalidStatusProducts.forEach(id => errors.push(`El producto con id ${id} debe tener status ${types.productsStatus.ACTIVE}`))
     if (documentDetails[0] && documentDetails[0].document_status === types.documentsStatus.CANCELLED)
       errors.push('El documento ya se encuentra cancelado')
     if (documentDetails[0] && documentDetails[0].related_internal_document_id)
       errors.push(`El documento ya esta relacionado a una factura con id ${documentDetails[0].related_internal_document_id}`)
-    if (total_invoice <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
+    if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)
+    if (total_amount <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
     if (Object.keys(types.documentsPaymentMethods).every(k => types.documentsPaymentMethods[k] !== payment_method))
       errors.push(
         `The field payment_method must contain one of these values: ${Object.keys(types.documentsPaymentMethods)
           .map(k => types.documentsPaymentMethods[k])
-          .join(', ')}`
-      )
-    if (credit_days && Object.keys(types.creditsPolicy.creditDaysEnum).every(k => types.creditsPolicy.creditDaysEnum[k] !== credit_days))
-      errors.push(
-        `The field credit_days must contain one of these values: ${Object.keys(types.creditsPolicy.creditDaysEnum)
-          .map(k => types.creditsPolicy.creditDaysEnum[k])
           .join(', ')}`
       )
     if (Object.keys(types.documentsServiceType).every(k => types.documentsServiceType[k] !== service_type))
@@ -423,6 +459,33 @@ module.exports.invoice = async event => {
     if (service_type === types.documentsServiceType.SERVICE) {
       const parentChildProductsErrors = parentChildProductsValidator(products, productsFromDB)
       parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
+    }
+
+    if (credit_days) {
+      const [stakeholderIdExists] =
+        groupedDocumentDetails && groupedDocumentDetails.stakeholder_id
+          ? await db.query(commonStorage.findStakeholder({ id: groupedDocumentDetails.stakeholder_id }))
+          : []
+      const stakeholderCredits =
+        groupedDocumentDetails && groupedDocumentDetails.stakeholder_id
+          ? await db.query(commonStorage.findStakeholderCredit(), [groupedDocumentDetails.stakeholder_id])
+          : []
+      const currentCredit =
+        stakeholderCredits && stakeholderCredits[0]
+          ? stakeholderCredits.reduce((r, v) => (Number(document_id) === Number(v.id) ? r : r + v.credit_amount), 0)
+          : 0
+      const isInvalidCreditAmount =
+        stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit + subtotal_amount > stakeholderIdExists.credit_limit
+
+      if (Object.keys(types.creditsPolicy.creditDaysEnum).every(k => types.creditsPolicy.creditDaysEnum[k] !== credit_days))
+        errors.push(
+          `The field credit_days must contain one of these values: ${Object.keys(types.creditsPolicy.creditDaysEnum)
+            .map(k => types.creditsPolicy.creditDaysEnum[k])
+            .join(', ')}`
+        )
+      if (!stakeholderIdExists || !stakeholderIdExists.credit_limit)
+        errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
+      if (isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
     }
 
     if (errors.length > 0) throw new ValidatorException(errors)
@@ -469,7 +532,10 @@ module.exports.cancel = async event => {
     const errors = []
     const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const documentMovements = await db.query(storage.findDocumentMovements(), [document_id])
+    const documentMovements = await db.query(
+      commonStorage.findDocumentMovements([types.documentsTypes.SELL_PRE_INVOICE, types.documentsTypes.RENT_PRE_INVOICE]),
+      [document_id]
+    )
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (!documentMovements || !documentMovements[0]) errors.push('No existe una venta registrada con la informacion recibida')

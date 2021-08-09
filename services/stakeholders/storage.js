@@ -21,7 +21,7 @@ const findAllBy = (fields = {}, initWhereCondition = `(p.is_active = 1 OR p.is_a
     s.updated_by,
     p.id AS projects__id,
     p.name AS projects__name,
-    p.start_date AORDER BY id DESCS projects__start_date,
+    p.start_date AS projects__start_date,
     p.end_date AS projects__end_date,
     p.created_at AS projects__created_at
   FROM stakeholders s

@@ -19,10 +19,14 @@ const findAllBy = (fields = {}) => {
       d.status,
       d.cancel_reason,
       d.description,
-      d.total_invoice,
+      d.subtotal_amount,
+      d.total_discount_amount,
+      d.total_tax_amount,
+      d.total_amount,
       d.service_type,
       d.payment_method,
       d.credit_days,
+      d.credit_status,
       d.created_at,
       d.created_by,
       d.updated_at,
@@ -64,23 +68,7 @@ const findInvoiceStatus = () => `DESCRIBE documents status`
 
 const findInvoiceServiceType = () => `DESCRIBE documents service_type`
 
-const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `
-  SELECT id, stakeholder_type, status, name, address, nit, email, phone, alternative_phone, business_man, payments_man,block_reason, created_at, created_by, updated_at, updated_by
-  FROM stakeholders
-  WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
-`
-
-const findProducts = whereIn => `
-  SELECT
-    p.id AS product_id,
-    p.product_type,
-    p.stock,
-    p.unit_price AS product_price,
-    t.fee AS tax_fee
-  FROM products p
-  LEFT JOIN taxes t ON t.id = p.tax_id
-  WHERE p.id IN (${whereIn.join(', ')})
-`
+const findCreditStatus = () => `DESCRIBE documents credit_status`
 
 const checkProjectExists = () => `SELECT id FROM projects WHERE id = ?`
 
@@ -95,38 +83,51 @@ const checkInventoryMovementsOnApprove = whereIn => `
   GROUP BY im.id, imd.inventory_movement_id
 `
 
-const findDocumentMovements = () => `
-  SELECT
-    d.id AS document_id,
-    d.related_internal_document_id AS related_internal_document_id,
-    d.document_type AS document_type,
-    d.status AS document_status,
-    d.operation_id AS operation_id,
-    im.id AS inventory_movements__inventory_movement_id,
-    im.movement_type AS inventory_movements__movement_type,
-    im.product_id AS inventory_movements__product_id,
-    im.quantity AS inventory_movements__quantity,
-    p.stock AS inventory_movements__stock,
-    p.status AS inventory_movements__product_status
-  FROM documents d
-  LEFT JOIN operations o ON o.id = d.operation_id
-  LEFT JOIN inventory_movements im ON im.operation_id = o.id
-  LEFT JOIN products p ON p.id = im.product_id
+const findRelatedDocument = () => `
+  SELECT id, credit_days, related_internal_document_id
+  FROM documents
   WHERE
-    d.id = ? AND (
-      d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
-      d.document_type = '${types.documentsTypes.RENT_INVOICE}'
+    id = ? AND (
+      document_type = '${types.documentsTypes.SELL_INVOICE}' OR
+      document_type = '${types.documentsTypes.RENT_INVOICE}'
     )
 `
 
+const updateInvoiceStatus = () => `
+  UPDATE documents
+  SET credit_status = ?
+  WHERE id = ?
+`
+
+const findDocumentsWithDefaultCredits = () => `
+  SELECT d.id, d.stakeholder_id, d.created_by, d.updated_by
+  FROM documents d
+  WHERE (
+      d.document_type = 'SELL_INVOICE' OR
+      d.document_type = 'RENT_INVOICE'
+    )
+    AND DATEDIFF(NOW(), d.created_at) > d.credit_days
+    AND d.credit_status = '${types.creditsPolicy.creditStatusEnum.UNPAID}'
+`
+
+const bulkUpdateCreditStatus = creditStatusValues => `
+  INSERT INTO documents (id, stakeholder_id, credit_status, created_by, updated_by)
+    VALUES ${creditStatusValues.join(',')}
+    ON DUPLICATE KEY UPDATE
+      credit_status = VALUES(credit_status),
+      updated_by = VALUES(updated_by)
+`
+
 module.exports = {
+  bulkUpdateCreditStatus,
   checkInventoryMovementsOnApprove,
   checkProjectExists,
   findAllBy,
+  findCreditStatus,
+  findDocumentsWithDefaultCredits,
   findInvoiceServiceType,
   findInvoiceStatus,
   findPaymentMethods,
-  findProducts,
-  findDocumentMovements,
-  findStakeholder,
+  findRelatedDocument,
+  updateInvoiceStatus,
 }

@@ -100,6 +100,11 @@ const creditsPolicy = {
     TWO_WEEKS: 15,
     ONE_MONTH: 30,
   },
+  creditStatusEnum: {
+    UNPAID: 'UNPAID', // no pagado pero dentro del limite de dias
+    PAID: 'PAID', // pagado
+    DEFAULT: 'DEFAULT', // no pagado luego de vencer el limite de dias
+  },
 }
 
 module.exports = {
