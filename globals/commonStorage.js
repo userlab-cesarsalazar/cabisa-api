@@ -16,6 +16,7 @@ const findProducts = whereIn => `
 const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `
   SELECT 
     id,
+    id AS stakeholder_id,
     stakeholder_type,
     status,
     name,

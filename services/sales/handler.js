@@ -358,6 +358,7 @@ module.exports.invoice = async event => {
       // stakeholder_nit: { type: 'string', length: 11 },
       // stakeholder_phone: { type: 'string', length: 20 },
       related_external_document_id: { type: ['string', 'number'] },
+      description: { type: 'string' },
       products: {
         type: 'array',
         required: true,
@@ -462,10 +463,12 @@ module.exports.invoice = async event => {
 
     if (credit_days) {
       const [stakeholderIdExists] =
-        documentDetails && documentDetails.stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: documentDetails.stakeholder_id })) : []
+        groupedDocumentDetails && groupedDocumentDetails.stakeholder_id
+          ? await db.query(commonStorage.findStakeholder({ id: groupedDocumentDetails.stakeholder_id }))
+          : []
       const stakeholderCredits =
-        documentDetails && documentDetails.stakeholder_id
-          ? await db.query(commonStorage.findStakeholderCredit(), [documentDetails.stakeholder_id])
+        groupedDocumentDetails && groupedDocumentDetails.stakeholder_id
+          ? await db.query(commonStorage.findStakeholderCredit(), [groupedDocumentDetails.stakeholder_id])
           : []
       const currentCredit =
         stakeholderCredits && stakeholderCredits[0]
