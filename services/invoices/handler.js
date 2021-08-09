@@ -26,6 +26,19 @@ const {
 const { parentChildProductsValidator } = validators
 const db = mysqlConfig(mysql)
 
+module.exports.readServiceVersion = async () => {
+  try {
+    const servicePackage = require('./package.json')
+
+    const res = { statusCode: 200, data: { version: servicePackage.version }, message: 'Successful response' }
+
+    return await handleResponse({ req: {}, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
 module.exports.read = async event => {
   try {
     const req = await handleRequest({ event })
