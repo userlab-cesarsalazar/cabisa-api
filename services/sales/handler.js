@@ -26,7 +26,7 @@ const {
   handleUpdateDocument,
   handleDeleteInventoryMovements,
 } = helpers
-const { parentChildProductsValidator, creditLimitValidator } = validators
+const { parentChildProductsValidator } = validators
 const db = mysqlConfig(mysql)
 
 const config = {
