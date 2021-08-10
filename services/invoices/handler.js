@@ -230,7 +230,7 @@ module.exports.create = async event => {
     const [stakeholderNitUnique] = stakeholder_nit ? await db.query(commonStorage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
     const [stakeholderIdExists] = stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: stakeholder_id })) : []
     const [projectExists] = project_id ? await db.query(storage.checkProjectExists(), [project_id]) : []
-    const stakeholderCredits = stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(), [stakeholder_id]) : []
+    const stakeholderCredits = stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(stakeholder_id)) : []
     const currentCredit = stakeholderCredits && stakeholderCredits[0] ? stakeholderCredits.reduce((r, v) => r + v.credit_amount, 0) : 0
     const isInvalidCreditAmount =
       stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit + subtotal_amount > stakeholderIdExists.credit_limit

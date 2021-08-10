@@ -65,12 +65,15 @@ const findDocumentMovements = documentsType => {
 // Las ventas pueden generar facturas, es decir, genera un nuevo documento asociado al docuemnto de la venta con (document_type = 'RENT_INVOICE')
 // Las facturacion genera dos documentos al mismos tiempo con (document_type = 'SELL_PRE_INVOICE' y document_type = 'SELL_INVOICE') ambos con (status = 'APPROVED')
 // Las facturas pueden ser a credito o no. Por ejemplo, pueden tener (credit_days = 30 AND credit_status = 100) o (credit_days = NULL AND credit_status = NULL)
-const findStakeholderCredit = () => `
+const findStakeholderCredit = stakeholder_id => `
   SELECT d.id, d.subtotal_amount AS credit_amount
   FROM documents d
-  WHERE d.stakeholder_id = ? AND
-  	(d.document_type = 'RENT_PRE_INVOICE' AND d.status = '${types.documentsStatus.PENDING}') OR
-  	(
+  WHERE (
+      d.stakeholder_id = ${stakeholder_id} AND
+      d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}' AND
+      d.status = '${types.documentsStatus.PENDING}'
+    ) OR (
+      d.stakeholder_id = ${stakeholder_id} AND
       (document_type = '${types.documentsTypes.RENT_INVOICE}' OR document_type = '${types.documentsTypes.SELL_INVOICE}') AND
       d.status <> '${types.documentsStatus.CANCELLED}' AND
       d.credit_days IS NOT NULL AND d.credit_days > 0 AND

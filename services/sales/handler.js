@@ -125,7 +125,7 @@ module.exports.create = async event => {
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
     const [stakeholderIdExists] = stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: stakeholder_id })) : []
-    const stakeholderCredits = stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(), [stakeholder_id]) : []
+    const stakeholderCredits = stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(stakeholder_id)) : []
     const currentCredit = stakeholderCredits && stakeholderCredits[0] ? stakeholderCredits.reduce((r, v) => r + v.credit_amount, 0) : 0
     const isInvalidCreditAmount =
       stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit + subtotal_amount > stakeholderIdExists.credit_limit
@@ -282,8 +282,7 @@ module.exports.update = async event => {
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
     const [stakeholderIdExists] =
       document && document.stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: document.stakeholder_id })) : []
-    const stakeholderCredits =
-      document && document.stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(), [document.stakeholder_id]) : []
+    const stakeholderCredits = document && document.stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(document.stakeholder_id)) : []
     const currentCredit =
       stakeholderCredits && stakeholderCredits[0]
         ? stakeholderCredits.reduce((r, v) => (Number(document_id) === Number(v.id) ? r : r + v.credit_amount), 0)
@@ -468,7 +467,7 @@ module.exports.invoice = async event => {
           : []
       const stakeholderCredits =
         groupedDocumentDetails && groupedDocumentDetails.stakeholder_id
-          ? await db.query(commonStorage.findStakeholderCredit(), [groupedDocumentDetails.stakeholder_id])
+          ? await db.query(commonStorage.findStakeholderCredit(groupedDocumentDetails.stakeholder_id))
           : []
       const currentCredit =
         stakeholderCredits && stakeholderCredits[0]

@@ -137,7 +137,7 @@ const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousCondition
   const whereConditions = Object.keys(whereConditionsFields).flatMap((k, i) => {
     const fieldValue = fields[k] && String(fields[k])
 
-    if (!fieldValue) return []
+    if (!fieldValue || k === 'open_parenthesis' || k === 'close_parenthesis') return []
 
     const prefixOperator = fieldValue.indexOf('\\$or') > -1 ? 'OR' : 'AND'
     let paramOperator = '$eq'
@@ -155,10 +155,13 @@ const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousCondition
 
     if (!operators[paramOperator]) throw new Error(`The provided operator doesn't exists`)
 
+    const openParenthesis = whereConditionsFields.open_parenthesis === k ? '(' : ''
+    const closeParenthesis = whereConditionsFields.close_parenthesis === k ? ')' : ''
+
     const previousCondition = !hasPreviousConditions && i === 0 ? 'WHERE ' : prefixOperator
     const field = tableAlias ? `${tableAlias}.${k}` : k
 
-    return ` ${previousCondition} ${field} ${operators[paramOperator]} '${value}'`
+    return ` ${previousCondition} ${openParenthesis}${field} ${operators[paramOperator]} '${value}'${closeParenthesis}`
   })
 
   return `${whereConditions.join('')} ${paginationSQL}`
