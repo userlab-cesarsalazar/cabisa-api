@@ -103,8 +103,8 @@ const findDocumentsWithDefaultCredits = () => `
   SELECT d.id, d.stakeholder_id, d.created_by, d.updated_by
   FROM documents d
   WHERE (
-      d.document_type = 'SELL_INVOICE' OR
-      d.document_type = 'RENT_INVOICE'
+      d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
+      d.document_type = '${types.documentsTypes.RENT_INVOICE}'
     )
     AND DATEDIFF(NOW(), d.created_at) > d.credit_days
     AND d.credit_status = '${types.creditsPolicy.creditStatusEnum.UNPAID}'
