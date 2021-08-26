@@ -230,7 +230,9 @@ module.exports.update = async event => {
     const { document_id, products, start_date, end_date, subtotal_amount = 0 } = req.body
     // can(req.currentAction, operation_type)
 
-    const rawDocument = document_id && (await db.query(storage.findDocument(), [document_id]))
+    const rawDocument =
+      document_id &&
+      (await db.query(commonStorage.findDocument([types.documentsTypes.SELL_PRE_INVOICE, types.documentsTypes.RENT_PRE_INVOICE]), [document_id]))
     const [documentWithDuplicates] = rawDocument
       ? groupJoinResult({ data: rawDocument, nestedFieldsKeys: ['old_inventory_movements', 'old_products'], uniqueKey: ['document_id'] })
       : []

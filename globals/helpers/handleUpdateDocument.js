@@ -80,8 +80,9 @@ const handleUpdateDocument = async (req, res) => {
         )`
   )
 
-  await res.connection.query(deleteDocumentProducts(deleteProductIds), [document_id])
-  await res.connection.query(updateDocumentsProducts(updateDocumentsProductsValues))
+  if (deleteProductIds && deleteProductIds[0]) await res.connection.query(deleteDocumentProducts(deleteProductIds), [document_id])
+  if (updateDocumentsProductsValues && updateDocumentsProductsValues[0])
+    await res.connection.query(updateDocumentsProducts(updateDocumentsProductsValues))
 
   return {
     req: { ...req, body: { ...req.body, document_id, related_internal_document_id } },
