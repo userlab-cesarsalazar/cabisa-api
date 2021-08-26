@@ -412,7 +412,9 @@ module.exports.invoice = async event => {
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductFields = ['product_id', 'service_type', 'product_quantity', 'product_price']
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
-    const documentDetails = document_id ? await db.query(storage.findDocument(), [document_id]) : []
+    const documentDetails = document_id
+      ? await db.query(commonStorage.findDocument([types.documentsTypes.SELL_PRE_INVOICE, types.documentsTypes.RENT_PRE_INVOICE]), [document_id])
+      : []
     const invalidStatusProducts = documentDetails.flatMap(pm =>
       pm.products__product_status !== types.productsStatus.ACTIVE ? pm.products__product_id : []
     )
