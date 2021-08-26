@@ -1,7 +1,7 @@
 const { creditsPolicy } = require('../types')
 // importante especificar el document_type del documento a crear
 
-// req.body: { stakeholder_id, project_id, document_type, comments, received_by, dispatched_by, start_date, end_date, service_type, payment_method, credit_days, description, products }
+// req.body: { stakeholder_id, project_id, document_type, comments, received_by, dispatched_by, start_date, end_date, payment_method, credit_days, description, products }
 
 const handleCreateDocument = async (req, res) => {
   const {
@@ -19,7 +19,6 @@ const handleCreateDocument = async (req, res) => {
     total_discount_amount = null,
     total_tax_amount = null,
     total_amount = null,
-    service_type = null,
     payment_method = null,
     credit_days = null,
     description = null,
@@ -43,7 +42,6 @@ const handleCreateDocument = async (req, res) => {
     total_discount_amount,
     total_tax_amount,
     total_amount,
-    service_type,
     payment_method,
     credit_days,
     Number(credit_days) > 0 ? creditsPolicy.creditStatusEnum.UNPAID : null,
@@ -57,6 +55,7 @@ const handleCreateDocument = async (req, res) => {
       `(
         ${newDocumentId},
         ${p.product_id},
+        ${p.service_type ? `'${p.service_type}'` : null},
         ${p.product_price},
         ${p.product_quantity},
         ${p.tax_fee},
@@ -91,20 +90,20 @@ const createDocument = () => `
       total_discount_amount,
       total_tax_amount,
       total_amount,
-      service_type,
       payment_method,
       credit_days,
       credit_status,
       description,
       created_by
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products
     (
       document_id,
       product_id,
+      service_type,
       product_price,
       product_quantity,
       tax_fee,

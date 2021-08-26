@@ -23,7 +23,6 @@ const findAllBy = (fields = {}) => {
       d.total_discount_amount,
       d.total_tax_amount,
       d.total_amount,
-      d.service_type,
       d.payment_method,
       d.credit_days,
       d.credit_status,
@@ -36,6 +35,7 @@ const findAllBy = (fields = {}) => {
       prod.id AS products__id,
       prod.product_type AS products__product_type,
       prod.status AS products__status,
+      dp.service_type AS products__service_type,
       dp.product_price AS products__product_price,
       dp.product_quantity AS products__product_quantity,
       dp.tax_fee AS products__tax_fee,
@@ -66,7 +66,7 @@ const findPaymentMethods = () => `DESCRIBE documents payment_method`
 
 const findInvoiceStatus = () => `DESCRIBE documents status`
 
-const findInvoiceServiceType = () => `DESCRIBE documents service_type`
+const findInvoiceServiceType = () => `DESCRIBE documents_products service_type`
 
 const findCreditStatus = () => `DESCRIBE documents credit_status`
 

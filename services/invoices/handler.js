@@ -47,10 +47,9 @@ module.exports.read = async event => {
 
     const data = res.data.map(invoice => {
       const { discount, discount_percentage, subtotal, total_tax, total } = invoice.products.reduce((r, p) => {
-        const productQuantity = p.service_type === types.documentsServiceType.SERVICE && !p.parent_product_id ? 1 : p.product_quantity
-        const discount = (r.discount || 0) + p.unit_discount_amount * productQuantity
-        const subtotal = (r.subtotal || 0) + p.product_price * productQuantity
-        const total_tax = (r.total_tax || 0) + p.unit_tax_amount * productQuantity
+        const discount = (r.discount || 0) + p.unit_discount_amount * p.product_quantity
+        const subtotal = (r.subtotal || 0) + p.product_price * p.product_quantity
+        const total_tax = (r.total_tax || 0) + p.unit_tax_amount * p.product_quantity
 
         return {
           discount,
@@ -62,12 +61,10 @@ module.exports.read = async event => {
       }, {})
 
       const products = invoice.products.map(p => {
-        const productQuantity = p.service_type === types.documentsServiceType.SERVICE && !p.parent_product_id ? 1 : p.product_quantity
-
         return {
           ...p,
-          subtotal: p.product_price * productQuantity,
-          subtotal_tax: p.unit_tax_amount * productQuantity,
+          subtotal: p.product_price * p.product_quantity,
+          subtotal_tax: p.unit_tax_amount * p.product_quantity,
         }
       })
 
@@ -161,7 +158,6 @@ module.exports.create = async event => {
     stakeholder_id: { type: ['string', 'number'], required: true },
     payment_method: { type: { enum: types.documentsPaymentMethods }, required: true },
     project_id: { type: ['string', 'number'], required: true },
-    service_type: { type: { enum: types.documentsServiceType }, required: true },
     credit_days: { type: { enum: types.creditsPolicy.creditDaysEnum } },
     subtotal_amount: { type: 'number', min: 1, required: true },
     total_discount_amount: { type: 'number', required: true },
@@ -181,6 +177,7 @@ module.exports.create = async event => {
         type: 'object',
         fields: {
           product_id: { type: ['string', 'number'], required: true },
+          service_type: { type: { enum: types.documentsServiceType }, required: true },
           product_quantity: { type: 'number', min: 0, required: true },
           product_price: { type: 'number', min: 0, required: true },
           product_discount_percentage: { type: 'number', min: 0 },
@@ -200,7 +197,6 @@ module.exports.create = async event => {
       stakeholder_nit,
       payment_method,
       credit_days,
-      service_type,
       total_discount_amount,
       total_tax_amount,
       subtotal_amount = 0,
@@ -220,11 +216,11 @@ module.exports.create = async event => {
     const productsIds = products.map(p => p.product_id)
     const productsFromDB = await db.query(commonStorage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
-    const requiredFields = ['stakeholder_id', 'products', 'payment_method', 'project_id', 'service_type', 'subtotal_amount', 'total_amount']
+    const requiredFields = ['stakeholder_id', 'products', 'payment_method', 'project_id', 'subtotal_amount', 'total_amount']
     if (Number(total_discount_amount) !== 0) requiredFields.push('total_discount_amount')
     if (Number(total_tax_amount) !== 0) requiredFields.push('total_tax_amount')
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
-    const requiredProductFields = ['product_id', 'product_quantity', 'product_price']
+    const requiredProductFields = ['product_id', 'service_type', 'product_quantity', 'product_price']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
     const [stakeholderNitUnique] = stakeholder_nit ? await db.query(commonStorage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
@@ -253,12 +249,6 @@ module.exports.create = async event => {
           .map(k => types.creditsPolicy.creditDaysEnum[k])
           .join(', ')}`
       )
-    if (Object.keys(types.documentsServiceType).every(k => types.documentsServiceType[k] !== service_type))
-      errors.push(
-        `The field service_type must contain one of these values: ${Object.keys(types.documentsServiceType)
-          .map(k => types.documentsServiceType[k])
-          .join(', ')}`
-      )
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (stakeholderNitUnique) errors.push('El nit ya se encuentra registrado')
@@ -268,13 +258,22 @@ module.exports.create = async event => {
     if (project_id && !projectExists) errors.push(`El proyecto no se encuentra registrado`)
     if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)
     if (total_amount <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
-    if (service_type === types.documentsServiceType.SERVICE) {
-      const parentChildProductsErrors = parentChildProductsValidator(products, productsFromDB)
-      parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
-    }
     if (credit_days && (!stakeholderIdExists || !stakeholderIdExists.credit_limit))
       errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
     if (credit_days && isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
+    products.forEach(p => {
+      if (Object.keys(types.documentsServiceType).every(k => types.documentsServiceType[k] !== p.service_type))
+        errors.push(
+          `The field service_type must contain one of these values: ${Object.keys(types.documentsServiceType)
+            .map(k => types.documentsServiceType[k])
+            .join(', ')}`
+        )
+
+      if (p.service_type === types.documentsServiceType.SERVICE) {
+        const parentChildProductsErrors = parentChildProductsValidator(p, products, productsFromDB)
+        parentChildProductsErrors[0] && parentChildProductsErrors.forEach(pce => errors.push(pce))
+      }
+    })
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
