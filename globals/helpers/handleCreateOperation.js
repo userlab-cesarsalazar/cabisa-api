@@ -1,3 +1,5 @@
+// req.body: { operation_type, created_by }
+
 const handleCreateOperation = async (req, res) => {
   const { operation_type, created_by = 1 } = req.body
 

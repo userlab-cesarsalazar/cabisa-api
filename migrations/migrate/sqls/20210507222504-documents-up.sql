@@ -26,7 +26,7 @@ CREATE TABLE `documents` (
   `updated_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `updated_by` INT,
   CONSTRAINT documents_pk PRIMARY KEY (id),
-  CONSTRAINT documents_stakeholder_id_fk FOREIGN KEY (stakeholder_id) REFERENCES stakeholders(id),
+  CONSTRAINT documents_stakeholder_id_fk FOREIGN KEY (stakeholder_id) REFERENCES stakeholders(id) MATCH PARTIAL ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT documents_operation_id_fk FOREIGN KEY (operation_id) REFERENCES operations(id),
   CONSTRAINT documents_related_internal_document_id_fk FOREIGN KEY (related_internal_document_id) REFERENCES documents(id) MATCH PARTIAL ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT documents_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
