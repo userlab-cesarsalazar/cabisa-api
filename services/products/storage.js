@@ -57,7 +57,7 @@ const deleteProduct = () => `DELETE FROM products WHERE product_type = '${types.
 
 // apply for services too
 const findOptionsBy = (fields = {}) => `
-  SELECT p.id, p.code, p.unit_price, p.description, t.fee AS tax_fee, t.name AS tax_name
+  SELECT p.id, p.code, p.serial_number, p.unit_price, p.description, t.fee AS tax_fee, t.name AS tax_name, p.stock
   FROM products p
   LEFT JOIN taxes t ON t.id = p.tax_id
   ${getWhereConditions({ fields, tableAlias: 'p', hasPreviousConditions: false })}

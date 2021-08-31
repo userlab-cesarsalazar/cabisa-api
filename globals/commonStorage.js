@@ -1,7 +1,7 @@
 const types = require('./types')
 const { getWhereConditions } = require('./common')
 
-const findProducts = whereIn => `
+const findProducts = (whereIn, extraWhereConditions = '') => `
   SELECT
     p.id AS product_id,
     p.product_type,
@@ -10,7 +10,7 @@ const findProducts = whereIn => `
     t.fee AS tax_fee
   FROM products p
   LEFT JOIN taxes t ON t.id = p.tax_id
-  WHERE p.id IN (${whereIn.join(', ')})
+  WHERE p.id IN (${whereIn.join(', ')}) ${extraWhereConditions}
 `
 
 const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.stakeholdersStatus.ACTIVE}'`) => `
@@ -47,6 +47,7 @@ const findDocument = documentsType => {
     d.stakeholder_id AS stakeholder_id,
     d.operation_id AS operation_id,
     o.operation_type AS operation_type,
+    d.product_id AS product_id,
     d.project_id AS project_id,
     d.related_internal_document_id AS related_internal_document_id,
     d.related_external_document_id AS related_external_document_id,
@@ -108,16 +109,21 @@ const findDocumentMovements = documentsType => {
   return `
     SELECT
       d.id AS document_id,
+      d.product_id AS repair_product_id,
       d.related_internal_document_id AS related_internal_document_id,
       d.document_type AS document_type,
+      d.end_date AS end_date,
       d.status AS document_status,
       d.operation_id AS operation_id,
       im.id AS inventory_movements__inventory_movement_id,
       im.movement_type AS inventory_movements__movement_type,
       im.product_id AS inventory_movements__product_id,
       im.quantity AS inventory_movements__quantity,
+      im.quantity AS inventory_movements__product_quantity,
       p.stock AS inventory_movements__stock,
-      p.status AS inventory_movements__product_status
+      p.status AS inventory_movements__product_status,
+      p.product_type AS inventory_movements__product_type,
+      p.unit_price AS inventory_movements__product_price
     FROM documents d
     LEFT JOIN operations o ON o.id = d.operation_id
     LEFT JOIN inventory_movements im ON im.operation_id = o.id

@@ -18,7 +18,6 @@ const documentsPaymentMethods = {
 }
 
 const documentsTypes = {
-  INVENTORY_ADJUSTMENT: 'INVENTORY_ADJUSTMENT',
   PURCHASE_ORDER: 'PURCHASE_ORDER',
   RENT_INVOICE: 'RENT_INVOICE',
   RENT_PRE_INVOICE: 'RENT_PRE_INVOICE',
@@ -52,9 +51,10 @@ const inventoryMovementsTypes = {
 }
 
 const operationsTypes = {
-  SELL: 'SELL',
   PURCHASE: 'PURCHASE',
   RENT: 'RENT',
+  REPAIR: 'REPAIR',
+  SELL: 'SELL',
 }
 
 const productsCategories = {

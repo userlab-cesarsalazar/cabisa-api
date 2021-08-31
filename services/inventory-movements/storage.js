@@ -34,16 +34,16 @@ const findAllAdjustmentsBy = (fields = {}) => `
   ia.adjustment_reason,
   ia.created_at,
   ia.created_by,
-  iap.preview_stock,
-  iap.next_stock,
-  p.id AS products__product_id,
+  p.id AS products__id,
   p.product_type AS products__product_type,
   p.product_category AS products__product_category,
   p.status AS products__status,
   p.description AS products__description,
   p.code AS products__code,
   p.serial_number AS products__serial_number,
-  p.stock AS products__current_stock
+  p.stock AS products__current_stock,
+  iap.preview_stock AS products__preview_stock,
+  iap.next_stock AS products__next_stock
   FROM inventory_adjustments ia
   LEFT JOIN inventory_adjustments_products iap ON iap.inventory_adjustment_id = ia.id
   LEFT JOIN products p ON p.id = iap.product_id

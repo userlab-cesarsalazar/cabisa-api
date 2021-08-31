@@ -8,7 +8,7 @@ module.exports.read = async event => {
   try {
     const req = await handleRequest({ event })
 
-    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy })
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['products'] })
 
     return await handleResponse({ req, res })
   } catch (error) {
@@ -75,10 +75,8 @@ module.exports.approve = async event => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const handlersConfig = { updateStockOn: types.actions.APPROVED }
-
     const { res } = await db.transaction(async connection => {
-      const inventoryMovementsApproved = await handleApproveInventoryMovements(req, { connection, handlersConfig })
+      const inventoryMovementsApproved = await handleApproveInventoryMovements(req, { connection, updateStockOn: types.actions.APPROVED })
       return await handleUpdateStock(inventoryMovementsApproved.req, inventoryMovementsApproved.res)
     })
 

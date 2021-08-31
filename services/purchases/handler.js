@@ -124,7 +124,10 @@ module.exports.create = async event => {
 
       const documentApproved = await handleApproveDocument(operationCreated.req, operationCreated.res)
 
-      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, documentApproved.res)
+      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, {
+        ...documentApproved.res,
+        createInventoryMovementType: types.inventoryMovementsTypes.IN,
+      })
 
       const inventoryMovementsApproved = await handleApproveInventoryMovements(inventoryMovementsCreated.req, inventoryMovementsCreated.res)
 
@@ -254,7 +257,10 @@ module.exports.update = async event => {
 
       const inventoryMovementsDeleted = await handleDeleteInventoryMovements(documentUpdated.req, documentUpdated.res)
 
-      const inventoryMovementsCreated = await handleCreateInventoryMovements(inventoryMovementsDeleted.req, inventoryMovementsDeleted.res)
+      const inventoryMovementsCreated = await handleCreateInventoryMovements(inventoryMovementsDeleted.req, {
+        ...inventoryMovementsDeleted.res,
+        createInventoryMovementType: types.inventoryMovementsTypes.IN,
+      })
 
       const inventoryMovementsApproved = await handleApproveInventoryMovements(inventoryMovementsCreated.req, inventoryMovementsCreated.res)
 

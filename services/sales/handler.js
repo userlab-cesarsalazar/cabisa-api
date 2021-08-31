@@ -31,12 +31,12 @@ const db = mysqlConfig(mysql)
 
 const config = {
   [types.operationsTypes.SELL]: {
-    initDocument: types.documentsTypes.SELL_PRE_INVOICE,
-    finishDocument: types.documentsTypes.SELL_INVOICE,
+    init: { documentType: types.documentsTypes.SELL_PRE_INVOICE },
+    finish: { documentType: types.documentsTypes.SELL_INVOICE, movementType: types.inventoryMovementsTypes.OUT },
   },
   [types.operationsTypes.RENT]: {
-    initDocument: types.documentsTypes.RENT_PRE_INVOICE,
-    finishDocument: types.documentsTypes.RENT_INVOICE,
+    init: { documentType: types.documentsTypes.RENT_PRE_INVOICE, movementType: types.inventoryMovementsTypes.OUT },
+    finish: { documentType: types.documentsTypes.RENT_INVOICE, movementType: types.inventoryMovementsTypes.IN },
   },
 }
 
@@ -170,7 +170,7 @@ module.exports.create = async event => {
       )
 
       const documentCreated = await handleCreateDocument(
-        { ...stakeholderCreated.req, body: { ...stakeholderCreated.req.body, document_type: config[operation_type].initDocument } },
+        { ...stakeholderCreated.req, body: { ...stakeholderCreated.req.body, document_type: config[operation_type].init.documentType } },
         stakeholderCreated.res
       )
 
@@ -179,12 +179,15 @@ module.exports.create = async event => {
         documentCreated.res
       )
 
-      const documentApproved = await handleApproveDocument(
-        { ...operationCreated.req, keepStatus: types.documentsStatus.PENDING },
-        operationCreated.res
-      )
+      const documentApproved = await handleApproveDocument(operationCreated.req, {
+        ...operationCreated.res,
+        keepStatus: types.documentsStatus.PENDING,
+      })
 
-      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, documentApproved.res)
+      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, {
+        ...documentApproved.res,
+        onCreateMovementType: config[operation_type].init.movementType,
+      })
 
       const inventoryMovementsApproved = await handleApproveInventoryMovements(inventoryMovementsCreated.req, inventoryMovementsCreated.res)
 
@@ -334,7 +337,10 @@ module.exports.update = async event => {
 
       const inventoryMovementsDeleted = await handleDeleteInventoryMovements(documentUpdated.req, documentUpdated.res)
 
-      const inventoryMovementsCreated = await handleCreateInventoryMovements(inventoryMovementsDeleted.req, inventoryMovementsDeleted.res)
+      const inventoryMovementsCreated = await handleCreateInventoryMovements(inventoryMovementsDeleted.req, {
+        ...inventoryMovementsDeleted.res,
+        onCreateMovementType: config[document.operation_type].init.movementType,
+      })
 
       const inventoryMovementsApproved = await handleApproveInventoryMovements(inventoryMovementsCreated.req, inventoryMovementsCreated.res)
 
@@ -502,7 +508,7 @@ module.exports.invoice = async event => {
 
     const productsWithTaxes = calculateProductTaxes(products, groupedDocumentDetails.products)
     const operation_type = groupedDocumentDetails.operation_type
-    const document_type = config[operation_type].finishDocument
+    const document_type = config[operation_type].finish.documentType
 
     const { res } = await db.transaction(async connection => {
       const documentCreated = await handleCreateDocument(
@@ -515,7 +521,10 @@ module.exports.invoice = async event => {
 
       const documentApproved = await handleApproveDocument(documentCreated.req, documentCreated.res)
 
-      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, documentApproved.res)
+      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, {
+        ...documentApproved.res,
+        onCreateMovementType: config[operation_type].finish.movementType,
+      })
 
       const inventoryMovementsApproved = await handleApproveInventoryMovements(inventoryMovementsCreated.req, inventoryMovementsCreated.res)
 

@@ -1,5 +1,4 @@
 const types = require('../types')
-const { ValidatorException } = require('../common')
 
 // req.body: {
 //   inventory_movements: [

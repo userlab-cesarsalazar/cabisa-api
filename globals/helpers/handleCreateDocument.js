@@ -8,7 +8,9 @@ const handleCreateDocument = async (req, res) => {
     document_id = null,
     document_type,
     stakeholder_id = null,
+    product_id = null,
     project_id = null,
+    operation_id = null,
     comments = null,
     received_by = null,
     dispatched_by = null,
@@ -31,7 +33,9 @@ const handleCreateDocument = async (req, res) => {
   await res.connection.query(createDocument(), [
     document_type,
     stakeholder_id,
+    product_id,
     project_id,
+    operation_id,
     comments,
     received_by,
     dispatched_by,
@@ -79,7 +83,9 @@ const createDocument = () => `
     (
       document_type,
       stakeholder_id,
+      product_id,
       project_id,
+      operation_id,
       comments,
       received_by,
       dispatched_by,
@@ -96,7 +102,7 @@ const createDocument = () => `
       description,
       created_by
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products
