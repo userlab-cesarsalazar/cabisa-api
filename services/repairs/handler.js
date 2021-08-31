@@ -30,27 +30,12 @@ module.exports.read = async event => {
   try {
     const req = await handleRequest({ event })
 
-    const result = await handleRead(req, {
+    const res = await handleRead(req, {
       dbQuery: db.query,
       storage: storage.findAllBy,
       nestedFieldsKeys: ['products'],
       uniqueKey: ['document_id'],
     })
-
-    const res = {
-      ...result,
-      data: result.data.map(d => {
-        const documentProduct = d.products.find(p => Number(p.id) === Number(d.product_id))
-
-        return {
-          ...d,
-          product_description: documentProduct.description,
-          code: documentProduct.code,
-          serial_number: documentProduct.serial_number,
-          products: d.products.flatMap(p => (Number(p.id) !== Number(d.product_id) ? p : [])),
-        }
-      }),
-    }
 
     return await handleResponse({ req, res })
   } catch (error) {
@@ -98,7 +83,7 @@ module.exports.create = async event => {
 
     const errors = []
     const [documentProduct] = await db.query(
-      commonStorage.findProducts([product_id, `AND p.product_category = '${types.productsCategories.EQUIPMENT}'`])
+      commonStorage.findProducts([product_id], `AND p.product_category = '${types.productsCategories.EQUIPMENT}'`)
     )
     const productsMap = products.reduce((r, p) => {
       if (p.parent_product_id) return r
@@ -145,7 +130,7 @@ module.exports.create = async event => {
         { connection }
       )
 
-      await handleCreateDocument(operationCreated.req, operationCreated.res)
+      await handleCreateDocument(operationCreated.req, { ...operationCreated.res, excludeProductOnCreateDetail: product_id })
 
       const inventoryMovementsCreated = await handleCreateInventoryMovements(operationCreated.req, {
         ...operationCreated.res,
@@ -259,8 +244,11 @@ module.exports.update = async event => {
 
     const { res } = await db.transaction(async connection => {
       const documentUpdated = await handleUpdateDocument(
-        { ...req, body: { ...document, ...req.body, ...formattedDates, products: documentDetailProducts } },
-        { connection }
+        {
+          ...req,
+          body: { ...document, ...req.body, ...formattedDates, products: documentDetailProducts },
+        },
+        { connection, excludeProductOnCreateDetail: document.product_id }
       )
 
       const inventoryMovementsDeleted = await handleDeleteInventoryMovements(documentUpdated.req, documentUpdated.res)

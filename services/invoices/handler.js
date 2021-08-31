@@ -301,7 +301,7 @@ module.exports.create = async event => {
 
       const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, {
         ...documentApproved.res,
-        createInventoryMovementType: types.inventoryMovementsTypes.OUT,
+        onCreateMovementType: types.inventoryMovementsTypes.OUT,
       })
 
       const inventoryMovementsApproved = await handleApproveInventoryMovements(inventoryMovementsCreated.req, inventoryMovementsCreated.res)

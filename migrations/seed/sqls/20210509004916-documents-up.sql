@@ -2,7 +2,7 @@
 ALTER TABLE documents DROP CONSTRAINT documents_related_internal_document_id_fk;
 
 -- OPERATIONS
-INSERT INTO cabisa.operations (operation_type,created_at,created_by) VALUES
+INSERT INTO operations (operation_type,created_at,created_by) VALUES
 	 ('PURCHASE','2021-08-25 22:26:07',1),
 	 ('PURCHASE','2021-08-25 23:17:51',1),
 	 ('PURCHASE','2021-08-26 11:54:35',1),
@@ -10,7 +10,7 @@ INSERT INTO cabisa.operations (operation_type,created_at,created_by) VALUES
 	 ('SELL','2021-08-26 12:24:26',1);
 
 -- DOCUMENTS
-INSERT INTO cabisa.documents (document_type,stakeholder_id,operation_id,project_id,related_internal_document_id,related_external_document_id,status,comments,received_by,dispatched_by,start_date,end_date,cancel_reason,subtotal_amount,total_discount_amount,total_tax_amount,total_amount,description,payment_method,credit_days,credit_status,created_at,created_by,updated_at,updated_by) VALUES
+INSERT INTO documents (document_type,stakeholder_id,operation_id,project_id,related_internal_document_id,related_external_document_id,status,comments,received_by,dispatched_by,start_date,end_date,cancel_reason,subtotal_amount,total_discount_amount,total_tax_amount,total_amount,description,payment_method,credit_days,credit_status,created_at,created_by,updated_at,updated_by) VALUES
     ('PURCHASE_ORDER',9,1,NULL,NULL,'2020','APPROVED','test compra 20',NULL,NULL,'2021-08-20 02:20:03',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-25 22:26:07',1,'2021-08-26 11:51:01',1),
     ('PURCHASE_ORDER',9,2,NULL,NULL,'66444','CANCELLED','5555',NULL,NULL,'2021-08-31 15:17:33',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-25 23:17:51',1,'2021-08-26 00:50:29',1),
     ('PURCHASE_ORDER',10,3,NULL,NULL,'3030','APPROVED','5555',NULL,NULL,'2021-08-30 11:53:52',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-26 11:54:35',1,'2021-08-26 11:54:35',1),
@@ -20,7 +20,7 @@ INSERT INTO cabisa.documents (document_type,stakeholder_id,operation_id,project_
     ('SELL_INVOICE',2,5,2,6,NULL,'APPROVED',NULL,NULL,NULL,NULL,NULL,NULL,177.0,NULL,17.16,194.16,'65','TRANSFER',NULL,NULL,'2021-08-26 12:24:26',1,'2021-08-26 12:24:26',1);
 
 -- DOCUMENT_PRODUCTS
-INSERT INTO cabisa.documents_products (service_type,document_id,product_id,product_price,product_quantity,tax_fee,unit_tax_amount,discount_percentage,unit_discount_amount,parent_product_id) VALUES
+INSERT INTO documents_products (service_type,document_id,product_id,product_price,product_quantity,tax_fee,unit_tax_amount,discount_percentage,unit_discount_amount,parent_product_id) VALUES
 	 (NULL,2,9,50.0,2,12.00,6.0,NULL,NULL,NULL),
 	 (NULL,2,6,19.0,1,12.00,2.28,NULL,NULL,NULL),
 	 (NULL,1,5,20.0,2,12.00,2.4,NULL,NULL,NULL),
@@ -31,7 +31,7 @@ INSERT INTO cabisa.documents_products (service_type,document_id,product_id,produ
 	 ('EQUIPMENT',4,8,90.0,3,12.00,10.799999999999999,NULL,NULL,NULL),
 	 ('SERVICE',4,9,61.0,2,12.00,7.319999999999999,NULL,NULL,2),
 	 ('SERVICE',4,2,69.0,1,0.00,0.0,NULL,NULL,NULL);
-INSERT INTO cabisa.documents_products (service_type,document_id,product_id,product_price,product_quantity,tax_fee,unit_tax_amount,discount_percentage,unit_discount_amount,parent_product_id) VALUES
+INSERT INTO documents_products (service_type,document_id,product_id,product_price,product_quantity,tax_fee,unit_tax_amount,discount_percentage,unit_discount_amount,parent_product_id) VALUES
 	 ('MACHINERY',5,5,37.05,2,12.00,4.446,5.00,1.9500000000000002,NULL),
 	 ('EQUIPMENT',5,8,85.5,3,12.00,10.26,5.00,4.5,NULL),
 	 ('SERVICE',5,9,57.95,2,12.00,6.954,5.00,3.0500000000000003,2),

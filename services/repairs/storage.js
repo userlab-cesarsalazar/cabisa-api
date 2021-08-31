@@ -4,6 +4,9 @@ const findAllBy = (fields = {}) => `
   SELECT
     d.id AS document_id,
     d.product_id,
+    docprod.description AS product_description,
+    docprod.code,
+    docprod.serial_number,
     d.document_type,
     d.operation_id,
     d.status,
@@ -23,6 +26,7 @@ const findAllBy = (fields = {}) => `
     prod.serial_number AS products__serial_number,
     prod.description AS products__description
   FROM documents d
+  LEFT JOIN products docprod ON docprod.id = d.product_id
   LEFT JOIN documents_products dp ON dp.document_id = d.id
   LEFT JOIN products prod ON prod.id = dp.product_id
   WHERE d.document_type = '${types.documentsTypes.REPAIR_ORDER}' ${getWhereConditions({ fields, tableAlias: 'd' })}

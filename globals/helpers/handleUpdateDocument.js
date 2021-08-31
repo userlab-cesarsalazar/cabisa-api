@@ -1,3 +1,5 @@
+// res.excludeProductOnCreateDetail: product_id
+
 // req.body: {
 //   document_id,
 //   related_external_document_id,
@@ -69,21 +71,22 @@ const handleUpdateDocument = async (req, res) => {
   ])
 
   const deleteProductIds = old_products.map(op => Number(op.product_id))
-  const updateDocumentsProductsValues = products.map(
-    p =>
-      `(  
-          ${document_id},
-          ${p.product_id},
-          ${p.service_type ? `'${p.service_type}'` : null},
-          ${p.product_price},
-          ${p.product_quantity},
-          ${p.tax_fee},
-          ${p.unit_tax_amount || 0},
-          ${p.product_discount_percentage || null},
-          ${p.product_discount || null},
-          ${p.parent_product_id || null}
-        )`
-  )
+  const updateDocumentsProductsValues = products.flatMap(p => {
+    if (Number(p.product_id) === Number(res.excludeProductOnCreateDetail)) return []
+
+    return `(  
+      ${document_id},
+      ${p.product_id},
+      ${p.service_type ? `'${p.service_type}'` : null},
+      ${p.product_price},
+      ${p.product_quantity},
+      ${p.tax_fee || 0},
+      ${p.unit_tax_amount || 0},
+      ${p.product_discount_percentage || null},
+      ${p.product_discount || null},
+      ${p.parent_product_id || null}
+    )`
+  })
 
   if (deleteProductIds && deleteProductIds[0]) await res.connection.query(deleteDocumentProducts(deleteProductIds), [document_id])
   if (updateDocumentsProductsValues && updateDocumentsProductsValues[0])

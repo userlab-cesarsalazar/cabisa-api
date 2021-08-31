@@ -1,6 +1,7 @@
 const { creditsPolicy } = require('../types')
-// importante especificar el document_type del documento a crear
+// res.excludeProductOnCreateDetail: product_id
 
+// IMPORTANTE: especificar en el req.body el document_type del documento a crear
 // req.body: { stakeholder_id, project_id, document_type, comments, received_by, dispatched_by, start_date, end_date, payment_method, credit_days, description, products }
 
 const handleCreateDocument = async (req, res) => {
@@ -54,21 +55,22 @@ const handleCreateDocument = async (req, res) => {
   ])
   const newDocumentId = await res.connection.geLastInsertId()
 
-  const documentsProductsValues = products.map(
-    p =>
-      `(
-        ${newDocumentId},
-        ${p.product_id},
-        ${p.service_type ? `'${p.service_type}'` : null},
-        ${p.product_price},
-        ${p.product_quantity},
-        ${p.tax_fee || 0},
-        ${p.unit_tax_amount || 0},
-        ${p.product_discount_percentage || null},
-        ${p.product_discount || null},
-        ${p.parent_product_id || null}
-      )`
-  )
+  const documentsProductsValues = products.flatMap(p => {
+    if (Number(p.product_id) === Number(res.excludeProductOnCreateDetail)) return []
+
+    return `(
+      ${newDocumentId},
+      ${p.product_id},
+      ${p.service_type ? `'${p.service_type}'` : null},
+      ${p.product_price},
+      ${p.product_quantity},
+      ${p.tax_fee || 0},
+      ${p.unit_tax_amount || 0},
+      ${p.product_discount_percentage || null},
+      ${p.product_discount || null},
+      ${p.parent_product_id || null}
+    )`
+  })
 
   await res.connection.query(createDocumentsProducts(documentsProductsValues))
 
