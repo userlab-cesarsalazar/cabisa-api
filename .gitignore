@@ -7,6 +7,7 @@ _scratch
 testService
 awsCognitoService/credentials.json
 migrations/database.json
+run-services.sh
 
 # Temp Files
 userListService/.sls-simulate-registry
