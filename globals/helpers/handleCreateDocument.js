@@ -5,9 +5,9 @@ const { creditsPolicy } = require('../types')
 
 const handleCreateDocument = async (req, res) => {
   const {
-    document_id,
+    document_id = null,
     document_type,
-    stakeholder_id,
+    stakeholder_id = null,
     project_id = null,
     comments = null,
     received_by = null,
@@ -58,8 +58,8 @@ const handleCreateDocument = async (req, res) => {
         ${p.service_type ? `'${p.service_type}'` : null},
         ${p.product_price},
         ${p.product_quantity},
-        ${p.tax_fee},
-        ${p.unit_tax_amount},
+        ${p.tax_fee || 0},
+        ${p.unit_tax_amount || 0},
         ${p.product_discount_percentage || null},
         ${p.product_discount || null},
         ${p.parent_product_id || null}
@@ -70,7 +70,7 @@ const handleCreateDocument = async (req, res) => {
 
   return {
     req: { ...req, body: { ...req.body, document_id: newDocumentId, related_internal_document_id } },
-    res: { ...res, statusCode: 201, data: { document_id }, message: 'Documento creado exitosamente' },
+    res: { ...res, statusCode: 201, data: { document_id: newDocumentId }, message: 'Documento creado exitosamente' },
   }
 }
 

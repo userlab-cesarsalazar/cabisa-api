@@ -22,10 +22,11 @@ const handleCreateInventoryMovements = async (req, res) => {
   // if both are needed, keep the order in the next array, first 'OUT' then 'IN'
   // [inventoryMovementsTypes.OUT, inventoryMovementsTypes.IN],
   const config = {
-    [types.documentsTypes.SELL_INVOICE]: [types.inventoryMovementsTypes.OUT],
     [types.documentsTypes.PURCHASE_ORDER]: [types.inventoryMovementsTypes.IN],
-    [types.documentsTypes.RENT_PRE_INVOICE]: [types.inventoryMovementsTypes.OUT],
     [types.documentsTypes.RENT_INVOICE]: [types.inventoryMovementsTypes.IN],
+    [types.documentsTypes.RENT_PRE_INVOICE]: [types.inventoryMovementsTypes.OUT],
+    [types.documentsTypes.REPAIR_ORDER]: [types.inventoryMovementsTypes.OUT, types.inventoryMovementsTypes.IN],
+    [types.documentsTypes.SELL_INVOICE]: [types.inventoryMovementsTypes.OUT],
   }
 
   const { products, document_type, operation_id } = req.body
