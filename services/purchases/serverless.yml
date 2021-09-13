@@ -49,6 +49,16 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
+  purchasesUpdate:
+    handler: handler.update
+    events:
+      - http:
+          path: purchases
+          method: put
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
   purchasesCancel:
     handler: handler.cancel
     events:
