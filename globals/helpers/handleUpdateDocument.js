@@ -13,7 +13,6 @@
 //   total_discount_amount
 //   total_tax_amount
 //   total_amount,
-//   service_type,
 //   payment_method,
 //   credit_days,
 //   products,
@@ -37,7 +36,6 @@ const handleUpdateDocument = async (req, res) => {
     total_discount_amount = null,
     total_tax_amount = null,
     total_amount = null,
-    service_type = null,
     payment_method = null,
     credit_days = null,
     products = [],
@@ -59,7 +57,6 @@ const handleUpdateDocument = async (req, res) => {
     total_discount_amount,
     total_tax_amount,
     total_amount,
-    service_type,
     payment_method,
     credit_days,
     updated_by,
@@ -72,6 +69,7 @@ const handleUpdateDocument = async (req, res) => {
       `(  
           ${document_id},
           ${p.product_id},
+          ${p.service_type ? `'${p.service_type}'` : null},
           ${p.product_price},
           ${p.product_quantity},
           ${p.tax_fee},
@@ -107,7 +105,6 @@ const updateDocument = () => `
       total_discount_amount = ?,
       total_tax_amount = ?,
       total_amount = ?,
-      service_type = ?,
       payment_method = ?,
       credit_days = ?,
       updated_by = ?
@@ -122,6 +119,7 @@ const updateDocumentsProducts = valuesArray => `
   INSERT INTO documents_products (
     document_id,
     product_id,
+    service_type,
     product_price,
     product_quantity,
     tax_fee,
@@ -132,6 +130,7 @@ const updateDocumentsProducts = valuesArray => `
   )
   VALUES ${valuesArray.join(', ')}
   ON DUPLICATE KEY UPDATE
+    service_type = VALUES(service_type),
     product_price = VALUES(product_price),
     product_quantity = VALUES(product_quantity),
     tax_fee = VALUES(tax_fee),
