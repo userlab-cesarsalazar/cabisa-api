@@ -1,11 +1,11 @@
 const types = require('../types')
-// req.keepStatus: types.documentsStatus
+// res.keepStatus: types.documentsStatus
 
 // req.body: { document_id, operation_id, related_internal_document_id, related_external_document_id }
 
 const handleApproveDocument = async (req, res) => {
-  const { operation_id, document_id, related_internal_document_id, related_external_document_id, updated_by = 1 } = req.body
-  const status = req.keepStatus ? req.keepStatus : types.documentsStatus.APPROVED
+  const { operation_id, document_id, related_internal_document_id = null, related_external_document_id = null, updated_by = 1 } = req.body
+  const status = res.keepStatus ? res.keepStatus : types.documentsStatus.APPROVED
 
   await res.connection.query(approveAndRelateExternalDocument(), [status, operation_id, related_external_document_id, updated_by, document_id])
 

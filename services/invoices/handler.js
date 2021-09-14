@@ -299,7 +299,10 @@ module.exports.create = async event => {
 
       const documentApproved = await handleApproveDocument(operationCreated.req, operationCreated.res)
 
-      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, documentApproved.res)
+      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, {
+        ...documentApproved.res,
+        onCreateMovementType: types.inventoryMovementsTypes.OUT,
+      })
 
       const inventoryMovementsApproved = await handleApproveInventoryMovements(inventoryMovementsCreated.req, inventoryMovementsCreated.res)
 

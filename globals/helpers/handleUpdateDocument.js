@@ -1,7 +1,10 @@
+// res.excludeProductOnCreateDetail: product_id
+
 // req.body: {
 //   document_id,
 //   related_external_document_id,
 //   related_internal_document_id,
+//   product_id,
 //   project_id,
 //   comments,
 //   received_by,
@@ -25,6 +28,7 @@ const handleUpdateDocument = async (req, res) => {
     document_id,
     related_external_document_id = null,
     related_internal_document_id = null,
+    product_id = null,
     project_id = null,
     comments = null,
     received_by = null,
@@ -36,6 +40,7 @@ const handleUpdateDocument = async (req, res) => {
     total_discount_amount = null,
     total_tax_amount = null,
     total_amount = null,
+    description = null,
     payment_method = null,
     credit_days = null,
     products = [],
@@ -46,6 +51,7 @@ const handleUpdateDocument = async (req, res) => {
   await res.connection.query(updateDocument(), [
     related_external_document_id,
     related_internal_document_id,
+    product_id,
     project_id,
     comments,
     received_by,
@@ -57,6 +63,7 @@ const handleUpdateDocument = async (req, res) => {
     total_discount_amount,
     total_tax_amount,
     total_amount,
+    description,
     payment_method,
     credit_days,
     updated_by,
@@ -64,21 +71,22 @@ const handleUpdateDocument = async (req, res) => {
   ])
 
   const deleteProductIds = old_products.map(op => Number(op.product_id))
-  const updateDocumentsProductsValues = products.map(
-    p =>
-      `(  
-          ${document_id},
-          ${p.product_id},
-          ${p.service_type ? `'${p.service_type}'` : null},
-          ${p.product_price},
-          ${p.product_quantity},
-          ${p.tax_fee},
-          ${p.unit_tax_amount},
-          ${p.product_discount_percentage || null},
-          ${p.product_discount || null},
-          ${p.parent_product_id || null}
-        )`
-  )
+  const updateDocumentsProductsValues = products.flatMap(p => {
+    if (Number(p.product_id) === Number(res.excludeProductOnCreateDetail)) return []
+
+    return `(  
+      ${document_id},
+      ${p.product_id},
+      ${p.service_type ? `'${p.service_type}'` : null},
+      ${p.product_price},
+      ${p.product_quantity},
+      ${p.tax_fee || 0},
+      ${p.unit_tax_amount || 0},
+      ${p.product_discount_percentage || null},
+      ${p.product_discount || null},
+      ${p.parent_product_id || null}
+    )`
+  })
 
   if (deleteProductIds && deleteProductIds[0]) await res.connection.query(deleteDocumentProducts(deleteProductIds), [document_id])
   if (updateDocumentsProductsValues && updateDocumentsProductsValues[0])
@@ -95,6 +103,7 @@ const updateDocument = () => `
     SET
       related_external_document_id = ?,
       related_internal_document_id = ?,
+      product_id = ?,
       project_id = ?,
       comments = ?,
       received_by = ?,
@@ -106,6 +115,7 @@ const updateDocument = () => `
       total_discount_amount = ?,
       total_tax_amount = ?,
       total_amount = ?,
+      description = ?,
       payment_method = ?,
       credit_days = ?,
       updated_by = ?

@@ -1,7 +1,7 @@
 const { ValidatorException } = require(`../common`)
 const types = require('../types')
 
-// updateStockOn: types.actions.CANCELLED | types.actions.APPROVED
+// res.updateStockOn: types.actions.CANCELLED | types.actions.APPROVED
 
 // req.body: {
 //   document_id,
@@ -21,6 +21,7 @@ const handleUpdateStock = async (req, res) => {
   if (!movements || !movements[0]) return { req, res }
 
   const stocks = movements.reduce((result, im) => {
+    // TODO: documentar lo que se hace en las siguientes 5 lineas
     const actionType = !im.status ? types.actions.CANCELLED : types.actions.APPROVED
     const movementType = res.updateStockOn === actionType ? types.inventoryMovementsTypes.OUT : types.inventoryMovementsTypes.IN
     const addedQty = im.movement_type === movementType ? im.quantity : im.quantity * -1
@@ -49,7 +50,7 @@ const handleUpdateStock = async (req, res) => {
       throw new ValidatorException(errors)
     }
 
-    // TODO: eliminar duplicados en stocks
+    // TODO: eliminar duplicados en stocks (ocurre en los endpoints que hacen update)
     const updateStockPromises = stocks.map(s => res.connection.query(updateStock(), [s.stock, s.product_id]))
     await Promise.all(updateStockPromises)
   }

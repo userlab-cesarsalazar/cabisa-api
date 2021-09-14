@@ -1,6 +1,6 @@
 const types = require('../types')
 
-// requireCancelMovements: boolean
+// res.requireCancelMovements: boolean
 
 // req.body: { document_id, cancel_reason, related_internal_document_id, operation_id }
 

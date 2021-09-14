@@ -75,10 +75,8 @@ module.exports.approve = async event => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const handlersConfig = { updateStockOn: types.actions.APPROVED }
-
     const { res } = await db.transaction(async connection => {
-      const inventoryMovementsApproved = await handleApproveInventoryMovements(req, { connection, handlersConfig })
+      const inventoryMovementsApproved = await handleApproveInventoryMovements(req, { connection, updateStockOn: types.actions.APPROVED })
       return await handleUpdateStock(inventoryMovementsApproved.req, inventoryMovementsApproved.res)
     })
 

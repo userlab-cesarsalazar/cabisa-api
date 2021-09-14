@@ -52,9 +52,10 @@ const inventoryMovementsTypes = {
 }
 
 const operationsTypes = {
-  SELL: 'SELL',
   PURCHASE: 'PURCHASE',
   RENT: 'RENT',
+  REPAIR: 'REPAIR',
+  SELL: 'SELL',
 }
 
 const productsCategories = {
