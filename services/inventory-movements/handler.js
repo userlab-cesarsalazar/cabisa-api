@@ -139,7 +139,7 @@ module.exports.createAdjustment = async event => {
     const requiredFields = ['products']
     const requiredProductFields = ['product_id', 'preview_stock', 'next_stock']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] < 0))
+    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => (!p[k] && p[k] !== 0) || p[k] < 0))
 
     if (invalidProducts.length > 0)
       errors.push(`Los productos con id ${invalidPrevStocks.join(', ')} tienen productType distinto a ${types.productsTypes.PRODUCT}`)
@@ -148,7 +148,7 @@ module.exports.createAdjustment = async event => {
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`El producto con id ${id} se encuentra duplicado`))
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredProductErrorFields)
-      errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero diferente de cero`)
+      errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor o igual a cero`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
