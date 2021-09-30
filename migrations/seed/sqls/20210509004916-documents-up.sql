@@ -10,14 +10,14 @@ INSERT INTO operations (operation_type,created_at,created_by) VALUES
 	 ('SELL','2021-08-26 12:24:26',1);
 
 -- DOCUMENTS
-INSERT INTO documents (document_type,stakeholder_id,operation_id,project_id,related_internal_document_id,related_external_document_id,status,comments,received_by,dispatched_by,start_date,end_date,cancel_reason,subtotal_amount,total_discount_amount,total_tax_amount,total_amount,description,payment_method,credit_days,credit_status,created_at,created_by,updated_at,updated_by) VALUES
-    ('PURCHASE_ORDER',9,1,NULL,NULL,'2020','APPROVED','test compra 20',NULL,NULL,'2021-08-20 02:20:03',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-25 22:26:07',1,'2021-08-26 11:51:01',1),
-    ('PURCHASE_ORDER',9,2,NULL,NULL,'66444','CANCELLED','5555',NULL,NULL,'2021-08-31 15:17:33',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-25 23:17:51',1,'2021-08-26 00:50:29',1),
-    ('PURCHASE_ORDER',10,3,NULL,NULL,'3030','APPROVED','5555',NULL,NULL,'2021-08-30 11:53:52',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-26 11:54:35',1,'2021-08-26 11:54:35',1),
-    ('RENT_PRE_INVOICE',1,4,1,5,NULL,'APPROVED','observaciones','recibe','entrega','2021-08-01 15:59:29','2021-08-31 15:59:33',NULL,539.0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-26 12:03:58',1,'2021-08-26 12:21:44',1),
-    ('RENT_INVOICE',1,4,1,4,NULL,'APPROVED','observaciones','recibe','entrega','2021-08-01 15:59:29','2021-08-31 15:59:33',NULL,512.05,26.95,53.58,565.63,'descrpcion','CHECK',7,'UNPAID','2021-08-26 12:21:44',1,'2021-08-26 12:21:44',1),
-    ('SELL_PRE_INVOICE',2,5,2,7,NULL,'APPROVED',NULL,NULL,NULL,NULL,NULL,NULL,177.0,NULL,17.16,194.16,'65','TRANSFER',NULL,NULL,'2021-08-26 12:24:26',1,'2021-08-26 12:24:26',1),
-    ('SELL_INVOICE',2,5,2,6,NULL,'APPROVED',NULL,NULL,NULL,NULL,NULL,NULL,177.0,NULL,17.16,194.16,'65','TRANSFER',NULL,NULL,'2021-08-26 12:24:26',1,'2021-08-26 12:24:26',1);
+INSERT INTO documents (document_type,stakeholder_id,operation_id,project_id,related_internal_document_id,related_external_document_id,status,comments,received_by,dispatched_by,start_date,end_date,cancel_reason,subtotal_amount,total_discount_amount,total_tax_amount,total_amount,description,payment_method,credit_days,credit_status,credit_due_date,created_at,created_by,updated_at,updated_by) VALUES
+    ('PURCHASE_ORDER',9,1,NULL,NULL,'2020','APPROVED','test compra 20',NULL,NULL,'2021-08-20 02:20:03',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-25 22:26:07',1,'2021-08-26 11:51:01',1),
+    ('PURCHASE_ORDER',9,2,NULL,NULL,'66444','CANCELLED','5555',NULL,NULL,'2021-08-31 15:17:33',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-25 23:17:51',1,'2021-08-26 00:50:29',1),
+    ('PURCHASE_ORDER',10,3,NULL,NULL,'3030','APPROVED','5555',NULL,NULL,'2021-08-30 11:53:52',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-26 11:54:35',1,'2021-08-26 11:54:35',1),
+    ('RENT_PRE_INVOICE',1,4,1,5,NULL,'APPROVED','observaciones','recibe','entrega','2021-08-01 15:59:29','2021-08-31 15:59:33',NULL,539.0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'2021-08-26 12:03:58',1,'2021-08-26 12:21:44',1),
+    ('RENT_INVOICE',1,4,1,4,NULL,'APPROVED','observaciones','recibe','entrega','2021-08-01 15:59:29','2021-08-31 15:59:33',NULL,512.05,26.95,53.58,565.63,'descrpcion','CHECK',7,'UNPAID','2021-09-02 12:21:44','2021-08-26 12:21:44',1,'2021-08-26 12:21:44',1),
+    ('SELL_PRE_INVOICE',2,5,2,7,NULL,'APPROVED',NULL,NULL,NULL,NULL,NULL,NULL,177.0,NULL,17.16,194.16,'65','TRANSFER',NULL,NULL,NULL,'2021-08-26 12:24:26',1,'2021-08-26 12:24:26',1),
+    ('SELL_INVOICE',2,5,2,6,NULL,'APPROVED',NULL,NULL,NULL,NULL,NULL,NULL,177.0,NULL,17.16,194.16,'65','TRANSFER',NULL,NULL,NULL,'2021-08-26 12:24:26',1,'2021-08-26 12:24:26',1);
 
 -- DOCUMENT_PRODUCTS
 INSERT INTO documents_products (service_type,document_id,product_id,product_price,product_quantity,tax_fee,unit_tax_amount,discount_percentage,unit_discount_amount,parent_product_id) VALUES

@@ -84,19 +84,22 @@ const checkInventoryMovementsOnApprove = whereIn => `
 `
 
 const findRelatedDocument = () => `
-  SELECT id, credit_days, related_internal_document_id
-  FROM documents
+  SELECT
+    d.id,
+    d.credit_days,
+    d.related_internal_document_id,
+    d.subtotal_amount,
+    d.credit_status,
+    d.stakeholder_id,
+    s.total_credit,
+    s.paid_credit
+  FROM documents d
+  LEFT JOIN stakeholders s ON s.id = d.stakeholder_id
   WHERE
-    id = ? AND (
-      document_type = '${types.documentsTypes.SELL_INVOICE}' OR
-      document_type = '${types.documentsTypes.RENT_INVOICE}'
+    d.id = ? AND (
+      d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
+      d.document_type = '${types.documentsTypes.RENT_INVOICE}'
     )
-`
-
-const updateInvoiceStatus = () => `
-  UPDATE documents
-  SET credit_status = ?
-  WHERE id = ?
 `
 
 const findDocumentsWithDefaultCredits = () => `
@@ -129,5 +132,4 @@ module.exports = {
   findInvoiceStatus,
   findPaymentMethods,
   findRelatedDocument,
-  updateInvoiceStatus,
 }

@@ -268,11 +268,125 @@ const decorate =
     return result
   }
 
+const weightedAverageInventoryCostStrategy = (product, isInventoryReceipt) => {
+  const unit_cost = product.unit_cost
+    ? Number(product.unit_cost)
+    : isInventoryReceipt
+    ? Number(product.product_price)
+    : Number(product.inventory_unit_value)
+  const total_cost = product.total_cost ? Number(product.total_cost) : unit_cost * Number(product.product_quantity)
+  const inventory_quantity = isInventoryReceipt
+    ? Number(product.stock) + Number(product.product_quantity)
+    : Number(product.stock) - Number(product.product_quantity)
+  const inventory_total_cost = isInventoryReceipt
+    ? Number(product.inventory_total_value) + total_cost
+    : Number(product.inventory_total_value) - total_cost
+  const inventory_unit_cost = inventory_total_cost / inventory_quantity
+
+  return {
+    ...product,
+    quantity: product.product_quantity,
+    unit_cost,
+    total_cost,
+    inventory_quantity,
+    inventory_unit_cost,
+    inventory_total_cost,
+  }
+}
+
+const calculateInventoryCost = (strategy, { product, isInventoryReceipt = null }) => {
+  const errors = []
+  const requiredFields = [
+    'product_id',
+    'product_quantity',
+    'product_price',
+    'stock',
+    'inventory_unit_value',
+    'inventory_total_value',
+    'movement_type',
+    'description',
+    'code',
+    'created_by',
+  ]
+  const requiredErrorFields = requiredFields.filter(k => !product[k] && product[k] !== 0)
+
+  if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required in product argument`))
+  if (isInventoryReceipt === null) errors.push('The isInventoryReceipt argument is required')
+  if (!strategy) errors.push('The strategy argument is required')
+
+  if (errors.length > 0) throw new ValidatorException(errors)
+
+  if (strategy === 'weightedAverage') return weightedAverageInventoryCostStrategy(product, isInventoryReceipt)
+}
+
+const getDocument = async ({
+  dbQuery,
+  findDocumentStorage,
+  inventoryMovementsStatusCancelledType,
+  document_id,
+  documentsTypes,
+  documentProduct = [],
+  includeDocumentProductMovement = false,
+  includeOldInventoryMovements = true,
+  includeInventoryMovements = false,
+}) => {
+  const rawDocument = document_id && (await dbQuery(findDocumentStorage(documentsTypes), [document_id]))
+  const [documentWithDuplicates] = rawDocument
+    ? groupJoinResult({ data: rawDocument, nestedFieldsKeys: ['old_inventory_movements', 'old_products'], uniqueKey: ['document_id'] })
+    : []
+  const oldProductsWithoutDuplicates =
+    documentWithDuplicates &&
+    documentWithDuplicates.old_products &&
+    documentWithDuplicates.old_products.length > 0 &&
+    documentWithDuplicates.old_products.reduce((r, im) => {
+      const sameProduct = r.find(rv => Number(rv.product_id) === Number(im.product_id))
+      const isDocumentProduct = includeDocumentProductMovement ? false : im.product_id === documentWithDuplicates.product_id
+
+      if (sameProduct || isDocumentProduct) return r
+      else return [...r, im]
+    }, documentProduct)
+
+  const oldInventoryMovementsWithoutDuplicates =
+    documentWithDuplicates &&
+    documentWithDuplicates.old_inventory_movements &&
+    documentWithDuplicates.old_inventory_movements.length > 0 &&
+    documentWithDuplicates.old_inventory_movements.reduce((r, im) => {
+      const sameMovement = r.find(rv => Number(rv.inventory_movement_id) === Number(im.inventory_movement_id))
+      const isDocumentProduct = includeDocumentProductMovement ? false : im.product_id === documentWithDuplicates.product_id
+
+      if (sameMovement || im.status === inventoryMovementsStatusCancelledType || isDocumentProduct) return r
+      else {
+        const product = oldProductsWithoutDuplicates.find(op => Number(op.product_id) === Number(im.product_id)) || {}
+        const inventoryMovement = { ...im, ...product, stock: product.stock || 0 }
+        return [...r, inventoryMovement]
+      }
+    }, [])
+
+  const inventory_movements = oldInventoryMovementsWithoutDuplicates.map(m => {
+    delete m.status
+    return m
+  })
+
+  const product = oldInventoryMovementsWithoutDuplicates.find(
+    op => documentProduct && documentProduct[0] && Number(op.product_id) === Number(documentProduct[0].product_id)
+  )
+
+  return {
+    ...documentWithDuplicates,
+    old_inventory_movements: includeOldInventoryMovements ? oldInventoryMovementsWithoutDuplicates : [],
+    old_products: oldProductsWithoutDuplicates,
+    inventory_movements: includeInventoryMovements ? inventory_movements : [],
+    products: [product],
+  }
+}
+
 module.exports = {
   calculateProductTaxes,
+  calculateInventoryCost,
   cryptoHelpers,
   decorate,
   escapeFields,
+  getDocument,
   getError,
   getFormattedDates,
   getWhereConditions,

@@ -10,6 +10,17 @@ const addLog =
     return result
   }
 
+const addUserHasPermissions = fn => async (input, req) => {
+  // buscar en base de datos los permisos del usuario y agregar al req la funcion userHasPermissions
+  // que debe recibir como argumento un array de numeros (id de permisos) y verificar si el user
+  // que se pidio a base de datos (el user de la request) tiene esos permisos asignados
+  const userHasPermissions = permissions => console.log(req.currentUserId)
+
+  return await fn(input, { ...req, userHasPermissions })
+}
+
+const addCurrentUser = fn => async (input, req) => await fn(input, { ...req, currentUserId: input.event.headers.Authorization })
+
 const addCurrentModel =
   fn =>
   async ({ dbQuery, storage, initWhereCondition, uniqueKey = ['id'], nestedFieldsKeys = null, ...input }, req) => {
@@ -61,4 +72,4 @@ const addEvent =
 
 const baseFunction = async (input, req) => req
 
-module.exports = decorate(baseFunction)(addLog, addCurrentModel, addQuery, addBody, addEvent)
+module.exports = decorate(baseFunction)(addLog, addUserHasPermissions, addCurrentUser, addCurrentModel, addQuery, addBody, addEvent)

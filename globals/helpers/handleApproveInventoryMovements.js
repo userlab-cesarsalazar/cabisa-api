@@ -2,7 +2,7 @@ const types = require('../types')
 
 // req.body: {
 //   inventory_movements: [
-//     { movement_type, stock, quantity, product_id }
+//     { movement_type, quantity, product_id }
 //   ]
 // }
 

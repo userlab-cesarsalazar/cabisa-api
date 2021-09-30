@@ -1,4 +1,6 @@
 const types = require('../types')
+const { calculateInventoryCost } = require('../common')
+const { updateProductsInventoryCosts } = require('../commonStorage')
 
 //  res.onCreateMovementType: types.inventoryMovementsTypes.OUT | types.inventoryMovementsTypes.IN
 
@@ -7,10 +9,15 @@ const types = require('../types')
 //   products: [
 //     {
 //       product_id,
+//       description,
+//       code,
 //       product_type,
 //       stock,
 //       product_price,
 //       product_quantity,
+//       inventory_unit_value,
+//       inventory_total_value,
+//       created_by,
 //     },
 //   ],
 // }
@@ -27,15 +34,36 @@ const handleCreateInventoryMovements = async (req, res) => {
   const inventoryMovements = products.flatMap(p => {
     if (p.product_type === types.productsTypes.SERVICE) return []
 
-    const unit_cost = movementType === types.inventoryMovementsTypes.IN ? p.product_price : null
+    const product = { ...p, movement_type: movementType }
+    const isInventoryReceipt = movementType === types.inventoryMovementsTypes.IN
+    const productWithInventoryCost = calculateInventoryCost('weightedAverage', { product, isInventoryReceipt })
 
-    return { operation_id, product_id: p.product_id, quantity: p.product_quantity, unit_cost, movement_type: movementType }
+    return { ...productWithInventoryCost, operation_id }
   })
 
   if (!inventoryMovements || !inventoryMovements[0]) return { req, res }
 
-  const inventoryMovmentsQueryValues = inventoryMovements.reduce((result, im) => {
-    const insertValues = `(${im.operation_id}, ${im.product_id}, ${im.quantity}, ${im.unit_cost}, '${im.movement_type}')`
+  const { insertValues, productsInventoryValues, where } = inventoryMovements.reduce((result, im) => {
+    const insertValues = `(
+      ${im.operation_id},
+      ${im.product_id},
+      ${im.quantity},
+      '${im.movement_type}',
+      ${im.unit_cost},
+      ${im.total_cost},
+      ${im.inventory_quantity},
+      ${im.inventory_unit_cost},
+      ${im.inventory_total_cost}
+    )`
+    const productsInventoryValues = `(
+      ${im.product_id},
+      ${im.inventory_unit_cost},
+      ${im.inventory_total_cost},
+      '${im.description}',
+      '${im.code}',
+      ${im.created_by},
+      ${req.currentUser || 1}
+    )`
     const operationsIds = (result && result.whereConditions && result.whereConditions.operationsIds) || []
     const whereConditions = {
       operationsIds: [...operationsIds, im.operation_id],
@@ -44,13 +72,13 @@ const handleCreateInventoryMovements = async (req, res) => {
     return {
       ...result,
       insertValues: [...(result.insertValues || []), insertValues],
+      productsInventoryValues: [...(result.productsInventoryValues || []), productsInventoryValues],
       where: { ...(result.whereConditions || []), ...whereConditions },
     }
   }, {})
 
-  const { insertValues, where } = inventoryMovmentsQueryValues
-
   await res.connection.query(createInventoryMovements(insertValues))
+  await res.connection.query(updateProductsInventoryCosts(productsInventoryValues))
   const [inventory_movements] = await res.connection.query(findCreatedInventoryMovements(where.operationsIds), [movementType])
 
   return {
@@ -61,14 +89,14 @@ const handleCreateInventoryMovements = async (req, res) => {
 
 const createInventoryMovements = inventoryMovementsValues => `
   INSERT INTO inventory_movements
-  (operation_id, product_id, quantity, unit_cost, movement_type)
+  (operation_id, product_id, quantity, movement_type, unit_cost, total_cost, inventory_quantity, inventory_unit_cost, inventory_total_cost)
   VALUES ${inventoryMovementsValues.join(', ')}
 `
 
 const findCreatedInventoryMovements = operationsIds => `
   SELECT id AS inventory_movement_id, product_id, quantity, movement_type
   FROM inventory_movements
-  WHERE operation_id IN (${operationsIds.join(', ')}) AND movement_type = ?
+  WHERE operation_id IN (${operationsIds.join(', ')}) AND movement_type = ? AND status <> '${types.inventoryMovementsStatus.CANCELLED}'
 `
 
 module.exports = handleCreateInventoryMovements

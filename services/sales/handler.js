@@ -9,6 +9,7 @@ const {
   validators,
   ValidatorException,
   getFormattedDates,
+  getDocument,
 } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
 const {
@@ -24,14 +25,18 @@ const {
   handleCreateOperation,
   handleUpdateStock,
   handleUpdateDocument,
-  handleDeleteInventoryMovements,
+  handleCancelInventoryMovements,
+  handleUpdateStakeholderCredit,
+  handleUpdateCreditStatus,
+  handleUpdateCreditPaidDate,
 } = helpers
 const { parentChildProductsValidator } = validators
 const db = mysqlConfig(mysql)
 
 const config = {
   [types.operationsTypes.SELL]: {
-    init: { documentType: types.documentsTypes.SELL_PRE_INVOICE },
+    // El SELL_PRE_INVOICE solo se crea en el endpoint create invoice pero no no se usa todavia
+    // init: { documentType: types.documentsTypes.SELL_PRE_INVOICE },
     finish: { documentType: types.documentsTypes.SELL_INVOICE, movementType: types.inventoryMovementsTypes.OUT },
   },
   [types.operationsTypes.RENT]: {
@@ -125,10 +130,9 @@ module.exports.create = async event => {
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
     const [stakeholderIdExists] = stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: stakeholder_id })) : []
-    const stakeholderCredits = stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(stakeholder_id)) : []
-    const currentCredit = stakeholderCredits && stakeholderCredits[0] ? stakeholderCredits.reduce((r, v) => r + v.credit_amount, 0) : 0
-    const isInvalidCreditAmount =
-      stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit + subtotal_amount > stakeholderIdExists.credit_limit
+    const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + subtotal_amount
+    const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + subtotal_amount
+    const isInvalidCreditAmount = stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit > stakeholderIdExists.credit_limit
 
     if (Object.keys(types.operationsTypes).every(k => types.operationsTypes[k] !== operation_type))
       errors.push(
@@ -169,14 +173,31 @@ module.exports.create = async event => {
         { connection }
       )
 
-      const documentCreated = await handleCreateDocument(
-        { ...stakeholderCreated.req, body: { ...stakeholderCreated.req.body, document_type: config[operation_type].init.documentType } },
+      const stakeholderCreditUpdated = await handleUpdateStakeholderCredit(
+        {
+          ...stakeholderCreated.req,
+          body: {
+            ...stakeholderCreated.req.body,
+            total_credit: totalCredit,
+            paid_credit: Number(stakeholderIdExists.paid_credit),
+          },
+        },
         stakeholderCreated.res
       )
 
-      const operationCreated = await handleCreateOperation(
-        { ...documentCreated.req, body: { ...documentCreated.req.body, operation_type } },
+      const documentCreated = await handleCreateDocument(
+        { ...stakeholderCreditUpdated.req, body: { ...stakeholderCreditUpdated.req.body, document_type: config[operation_type].init.documentType } },
+        stakeholderCreditUpdated.res
+      )
+
+      const creditStatusUpdated = await handleUpdateCreditStatus(
+        { ...documentCreated.req, body: { ...documentCreated.req.body, credit_status: types.creditsPolicy.creditStatusEnum.UNPAID } },
         documentCreated.res
+      )
+
+      const operationCreated = await handleCreateOperation(
+        { ...creditStatusUpdated.req, body: { ...creditStatusUpdated.req.body, operation_type } },
+        creditStatusUpdated.res
       )
 
       const documentApproved = await handleApproveDocument(operationCreated.req, {
@@ -233,43 +254,14 @@ module.exports.update = async event => {
     const { document_id, products, start_date, end_date, subtotal_amount = 0 } = req.body
     // can(req.currentAction, operation_type)
 
-    const rawDocument =
-      document_id &&
-      (await db.query(commonStorage.findDocument([types.documentsTypes.SELL_PRE_INVOICE, types.documentsTypes.RENT_PRE_INVOICE]), [document_id]))
-    const [documentWithDuplicates] = rawDocument
-      ? groupJoinResult({ data: rawDocument, nestedFieldsKeys: ['old_inventory_movements', 'old_products'], uniqueKey: ['document_id'] })
-      : []
-    const oldProductsWithoutDuplicates =
-      documentWithDuplicates &&
-      documentWithDuplicates.old_products &&
-      documentWithDuplicates.old_products.length > 0 &&
-      documentWithDuplicates.old_products.reduce((r, im) => {
-        const sameProduct = r.find(rv => Number(rv.product_id) === Number(im.product_id))
-
-        if (sameProduct) return r
-        else return [...r, im]
-      }, [])
-
-    const oldInventoryMovementsWithoutDuplicates =
-      documentWithDuplicates &&
-      documentWithDuplicates.old_inventory_movements &&
-      documentWithDuplicates.old_inventory_movements.length > 0 &&
-      documentWithDuplicates.old_inventory_movements.reduce((r, im) => {
-        const sameMovement = r.find(rv => Number(rv.inventory_movement_id) === Number(im.inventory_movement_id))
-
-        if (sameMovement) return r
-        else {
-          const product = oldProductsWithoutDuplicates.find(op => Number(op.product_id) === Number(im.product_id)) || {}
-          const inventoryMovement = { ...im, ...product, stock: product.stock || 0 }
-          return [...r, inventoryMovement]
-        }
-      }, [])
-
-    const document = {
-      ...documentWithDuplicates,
-      old_inventory_movements: oldInventoryMovementsWithoutDuplicates,
-      old_products: oldProductsWithoutDuplicates,
-    }
+    const document = await getDocument({
+      dbQuery: db.query,
+      findDocumentStorage: commonStorage.findDocument,
+      inventoryMovementsStatusCancelledType: types.inventoryMovementsStatus.CANCELLED,
+      document_id,
+      documentsTypes: [types.documentsTypes.SELL_PRE_INVOICE, types.documentsTypes.RENT_PRE_INVOICE],
+      includeDocumentProductMovement: true,
+    })
 
     const errors = []
     const productsMap = products.reduce((r, p) => {
@@ -290,13 +282,9 @@ module.exports.update = async event => {
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
     const [stakeholderIdExists] =
       document && document.stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: document.stakeholder_id })) : []
-    const stakeholderCredits = document && document.stakeholder_id ? await db.query(commonStorage.findStakeholderCredit(document.stakeholder_id)) : []
-    const currentCredit =
-      stakeholderCredits && stakeholderCredits[0]
-        ? stakeholderCredits.reduce((r, v) => (Number(document_id) === Number(v.id) ? r : r + v.credit_amount), 0)
-        : 0
-    const isInvalidCreditAmount =
-      stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit + subtotal_amount > stakeholderIdExists.credit_limit
+    const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + (subtotal_amount - document.subtotal_amount)
+    const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + (subtotal_amount - document.subtotal_amount)
+    const isInvalidCreditAmount = stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit > stakeholderIdExists.credit_limit
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
@@ -335,10 +323,22 @@ module.exports.update = async event => {
         { connection }
       )
 
-      const inventoryMovementsDeleted = await handleDeleteInventoryMovements(documentUpdated.req, documentUpdated.res)
+      const stakeholderCreditUpdated = await handleUpdateStakeholderCredit(
+        {
+          ...documentUpdated.req,
+          body: {
+            ...documentUpdated.req.body,
+            total_credit: totalCredit,
+            paid_credit: Number(stakeholderIdExists.paid_credit),
+          },
+        },
+        documentUpdated.res
+      )
 
-      const inventoryMovementsCreated = await handleCreateInventoryMovements(inventoryMovementsDeleted.req, {
-        ...inventoryMovementsDeleted.res,
+      const inventoryMovementsCancelled = await handleCancelInventoryMovements(stakeholderCreditUpdated.req, stakeholderCreditUpdated.res)
+
+      const inventoryMovementsCreated = await handleCreateInventoryMovements(inventoryMovementsCancelled.req, {
+        ...inventoryMovementsCancelled.res,
         onCreateMovementType: config[document.operation_type].init.movementType,
       })
 
@@ -463,33 +463,21 @@ module.exports.invoice = async event => {
         else return p
       })
 
-    if (invalidProducts && invalidProducts[0]) errors.push(`La cantidad de productos no coincide con los registrados en la nota de servicio`)
-    if (credit_days) {
-      const [stakeholderIdExists] =
-        groupedDocumentDetails && groupedDocumentDetails.stakeholder_id
-          ? await db.query(commonStorage.findStakeholder({ id: groupedDocumentDetails.stakeholder_id }))
-          : []
-      const stakeholderCredits =
-        groupedDocumentDetails && groupedDocumentDetails.stakeholder_id
-          ? await db.query(commonStorage.findStakeholderCredit(groupedDocumentDetails.stakeholder_id))
-          : []
-      const currentCredit =
-        stakeholderCredits && stakeholderCredits[0]
-          ? stakeholderCredits.reduce((r, v) => (Number(document_id) === Number(v.id) ? r : r + v.credit_amount), 0)
-          : 0
-      const isInvalidCreditAmount =
-        stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit + subtotal_amount > stakeholderIdExists.credit_limit
+    const [stakeholderIdExists] =
+      groupedDocumentDetails && groupedDocumentDetails.stakeholder_id
+        ? await db.query(commonStorage.findStakeholder({ id: groupedDocumentDetails.stakeholder_id }))
+        : []
 
-      if (Object.keys(types.creditsPolicy.creditDaysEnum).every(k => types.creditsPolicy.creditDaysEnum[k] !== credit_days))
-        errors.push(
-          `The field credit_days must contain one of these values: ${Object.keys(types.creditsPolicy.creditDaysEnum)
-            .map(k => types.creditsPolicy.creditDaysEnum[k])
-            .join(', ')}`
-        )
-      if (!stakeholderIdExists || !stakeholderIdExists.credit_limit)
-        errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
-      if (isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
-    }
+    if (invalidProducts && invalidProducts[0]) errors.push(`La cantidad de productos no coincide con los registrados en la nota de servicio`)
+    if (credit_days && Object.keys(types.creditsPolicy.creditDaysEnum).every(k => types.creditsPolicy.creditDaysEnum[k] !== credit_days))
+      errors.push(
+        `The field credit_days must contain one of these values: ${Object.keys(types.creditsPolicy.creditDaysEnum)
+          .map(k => types.creditsPolicy.creditDaysEnum[k])
+          .join(', ')}`
+      )
+    if ((credit_days && !stakeholderIdExists) || !stakeholderIdExists.credit_limit)
+      errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
+
     products.forEach(p => {
       if (Object.keys(types.documentsServiceType).every(k => types.documentsServiceType[k] !== p.service_type))
         errors.push(
@@ -509,6 +497,8 @@ module.exports.invoice = async event => {
     const productsWithTaxes = calculateProductTaxes(products, groupedDocumentDetails.products)
     const operation_type = groupedDocumentDetails.operation_type
     const document_type = config[operation_type].finish.documentType
+    const related_internal_document_id = document_id
+    const credit_status = credit_days ? types.creditsPolicy.creditStatusEnum.UNPAID : types.creditsPolicy.creditStatusEnum.PAID
 
     const { res } = await db.transaction(async connection => {
       const documentCreated = await handleCreateDocument(
@@ -519,7 +509,29 @@ module.exports.invoice = async event => {
         { connection }
       )
 
-      const documentApproved = await handleApproveDocument(documentCreated.req, documentCreated.res)
+      const creditPaidDateUpdated = await handleUpdateCreditPaidDate(
+        { ...documentCreated.req, body: { ...documentCreated.req.body, creditPaidDate: credit_days ? null : new Date().toISOString() } },
+        documentCreated.res
+      )
+
+      const creditStatusUpdated = await handleUpdateCreditStatus(
+        { ...creditPaidDateUpdated.req, body: { ...creditPaidDateUpdated.req.body, credit_status, related_internal_document_id } },
+        creditPaidDateUpdated.res
+      )
+
+      const stakeholderCreditUpdated = await handleUpdateStakeholderCredit(
+        {
+          ...creditStatusUpdated.req,
+          body: {
+            ...creditStatusUpdated.req.body,
+            total_credit: Number(stakeholderIdExists.total_credit),
+            paid_credit: Number(stakeholderIdExists.paid_credit || 0) + (credit_days ? 0 : subtotal_amount),
+          },
+        },
+        creditStatusUpdated.res
+      )
+
+      const documentApproved = await handleApproveDocument(stakeholderCreditUpdated.req, stakeholderCreditUpdated.res)
 
       const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, {
         ...documentApproved.res,
@@ -551,29 +563,37 @@ module.exports.cancel = async event => {
     const errors = []
     const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const documentMovements = await db.query(
-      commonStorage.findDocumentMovements([types.documentsTypes.SELL_PRE_INVOICE, types.documentsTypes.RENT_PRE_INVOICE]),
-      [document_id]
-    )
+    const documentProduct = document_id ? await db.query(commonStorage.findDocumentProduct(), [document_id]) : []
+    const document = await getDocument({
+      dbQuery: db.query,
+      findDocumentStorage: commonStorage.findDocument,
+      inventoryMovementsStatusCancelledType: types.inventoryMovementsStatus.CANCELLED,
+      document_id,
+      documentsTypes: [types.documentsTypes.SELL_PRE_INVOICE, types.documentsTypes.RENT_PRE_INVOICE],
+      documentProduct,
+      includeDocumentProductMovement: true,
+      includeInventoryMovements: true,
+    })
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (!documentMovements || !documentMovements[0]) errors.push('No existe una venta registrada con la informacion recibida')
-    if (documentMovements[0] && documentMovements[0].document_status === types.documentsStatus.CANCELLED)
-      errors.push('El documento ya se encuentra cancelado')
-    if (documentMovements[0] && documentMovements[0].related_internal_document_id) errors.push(`No puede cancelar una venta con factura asociada`)
+    if (!document) errors.push('No existen una venta registradaa con la informacion recibida')
+    if (document && document.document_status === types.documentsStatus.CANCELLED) errors.push('El documento ya se encuentra cancelado')
+    if (document && document.related_internal_document_id) errors.push(`No puede cancelar una venta con factura asociada`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const [groupedDocumentMovements] = groupJoinResult({
-      data: documentMovements,
-      nestedFieldsKeys: ['inventory_movements'],
-      uniqueKey: ['document_id'],
-    })
-
     const { res } = await db.transaction(async connection => {
-      const documentCancelled = await handleCancelDocument({ ...req, body: { ...groupedDocumentMovements, ...req.body } }, { connection })
+      const documentCancelled = await handleCancelDocument({ ...req, body: { ...document, ...req.body } }, { connection })
 
-      return await handleUpdateStock(documentCancelled.req, { ...documentCancelled.res, updateStockOn: types.actions.CANCELLED })
+      const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentCancelled.req, {
+        ...documentCancelled.res,
+        updateInventoryCost: true,
+      })
+
+      return await handleUpdateStock(
+        { ...inventoryMovementsCancelled.req, body: { ...inventoryMovementsCancelled.req.body, old_inventory_movements: [] } },
+        { ...inventoryMovementsCancelled.res, updateStockOn: types.actions.CANCELLED }
+      )
     })
 
     return await handleResponse({ req, res })

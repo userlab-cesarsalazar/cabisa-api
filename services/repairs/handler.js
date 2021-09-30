@@ -2,12 +2,11 @@ const mysql = require('mysql2/promise')
 const {
   commonStorage,
   types,
-  calculateProductTaxes,
-  groupJoinResult,
   mysqlConfig,
   helpers,
   ValidatorException,
   getFormattedDates,
+  getDocument,
 } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
 const {
@@ -22,7 +21,7 @@ const {
   handleCreateOperation,
   handleUpdateStock,
   handleUpdateDocument,
-  handleDeleteInventoryMovements,
+  handleCancelInventoryMovements,
 } = helpers
 const db = mysqlConfig(mysql)
 
@@ -171,41 +170,13 @@ module.exports.update = async event => {
     const req = await handleRequest({ event, inputType })
     const { document_id, end_date, products } = req.body
 
-    const rawDocument = document_id && (await db.query(commonStorage.findDocument([types.documentsTypes.REPAIR_ORDER]), [document_id]))
-    const [documentWithDuplicates] = rawDocument
-      ? groupJoinResult({ data: rawDocument, nestedFieldsKeys: ['old_inventory_movements', 'old_products'], uniqueKey: ['document_id'] })
-      : []
-    const oldProductsWithoutDuplicates =
-      documentWithDuplicates &&
-      documentWithDuplicates.old_products &&
-      documentWithDuplicates.old_products.length > 0 &&
-      documentWithDuplicates.old_products.reduce((r, im) => {
-        const sameProduct = r.find(rv => Number(rv.product_id) === Number(im.product_id))
-
-        if (sameProduct || im.product_id === documentWithDuplicates.product_id) return r
-        else return [...r, im]
-      }, [])
-
-    const oldInventoryMovementsWithoutDuplicates =
-      documentWithDuplicates &&
-      documentWithDuplicates.old_inventory_movements &&
-      documentWithDuplicates.old_inventory_movements.length > 0 &&
-      documentWithDuplicates.old_inventory_movements.reduce((r, im) => {
-        const sameMovement = r.find(rv => Number(rv.inventory_movement_id) === Number(im.inventory_movement_id))
-
-        if (sameMovement || im.product_id === documentWithDuplicates.product_id) return r
-        else {
-          const product = oldProductsWithoutDuplicates.find(op => Number(op.product_id) === Number(im.product_id)) || {}
-          const inventoryMovement = { ...im, ...product, stock: product.stock || 0 }
-          return [...r, inventoryMovement]
-        }
-      }, [])
-
-    const document = {
-      ...documentWithDuplicates,
-      old_inventory_movements: oldInventoryMovementsWithoutDuplicates,
-      old_products: oldProductsWithoutDuplicates,
-    }
+    const document = await getDocument({
+      dbQuery: db.query,
+      findDocumentStorage: commonStorage.findDocument,
+      inventoryMovementsStatusCancelledType: types.inventoryMovementsStatus.CANCELLED,
+      document_id,
+      documentsTypes: [types.documentsTypes.REPAIR_ORDER],
+    })
 
     const errors = []
     const productsMap = products.reduce((r, p) => {
@@ -251,10 +222,10 @@ module.exports.update = async event => {
         { connection, excludeProductOnCreateDetail: document.product_id }
       )
 
-      const inventoryMovementsDeleted = await handleDeleteInventoryMovements(documentUpdated.req, documentUpdated.res)
+      const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentUpdated.req, documentUpdated.res)
 
-      const inventoryMovementsCreated = await handleCreateInventoryMovements(inventoryMovementsDeleted.req, {
-        ...inventoryMovementsDeleted.res,
+      const inventoryMovementsCreated = await handleCreateInventoryMovements(inventoryMovementsCancelled.req, {
+        ...inventoryMovementsCancelled.res,
         onCreateMovementType: types.inventoryMovementsTypes.OUT,
       })
       const documentDetailInventoryMovements = inventoryMovementsCreated.req.body.inventory_movements.flatMap(im =>
@@ -288,30 +259,26 @@ module.exports.approve = async event => {
     const errors = []
     const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const documentMovements = document_id
-      ? await db.query(commonStorage.findDocumentMovements([types.documentsTypes.REPAIR_ORDER]), [document_id])
-      : []
-
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (!documentMovements || !documentMovements[0]) errors.push('No existe una orden de reparacion registrada con la informacion recibida')
-    if (documentMovements[0] && documentMovements[0].document_status !== types.documentsStatus.PENDING)
-      errors.push(`Solo pueden ser aprobados documentos con status ${types.documentsStatus.PENDING}`)
-    if (documentMovements[0] && !documentMovements[0].end_date) errors.push('La orden de reparacion debe tener una fecha de finalizacion')
-
-    if (errors.length > 0) throw new ValidatorException(errors)
-
-    const [groupedDocumentMovements] = groupJoinResult({
-      data: documentMovements,
-      nestedFieldsKeys: ['inventory_movements'],
-      uniqueKey: ['document_id'],
+    const documentProduct = document_id ? await db.query(commonStorage.findDocumentProduct(), [document_id]) : []
+    const document = await getDocument({
+      dbQuery: db.query,
+      findDocumentStorage: commonStorage.findDocument,
+      inventoryMovementsStatusCancelledType: types.inventoryMovementsStatus.CANCELLED,
+      document_id,
+      documentsTypes: [types.documentsTypes.REPAIR_ORDER],
+      documentProduct,
+      includeDocumentProductMovement: true,
+      includeOldInventoryMovements: false,
+      includeInventoryMovements: true,
     })
 
-    const document = {
-      ...groupedDocumentMovements,
-      products: groupedDocumentMovements.inventory_movements.flatMap(im =>
-        Number(im.product_id) === Number(groupedDocumentMovements.repair_product_id) ? im : []
-      ),
-    }
+    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
+    if (!document) errors.push('No existe una orden de reparacion registrada con la informacion recibida')
+    if (document && document.document_status !== types.documentsStatus.PENDING)
+      errors.push(`Solo pueden ser aprobados documentos con status ${types.documentsStatus.PENDING}`)
+    if (document && !document.end_date) errors.push('La orden de reparacion debe tener una fecha de finalizacion')
+
+    if (errors.length > 0) throw new ValidatorException(errors)
 
     const { res } = await db.transaction(async connection => {
       const documentApproved = await handleApproveDocument({ ...req, body: { ...document, ...req.body } }, { connection })
@@ -346,26 +313,36 @@ module.exports.cancel = async event => {
     const errors = []
     const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const documentMovements = await db.query(commonStorage.findDocumentMovements([types.documentsTypes.REPAIR_ORDER]), [document_id])
+    const documentProduct = document_id ? await db.query(commonStorage.findDocumentProduct(), [document_id]) : []
+    const document = await getDocument({
+      dbQuery: db.query,
+      findDocumentStorage: commonStorage.findDocument,
+      inventoryMovementsStatusCancelledType: types.inventoryMovementsStatus.CANCELLED,
+      document_id,
+      documentsTypes: [types.documentsTypes.REPAIR_ORDER],
+      documentProduct,
+      includeDocumentProductMovement: true,
+      includeInventoryMovements: true,
+    })
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (!documentMovements || !documentMovements[0]) errors.push('No existe una orden de reparacion registrada con la informacion recibida')
-    if (documentMovements[0] && documentMovements[0].document_status === types.documentsStatus.CANCELLED)
-      errors.push('El documento ya se encuentra cancelado')
-    if (documentMovements[0] && !documentMovements[0].end_date) errors.push('La orden de reparacion debe tener una fecha de finalizacion')
+    if (!document) errors.push('No existe una orden de reparacion registrada con la informacion recibida')
+    if (document && document.document_status === types.documentsStatus.CANCELLED) errors.push('El documento ya se encuentra cancelado')
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const [groupedDocumentMovements] = groupJoinResult({
-      data: documentMovements,
-      nestedFieldsKeys: ['inventory_movements'],
-      uniqueKey: ['document_id'],
-    })
-
     const { res } = await db.transaction(async connection => {
-      const documentCancelled = await handleCancelDocument({ ...req, body: { ...groupedDocumentMovements, ...req.body } }, { connection })
+      const documentCancelled = await handleCancelDocument({ ...req, body: { ...document, ...req.body } }, { connection })
 
-      return await handleUpdateStock(documentCancelled.req, { ...documentCancelled.res, updateStockOn: types.actions.CANCELLED })
+      const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentCancelled.req, {
+        ...documentCancelled.res,
+        updateInventoryCost: true,
+      })
+
+      return await handleUpdateStock(
+        { ...inventoryMovementsCancelled.req, body: { ...inventoryMovementsCancelled.req.body, old_inventory_movements: [] } },
+        { ...inventoryMovementsCancelled.res, updateStockOn: types.actions.CANCELLED }
+      )
     })
 
     return await handleResponse({ req, res })

@@ -8,8 +8,12 @@ const handleCreateStakeholder = require('./handleCreateStakeholder')
 const handleRead = require('./handleRead')
 const handleRequest = require('./handleRequest')
 const handleResponse = require('./handleResponse')
-const handleDeleteInventoryMovements = require('./handleDeleteInventoryMovements')
+const handleCancelInventoryMovements = require('./handleCancelInventoryMovements')
+const handleUpdateCreditDueDate = require('./handleUpdateCreditDueDate')
+const handleUpdateCreditPaidDate = require('./handleUpdateCreditPaidDate')
+const handleUpdateCreditStatus = require('./handleUpdateCreditStatus')
 const handleUpdateDocument = require('./handleUpdateDocument')
+const handleUpdateStakeholderCredit = require('./handleUpdateStakeholderCredit')
 const handleUpdateStock = require('./handleUpdateStock')
 
 module.exports = {
@@ -23,7 +27,11 @@ module.exports = {
   handleRead,
   handleRequest,
   handleResponse,
-  handleDeleteInventoryMovements,
+  handleCancelInventoryMovements,
+  handleUpdateCreditDueDate,
+  handleUpdateCreditPaidDate,
+  handleUpdateCreditStatus,
   handleUpdateDocument,
+  handleUpdateStakeholderCredit,
   handleUpdateStock,
 }
