@@ -5,6 +5,7 @@ const { updateProductsInventoryCosts } = require('../commonStorage')
 // res.updateInventoryCost: boolean
 
 // req.body: {
+//   operation_type,
 //   old_inventory_movements: [
 //     {
 //        inventory_movement_id,
@@ -25,14 +26,24 @@ const { updateProductsInventoryCosts } = require('../commonStorage')
 // }
 
 const handleCancelInventoryMovements = async (req, res) => {
-  const { old_inventory_movements, products } = req.body
+  const { old_inventory_movements, products, operation_type } = req.body
   const { updateInventoryCost = false } = res
 
   const { inventoryMovementIds, oldInventoryProducts, productsInventoryValues } = old_inventory_movements.reduce((r, oim) => {
     const inventoryMovementId = oim.inventory_movement_id
 
+    const sameUpdatedProduct = (r.updatedInventoryProducts || []).find(uip => Number(uip.product_id) === Number(oim.product_id))
+    const updatedProductFields = sameUpdatedProduct
+      ? {
+          stock: sameUpdatedProduct.inventory_quantity,
+          inventory_unit_value: sameUpdatedProduct.inventory_unit_cost,
+          inventory_total_value: sameUpdatedProduct.inventory_total_cost,
+        }
+      : {}
+    const product = { ...oim, ...updatedProductFields }
     const isInventoryReceipt = oim.movement_type !== types.inventoryMovementsTypes.IN
-    const productWithInventoryCost = calculateInventoryCost('weightedAverage', { product: oim, isInventoryReceipt })
+    const isPurchase = operation_type === types.operationsTypes.PURCHASE
+    const productWithInventoryCost = calculateInventoryCost('weightedAverage', { product, isInventoryReceipt, isPurchase })
 
     const productsInventoryValue = `(
       ${productWithInventoryCost.product_id},
@@ -41,14 +52,24 @@ const handleCancelInventoryMovements = async (req, res) => {
       '${productWithInventoryCost.description}',
       '${productWithInventoryCost.code}',
       ${productWithInventoryCost.created_by},
-      ${req.currentUser || 1}
+      ${req.currentUser.user_id}
     )`
+
+    const sameInventoryCostProduct = (r.updatedInventoryProducts || []).find(
+      uip => Number(uip.product_id) === Number(productWithInventoryCost.product_id)
+    )
+    const updatedInventoryProducts = sameInventoryCostProduct
+      ? r.updatedInventoryProducts.map(uip =>
+          Number(uip.product_id) === Number(productWithInventoryCost.product_id) ? productWithInventoryCost : uip
+        )
+      : [...(r.updatedInventoryProducts || []), productWithInventoryCost]
 
     return {
       ...r,
       inventoryMovementIds: [...(r.inventoryMovementIds || []), inventoryMovementId],
       oldInventoryProducts: [...(r.oldInventoryProducts || []), productWithInventoryCost],
       productsInventoryValues: [...(r.productsInventoryValues || []), productsInventoryValue],
+      updatedInventoryProducts,
     }
   }, {})
 

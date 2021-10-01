@@ -222,7 +222,7 @@ module.exports.update = async event => {
 
     const { res } = await db.transaction(async connection => {
       const stakeholderCreated = await handleCreateStakeholder(
-        { ...req, body: { ...document, ...req.body, ...formattedDates, products: productsWithTaxes } },
+        { ...req, body: { ...document, ...req.body, ...formattedDates, products: productsWithTaxes, operation_type } },
         { connection }
       )
 
@@ -273,7 +273,7 @@ module.exports.cancel = async event => {
     })
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (!document) errors.push('No existen compras registradas con la informacion recibida')
+    if (!document || !document.document_id) errors.push('No existen compras registradas con la informacion recibida')
     if (document && document.document_status === types.documentsStatus.CANCELLED) errors.push('El documento ya se encuentra cancelado')
 
     if (errors.length > 0) throw new ValidatorException(errors)

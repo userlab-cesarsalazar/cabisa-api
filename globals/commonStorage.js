@@ -101,16 +101,22 @@ const findDocument = documentsType => {
     p.inventory_unit_value AS old_products__inventory_unit_value,
     p.inventory_total_value AS old_products__inventory_total_value,
     p.created_by AS old_products__created_by,
+    p.description AS products__description,
+    p.code AS products__code,
     dp.product_id AS products__product_id,
+    dp.product_price AS products__product_price,
     dp.service_type AS products__service_type,
     dp.product_quantity AS products__product_quantity,
-    dp.product_price AS products__product_price,
     dp.tax_fee AS products__tax_fee,
     dp.unit_tax_amount AS products__unit_tax_amount,
     dp.parent_product_id AS products__parent_product_id,
+    p.stock AS products__stock,
+    p.stock AS products__product_stock,
     p.product_type AS products__product_type,
     p.status AS products__product_status,
-    p.stock AS products__product_stock
+    p.inventory_unit_value AS products__inventory_unit_value,
+    p.inventory_total_value AS products__inventory_total_value,
+    p.created_by AS products__created_by
   FROM documents d
   LEFT JOIN documents_products dp ON dp.document_id = d.id
   LEFT JOIN products p ON p.id = dp.product_id

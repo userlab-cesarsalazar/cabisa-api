@@ -6,6 +6,7 @@ const { updateProductsInventoryCosts } = require('../commonStorage')
 
 // req.body: {
 //   operation_id,
+//   operation_type,
 //   products: [
 //     {
 //       product_id,
@@ -25,7 +26,7 @@ const { updateProductsInventoryCosts } = require('../commonStorage')
 const handleCreateInventoryMovements = async (req, res) => {
   if (!res.onCreateMovementType) throw new Error('The field onCreateMovementType is required')
 
-  const { products, operation_id } = req.body
+  const { products, operation_id, operation_type } = req.body
 
   if (!operation_id) return { req, res }
 
@@ -36,7 +37,8 @@ const handleCreateInventoryMovements = async (req, res) => {
 
     const product = { ...p, movement_type: movementType }
     const isInventoryReceipt = movementType === types.inventoryMovementsTypes.IN
-    const productWithInventoryCost = calculateInventoryCost('weightedAverage', { product, isInventoryReceipt })
+    const isPurchase = operation_type === types.operationsTypes.PURCHASE
+    const productWithInventoryCost = calculateInventoryCost('weightedAverage', { product, isInventoryReceipt, isPurchase })
 
     return { ...productWithInventoryCost, operation_id }
   })
@@ -62,7 +64,7 @@ const handleCreateInventoryMovements = async (req, res) => {
       '${im.description}',
       '${im.code}',
       ${im.created_by},
-      ${req.currentUser || 1}
+      ${req.currentUser.user_id}
     )`
     const operationsIds = (result && result.whereConditions && result.whereConditions.operationsIds) || []
     const whereConditions = {

@@ -129,10 +129,10 @@ module.exports.create = async event => {
         { connection }
       )
 
-      await handleCreateDocument(operationCreated.req, { ...operationCreated.res, excludeProductOnCreateDetail: product_id })
+      const documentCreated = await handleCreateDocument(operationCreated.req, { ...operationCreated.res, excludeProductOnCreateDetail: product_id })
 
-      const inventoryMovementsCreated = await handleCreateInventoryMovements(operationCreated.req, {
-        ...operationCreated.res,
+      const inventoryMovementsCreated = await handleCreateInventoryMovements(documentCreated.req, {
+        ...documentCreated.res,
         onCreateMovementType: types.inventoryMovementsTypes.OUT,
       })
 
@@ -273,7 +273,7 @@ module.exports.approve = async event => {
     })
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (!document) errors.push('No existe una orden de reparacion registrada con la informacion recibida')
+    if (!document || !document.document_id) errors.push('No existe una orden de reparacion registrada con la informacion recibida')
     if (document && document.document_status !== types.documentsStatus.PENDING)
       errors.push(`Solo pueden ser aprobados documentos con status ${types.documentsStatus.PENDING}`)
     if (document && !document.end_date) errors.push('La orden de reparacion debe tener una fecha de finalizacion')
@@ -326,7 +326,7 @@ module.exports.cancel = async event => {
     })
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (!document) errors.push('No existe una orden de reparacion registrada con la informacion recibida')
+    if (!document || !document.document_id) errors.push('No existe una orden de reparacion registrada con la informacion recibida')
     if (document && document.document_status === types.documentsStatus.CANCELLED) errors.push('El documento ya se encuentra cancelado')
 
     if (errors.length > 0) throw new ValidatorException(errors)
