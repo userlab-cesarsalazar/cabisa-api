@@ -110,6 +110,19 @@ const creditsPolicy = {
   },
 }
 
+// PERMISSIONS
+const permissions = {
+  CONFIGURACION_GENERAL: 1,
+  USUARIOS: 2,
+  REPORTES: 3,
+  FACTURACION: 4,
+  INVENTARIO: 5,
+  VENTAS: 6,
+  CLIENTES: 7,
+  PROVEEDORES: 8,
+  REPARACIONES: 9,
+}
+
 module.exports = {
   actions,
   creditsPolicy,
@@ -120,6 +133,7 @@ module.exports = {
   inventoryMovementsStatus,
   inventoryMovementsTypes,
   operationsTypes,
+  permissions,
   productsCategories,
   productsStatus,
   productsTypes,

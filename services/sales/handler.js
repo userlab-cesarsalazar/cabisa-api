@@ -107,11 +107,14 @@ module.exports.create = async event => {
     },
   }
 
+  const { VENTAS } = types.permissions
+
   try {
     const req = await handleRequest({ event, inputType })
     const operation_type = types.operationsTypes.RENT
     const { stakeholder_id, subtotal_amount = 0, products } = req.body
-    // can(req.currentAction, operation_type)
+
+    req.hasPermissions([VENTAS])
 
     const errors = []
     const productsMap = products.reduce((r, p) => {
@@ -504,7 +507,7 @@ module.exports.invoice = async event => {
       const documentCreated = await handleCreateDocument(
         {
           ...req,
-          body: { ...groupedDocumentDetails, ...req.body, products: productsWithTaxes, document_type },
+          body: { ...groupedDocumentDetails, ...req.body, products: productsWithTaxes, document_type, operation_type },
         },
         { connection }
       )
@@ -576,7 +579,7 @@ module.exports.cancel = async event => {
     })
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (!document) errors.push('No existen una venta registradaa con la informacion recibida')
+    if (!document || !document.document_id) errors.push('No existen una venta registrada con la informacion recibida')
     if (document && document.document_status === types.documentsStatus.CANCELLED) errors.push('El documento ya se encuentra cancelado')
     if (document && document.related_internal_document_id) errors.push(`No puede cancelar una venta con factura asociada`)
 

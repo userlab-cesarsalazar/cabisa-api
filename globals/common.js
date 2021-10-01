@@ -1,3 +1,7 @@
+const btoa = data => Buffer.from(data).toString('base64')
+
+const atob = data => Buffer.from(data, 'base64').toString('ascii')
+
 const cryptoHelpers = crypto => {
   const encrypt = (text, encryptionKey) => crypto.AES.encrypt(text, encryptionKey).toString()
 
@@ -11,6 +15,16 @@ function ValidatorException(errors = null) {
   this.message = {
     errors,
     message: 'Invalid request data',
+  }
+  this.toString = function () {
+    return this.statusCode + this.message
+  }
+}
+
+function UnauthorizedException() {
+  this.statusCode = 401
+  this.message = {
+    message: 'Unauthorized',
   }
   this.toString = function () {
     return this.statusCode + this.message
@@ -268,10 +282,10 @@ const decorate =
     return result
   }
 
-const weightedAverageInventoryCostStrategy = (product, isInventoryReceipt) => {
+const weightedAverageInventoryCostStrategy = (product, isInventoryReceipt, isPurchase) => {
   const unit_cost = product.unit_cost
     ? Number(product.unit_cost)
-    : isInventoryReceipt
+    : isInventoryReceipt && isPurchase
     ? Number(product.product_price)
     : Number(product.inventory_unit_value)
   const total_cost = product.total_cost ? Number(product.total_cost) : unit_cost * Number(product.product_quantity)
@@ -294,7 +308,7 @@ const weightedAverageInventoryCostStrategy = (product, isInventoryReceipt) => {
   }
 }
 
-const calculateInventoryCost = (strategy, { product, isInventoryReceipt = null }) => {
+const calculateInventoryCost = (strategy, { product, isInventoryReceipt = null, isPurchase = null }) => {
   const errors = []
   const requiredFields = [
     'product_id',
@@ -312,11 +326,12 @@ const calculateInventoryCost = (strategy, { product, isInventoryReceipt = null }
 
   if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required in product argument`))
   if (isInventoryReceipt === null) errors.push('The isInventoryReceipt argument is required')
+  if (isPurchase === null) errors.push('The isPurchase argument is required')
   if (!strategy) errors.push('The strategy argument is required')
 
   if (errors.length > 0) throw new ValidatorException(errors)
 
-  if (strategy === 'weightedAverage') return weightedAverageInventoryCostStrategy(product, isInventoryReceipt)
+  if (strategy === 'weightedAverage') return weightedAverageInventoryCostStrategy(product, isInventoryReceipt, isPurchase)
 }
 
 const getDocument = async ({
@@ -362,14 +377,20 @@ const getDocument = async ({
       }
     }, [])
 
-  const inventory_movements = oldInventoryMovementsWithoutDuplicates.map(m => {
-    delete m.status
-    return m
-  })
+  const inventory_movements =
+    oldInventoryMovementsWithoutDuplicates &&
+    oldInventoryMovementsWithoutDuplicates[0] &&
+    oldInventoryMovementsWithoutDuplicates.map(m => {
+      delete m.status
+      return m
+    })
 
-  const product = oldInventoryMovementsWithoutDuplicates.find(
-    op => documentProduct && documentProduct[0] && Number(op.product_id) === Number(documentProduct[0].product_id)
-  )
+  const product =
+    oldInventoryMovementsWithoutDuplicates &&
+    oldInventoryMovementsWithoutDuplicates[0] &&
+    oldInventoryMovementsWithoutDuplicates.find(
+      op => documentProduct && documentProduct[0] && Number(op.product_id) === Number(documentProduct[0].product_id)
+    )
 
   return {
     ...documentWithDuplicates,
@@ -381,6 +402,8 @@ const getDocument = async ({
 }
 
 module.exports = {
+  atob,
+  btoa,
   calculateProductTaxes,
   calculateInventoryCost,
   cryptoHelpers,
@@ -395,5 +418,6 @@ module.exports = {
   isEmptyObject,
   validate,
   removeEmpty,
+  UnauthorizedException,
   ValidatorException,
 }

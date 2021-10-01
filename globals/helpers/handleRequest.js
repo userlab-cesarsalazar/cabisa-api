@@ -1,4 +1,4 @@
-const { decorate, escapeFields, groupJoinResult } = require('../common')
+const { decorate, escapeFields, groupJoinResult, atob, UnauthorizedException } = require('../common')
 
 const addLog =
   fn =>
@@ -10,16 +10,34 @@ const addLog =
     return result
   }
 
-const addUserHasPermissions = fn => async (input, req) => {
-  // buscar en base de datos los permisos del usuario y agregar al req la funcion userHasPermissions
-  // que debe recibir como argumento un array de numeros (id de permisos) y verificar si el user
-  // que se pidio a base de datos (el user de la request) tiene esos permisos asignados
-  const userHasPermissions = permissions => console.log(req.currentUserId)
+const addHasPermissions = fn => async (input, req) => {
+  if (!req.currentUser || JSON.stringify(req.currentUser) === JSON.stringify({})) {
+    return await fn(input, {
+      ...req,
+      hasPermissions: () => {
+        throw new UnauthorizedException()
+      },
+    })
+  }
 
-  return await fn(input, { ...req, userHasPermissions })
+  const hasPermissions = permissions => {
+    if (!permissions || !permissions[0] || !req.currentUser.userPermissions || !req.currentUser.userPermissions[0]) throw new UnauthorizedException()
+
+    const isAuthorized = permissions.every(perm => req.currentUser.userPermissions.some(up => Number(up.id) === Number(perm)))
+
+    if (!isAuthorized) throw new UnauthorizedException()
+  }
+
+  return await fn(input, { ...req, hasPermissions })
 }
 
-const addCurrentUser = fn => async (input, req) => await fn(input, { ...req, currentUserId: input.event.headers.Authorization })
+const addCurrentUser = fn => async (input, req) => {
+  const sessionToken =
+    input && input.event && input.event.headers && input.event.headers.Authorization && input.event.headers.Authorization.substring(7)
+  const currentUser = sessionToken ? JSON.parse(atob(sessionToken)) : {}
+
+  return await fn(input, { ...req, currentUser })
+}
 
 const addCurrentModel =
   fn =>
@@ -72,4 +90,4 @@ const addEvent =
 
 const baseFunction = async (input, req) => req
 
-module.exports = decorate(baseFunction)(addLog, addUserHasPermissions, addCurrentUser, addCurrentModel, addQuery, addBody, addEvent)
+module.exports = decorate(baseFunction)(addLog, addHasPermissions, addCurrentUser, addCurrentModel, addQuery, addBody, addEvent)
