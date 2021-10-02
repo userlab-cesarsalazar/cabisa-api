@@ -311,12 +311,12 @@ const weightedAverageInventoryCostStrategy = (product, isInventoryReceipt, isPur
     ...product,
     quantity: product.product_quantity,
     stock: inventory_quantity,
-    inventory_unit_value: inventory_unit_cost,
+    inventory_unit_value: inventory_quantity === 0 ? 0 : inventory_unit_cost,
     inventory_total_value: inventory_total_cost,
     unit_cost,
     total_cost,
     inventory_quantity,
-    inventory_unit_cost,
+    inventory_unit_cost: inventory_quantity === 0 ? 0 : inventory_unit_cost,
     inventory_total_cost,
   }
 }
@@ -340,10 +340,10 @@ const calculateInventoryCost = (strategy, { product, isInventoryReceipt = null, 
   if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required in product argument`))
   if (isInventoryReceipt === null) errors.push('The isInventoryReceipt argument is required')
   if (isPurchase === null) errors.push('The isPurchase argument is required')
-  if (!strategy) errors.push('The strategy argument is required')
 
   if (errors.length > 0) throw new ValidatorException(errors)
 
+  if (!strategy) return weightedAverageInventoryCostStrategy(product, isInventoryReceipt, isPurchase)
   if (strategy === 'weightedAverage') return weightedAverageInventoryCostStrategy(product, isInventoryReceipt, isPurchase)
 }
 
@@ -393,10 +393,10 @@ const getDocument = async ({
   const inventory_movements =
     oldInventoryMovementsWithoutDuplicates &&
     oldInventoryMovementsWithoutDuplicates[0] &&
-    oldInventoryMovementsWithoutDuplicates.map(m => {
-      delete m.status
-      return m
-    })
+    oldInventoryMovementsWithoutDuplicates.map(m => ({
+      ...m,
+      status: null,
+    }))
 
   const product =
     oldInventoryMovementsWithoutDuplicates &&

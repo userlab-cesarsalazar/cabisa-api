@@ -47,7 +47,7 @@ const handleCreateInventoryMovements = async (req, res) => {
     const product = { ...p, ...updatedProductFields, movement_type: movementType }
     const isInventoryReceipt = movementType === types.inventoryMovementsTypes.IN
     const isPurchase = operation_type === types.operationsTypes.PURCHASE
-    const productWithInventoryCost = calculateInventoryCost('weightedAverage', { product, isInventoryReceipt, isPurchase })
+    const productWithInventoryCost = calculateInventoryCost(null, { product, isInventoryReceipt, isPurchase })
 
     const productWithInventoryCostAndOperationId = { ...productWithInventoryCost, operation_id }
 

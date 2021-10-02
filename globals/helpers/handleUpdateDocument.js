@@ -1,4 +1,5 @@
 // res.excludeProductOnCreateDetail: product_id
+// res.saveInventoryUnitValueAsProductPrice: boolean,
 
 // req.body: {
 //   document_id,
@@ -76,7 +77,7 @@ const handleUpdateDocument = async (req, res) => {
       ${document_id},
       ${p.product_id},
       ${p.service_type ? `'${p.service_type}'` : null},
-      ${p.product_price},
+      ${res.saveInventoryUnitValueAsProductPrice ? p.inventory_unit_value : p.product_price},
       ${p.product_quantity},
       ${p.tax_fee || 0},
       ${p.unit_tax_amount || 0},

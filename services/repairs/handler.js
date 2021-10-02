@@ -130,7 +130,11 @@ module.exports.create = async event => {
         { connection }
       )
 
-      const documentCreated = await handleCreateDocument(operationCreated.req, { ...operationCreated.res, excludeProductOnCreateDetail: product_id })
+      const documentCreated = await handleCreateDocument(operationCreated.req, {
+        ...operationCreated.res,
+        excludeProductOnCreateDetail: product_id,
+        saveInventoryUnitValueAsProductPrice: true,
+      })
 
       const inventoryMovementsCreated = await handleCreateInventoryMovements(documentCreated.req, {
         ...documentCreated.res,
@@ -216,15 +220,10 @@ module.exports.update = async event => {
     const formattedDates = getFormattedDates({ end_date })
 
     const { res } = await db.transaction(async connection => {
-      const documentUpdated = await handleUpdateDocument(
-        {
-          ...req,
-          body: { ...document, ...req.body, ...formattedDates, products: documentDetailProducts },
-        },
-        { connection, excludeProductOnCreateDetail: document.product_id }
+      const inventoryMovementsCancelled = await handleCancelInventoryMovements(
+        { ...req, body: { ...document, ...req.body, ...formattedDates, products: documentDetailProducts } },
+        { connection }
       )
-
-      const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentUpdated.req, documentUpdated.res)
 
       const inventoryMovementsCreated = await handleCreateInventoryMovements(inventoryMovementsCancelled.req, {
         ...inventoryMovementsCancelled.res,
@@ -234,9 +233,15 @@ module.exports.update = async event => {
         Number(im.product_id) !== Number(document.product_id) ? im : []
       )
 
+      const documentUpdated = await handleUpdateDocument(inventoryMovementsCreated.req, {
+        ...inventoryMovementsCreated.res,
+        excludeProductOnCreateDetail: document.product_id,
+        saveInventoryUnitValueAsProductPrice: true,
+      })
+
       const inventoryMovementsApproved = await handleApproveInventoryMovements(
-        { ...inventoryMovementsCreated.req, body: { ...inventoryMovementsCreated.req.body, inventory_movements: documentDetailInventoryMovements } },
-        inventoryMovementsCreated.res
+        { ...documentUpdated.req, body: { ...documentUpdated.req.body, inventory_movements: documentDetailInventoryMovements } },
+        documentUpdated.res
       )
 
       return await handleUpdateStock(inventoryMovementsApproved.req, { ...inventoryMovementsApproved.res, updateStockOn: types.actions.APPROVED })
@@ -336,10 +341,7 @@ module.exports.cancel = async event => {
     const { res } = await db.transaction(async connection => {
       const documentCancelled = await handleCancelDocument({ ...req, body: { ...document, ...req.body } }, { connection })
 
-      const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentCancelled.req, {
-        ...documentCancelled.res,
-        updateInventoryCost: true,
-      })
+      const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentCancelled.req, documentCancelled.res)
 
       return await handleUpdateStock(
         { ...inventoryMovementsCancelled.req, body: { ...inventoryMovementsCancelled.req.body, old_inventory_movements: [] } },

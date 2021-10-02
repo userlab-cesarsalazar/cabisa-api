@@ -441,10 +441,7 @@ module.exports.cancel = async event => {
     const { res } = await db.transaction(async connection => {
       const documentCancelled = await handleCancelDocument({ ...req, body: { ...document, ...req.body } }, { connection })
 
-      const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentCancelled.req, {
-        ...documentCancelled.res,
-        updateInventoryCost: true,
-      })
+      const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentCancelled.req, documentCancelled.res)
 
       return await handleUpdateStock(
         { ...inventoryMovementsCancelled.req, body: { ...inventoryMovementsCancelled.req.body, old_inventory_movements: [] } },

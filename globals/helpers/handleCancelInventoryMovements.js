@@ -2,8 +2,6 @@ const types = require('../types')
 const { calculateInventoryCost } = require('../common')
 const { updateProductsInventoryCosts } = require('../commonStorage')
 
-// res.updateInventoryCost: boolean
-
 // req.body: {
 //   operation_type,
 //   old_inventory_movements: [
@@ -27,7 +25,6 @@ const { updateProductsInventoryCosts } = require('../commonStorage')
 
 const handleCancelInventoryMovements = async (req, res) => {
   const { old_inventory_movements, products, operation_type } = req.body
-  const { updateInventoryCost = false } = res
 
   const { inventoryMovementIds, oldInventoryProducts, productsInventoryValues } = old_inventory_movements.reduce((r, oim) => {
     const inventoryMovementId = oim.inventory_movement_id
@@ -43,7 +40,7 @@ const handleCancelInventoryMovements = async (req, res) => {
     const product = { ...oim, ...updatedProductFields }
     const isInventoryReceipt = oim.movement_type !== types.inventoryMovementsTypes.IN
     const isPurchase = operation_type === types.operationsTypes.PURCHASE
-    const productWithInventoryCost = calculateInventoryCost('weightedAverage', { product, isInventoryReceipt, isPurchase })
+    const productWithInventoryCost = calculateInventoryCost(null, { product, isInventoryReceipt, isPurchase })
 
     const productsInventoryValue = `(
       ${productWithInventoryCost.product_id},
@@ -93,7 +90,7 @@ const handleCancelInventoryMovements = async (req, res) => {
 
   await res.connection.query(cancelInventoryMovements(inventoryMovementIds))
 
-  if (updateInventoryCost) await res.connection.query(updateProductsInventoryCosts(productsInventoryValues))
+  await res.connection.query(updateProductsInventoryCosts(productsInventoryValues))
 
   return { req: { ...req, body: { ...req.body, products: updatedProducts || oldInventoryProducts } }, res }
 }

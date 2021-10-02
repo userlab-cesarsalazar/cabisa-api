@@ -1,6 +1,6 @@
 const crypto = require('crypto-js')
 const mysql = require('mysql2/promise')
-const { mysqlConfig, helpers, isEmail, ValidatorException, cryptoHelpers } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
+const { mysqlConfig, helpers, isEmail, ValidatorException, cryptoHelpers, types } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
 const { handleRequest, handleResponse, handleRead } = helpers
 const db = mysqlConfig(mysql)
