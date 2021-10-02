@@ -31,6 +31,16 @@ function UnauthorizedException() {
   }
 }
 
+function ForbiddenException() {
+  this.statusCode = 403
+  this.message = {
+    message: 'Forbidden',
+  }
+  this.toString = function () {
+    return this.statusCode + this.message
+  }
+}
+
 /**
  *
  * @param data
@@ -300,6 +310,9 @@ const weightedAverageInventoryCostStrategy = (product, isInventoryReceipt, isPur
   return {
     ...product,
     quantity: product.product_quantity,
+    stock: inventory_quantity,
+    inventory_unit_value: inventory_unit_cost,
+    inventory_total_value: inventory_total_cost,
     unit_cost,
     total_cost,
     inventory_quantity,
@@ -409,6 +422,7 @@ module.exports = {
   cryptoHelpers,
   decorate,
   escapeFields,
+  ForbiddenException,
   getDocument,
   getError,
   getFormattedDates,

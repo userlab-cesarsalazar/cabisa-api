@@ -15,6 +15,7 @@ CREATE TABLE `documents` (
   `end_date` TIMESTAMP,
   `cancel_reason` TEXT DEFAULT NULL,
   `subtotal_amount` DOUBLE DEFAULT NULL,
+  `sales_commission_amount` DOUBLE DEFAULT NULL,
   `total_discount_amount` DOUBLE DEFAULT NULL,
   `total_tax_amount` DOUBLE DEFAULT NULL,
   `total_amount` DOUBLE DEFAULT NULL,

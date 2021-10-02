@@ -29,6 +29,7 @@ const {
   handleUpdateStakeholderCredit,
   handleUpdateCreditStatus,
   handleUpdateCreditPaidDate,
+  handleUpdateCreditDueDate,
 } = helpers
 const { parentChildProductsValidator } = validators
 const db = mysqlConfig(mysql)
@@ -107,14 +108,12 @@ module.exports.create = async event => {
     },
   }
 
-  const { VENTAS } = types.permissions
-
   try {
     const req = await handleRequest({ event, inputType })
     const operation_type = types.operationsTypes.RENT
     const { stakeholder_id, subtotal_amount = 0, products } = req.body
 
-    req.hasPermissions([VENTAS])
+    req.hasPermissions([types.permissions.SALES])
 
     const errors = []
     const productsMap = products.reduce((r, p) => {
@@ -254,9 +253,9 @@ module.exports.update = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
-    const { document_id, products, start_date, end_date, subtotal_amount = 0 } = req.body
-    // can(req.currentAction, operation_type)
+    req.hasPermissions([types.permissions.SALES])
 
+    const { document_id, products, start_date, end_date, subtotal_amount = 0 } = req.body
     const document = await getDocument({
       dbQuery: db.query,
       findDocumentStorage: commonStorage.findDocument,
@@ -358,41 +357,43 @@ module.exports.update = async event => {
 }
 
 module.exports.invoice = async event => {
-  try {
-    const inputType = {
-      document_id: { type: ['number', 'string'], required: true },
-      payment_method: { type: { enum: types.documentsPaymentMethods }, required: true },
-      credit_days: { type: { enum: types.creditsPolicy.creditDaysEnum } },
-      subtotal_amount: { type: 'number', min: 1, required: true },
-      total_discount_amount: { type: 'number', required: true },
-      total_tax_amount: { type: 'number', required: true },
-      total_amount: { type: 'number', min: 0, required: true },
-      // stakeholder_type: { type: { enum: [types.stakeholdersTypes.CLIENT_INDIVIDUAL, types.stakeholdersTypes.CLIENT_COMPANY] } },
-      // stakeholder_name: { type: 'string', length: 100 },
-      // stakeholder_address: { type: 'string', length: 100 },
-      // stakeholder_nit: { type: 'string', length: 11 },
-      // stakeholder_phone: { type: 'string', length: 20 },
-      related_external_document_id: { type: ['string', 'number'] },
-      description: { type: 'string' },
-      products: {
-        type: 'array',
-        required: true,
+  const inputType = {
+    document_id: { type: ['number', 'string'], required: true },
+    payment_method: { type: { enum: types.documentsPaymentMethods }, required: true },
+    credit_days: { type: { enum: types.creditsPolicy.creditDaysEnum } },
+    subtotal_amount: { type: 'number', min: 1, required: true },
+    total_discount_amount: { type: 'number', required: true },
+    total_tax_amount: { type: 'number', required: true },
+    total_amount: { type: 'number', min: 0, required: true },
+    // stakeholder_type: { type: { enum: [types.stakeholdersTypes.CLIENT_INDIVIDUAL, types.stakeholdersTypes.CLIENT_COMPANY] } },
+    // stakeholder_name: { type: 'string', length: 100 },
+    // stakeholder_address: { type: 'string', length: 100 },
+    // stakeholder_nit: { type: 'string', length: 11 },
+    // stakeholder_phone: { type: 'string', length: 20 },
+    related_external_document_id: { type: ['string', 'number'] },
+    description: { type: 'string' },
+    products: {
+      type: 'array',
+      required: true,
+      fields: {
+        type: 'object',
         fields: {
-          type: 'object',
-          fields: {
-            product_id: { type: ['string', 'number'], required: true },
-            service_type: { type: { enum: types.documentsServiceType }, required: true },
-            product_quantity: { type: 'number', min: 0, required: true },
-            product_price: { type: 'number', min: 0, required: true },
-            product_discount_percentage: { type: 'number', min: 0 },
-            product_discount: { type: 'number', min: 0 },
-            parent_product_id: { type: ['string', 'number'] },
-          },
+          product_id: { type: ['string', 'number'], required: true },
+          service_type: { type: { enum: types.documentsServiceType }, required: true },
+          product_quantity: { type: 'number', min: 0, required: true },
+          product_price: { type: 'number', min: 0, required: true },
+          product_discount_percentage: { type: 'number', min: 0 },
+          product_discount: { type: 'number', min: 0 },
+          parent_product_id: { type: ['string', 'number'] },
         },
       },
-    }
+    },
+  }
 
+  try {
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.SALES])
+
     const {
       document_id,
       payment_method,
@@ -403,9 +404,6 @@ module.exports.invoice = async event => {
       total_amount,
       products,
     } = req.body
-
-    // can(req.currentAction, types.operationsTypes.PURCHASE)
-
     const errors = []
     const productsMap = products.reduce((r, p) => {
       if (p.parent_product_id) return r
@@ -509,12 +507,17 @@ module.exports.invoice = async event => {
           ...req,
           body: { ...groupedDocumentDetails, ...req.body, products: productsWithTaxes, document_type, operation_type },
         },
-        { connection }
+        { connection, calculateSalesCommission: true }
+      )
+
+      const creditDueDateUpdated = await handleUpdateCreditDueDate(
+        { ...documentCreated.req, body: { ...documentCreated.req.body, credit_days } },
+        documentCreated.res
       )
 
       const creditPaidDateUpdated = await handleUpdateCreditPaidDate(
-        { ...documentCreated.req, body: { ...documentCreated.req.body, creditPaidDate: credit_days ? null : new Date().toISOString() } },
-        documentCreated.res
+        { ...creditDueDateUpdated.req, body: { ...creditDueDateUpdated.req.body, creditPaidDate: credit_days ? null : new Date().toISOString() } },
+        creditDueDateUpdated.res
       )
 
       const creditStatusUpdated = await handleUpdateCreditStatus(
@@ -559,10 +562,10 @@ module.exports.cancel = async event => {
       document_id: { type: ['number', 'string'], required: true },
       cancel_reason: { type: 'string' },
     }
-
     const req = await handleRequest({ event, inputType })
-    const { document_id } = req.body
+    req.hasPermissions([types.permissions.SALES])
 
+    const { document_id } = req.body
     const errors = []
     const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])

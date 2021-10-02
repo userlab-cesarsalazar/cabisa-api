@@ -66,12 +66,11 @@ module.exports.create = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.INVENTORY])
+
     const { stakeholder_id, stakeholder_nit, products, start_date } = req.body
     const stakeholder_type = types.stakeholdersTypes.PROVIDER
     const operation_type = types.operationsTypes.PURCHASE
-
-    // can(req.currentAction, operation_type)
-
     const errors = []
     const productsMap = products.reduce((r, p) => ({ ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }), {})
     const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
@@ -168,12 +167,11 @@ module.exports.update = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.INVENTORY])
+
     const { document_id, stakeholder_id, stakeholder_nit, products, start_date } = req.body
     const stakeholder_type = types.stakeholdersTypes.PROVIDER
     const operation_type = types.operationsTypes.PURCHASE
-
-    // can(req.currentAction, operation_type)
-
     const document = await getDocument({
       dbQuery: db.query,
       findDocumentStorage: commonStorage.findDocument,
@@ -253,10 +251,10 @@ module.exports.cancel = async event => {
       document_id: { type: ['number', 'string'], required: true },
       cancel_reason: { type: 'string' },
     }
-
     const req = await handleRequest({ event, inputType })
-    const { document_id } = req.body
+    req.hasPermissions([types.permissions.INVENTORY])
 
+    const { document_id } = req.body
     const errors = []
     const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])

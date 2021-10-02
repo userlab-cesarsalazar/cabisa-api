@@ -1,4 +1,4 @@
-const { decorate, escapeFields, groupJoinResult, atob, UnauthorizedException } = require('../common')
+const { decorate, escapeFields, groupJoinResult, atob, UnauthorizedException, ForbiddenException } = require('../common')
 
 const addLog =
   fn =>
@@ -21,11 +21,11 @@ const addHasPermissions = fn => async (input, req) => {
   }
 
   const hasPermissions = permissions => {
-    if (!permissions || !permissions[0] || !req.currentUser.userPermissions || !req.currentUser.userPermissions[0]) throw new UnauthorizedException()
+    if (!permissions || !permissions[0] || !req.currentUser.userPermissions || !req.currentUser.userPermissions[0]) throw new ForbiddenException()
 
     const isAuthorized = permissions.every(perm => req.currentUser.userPermissions.some(up => Number(up.id) === Number(perm)))
 
-    if (!isAuthorized) throw new UnauthorizedException()
+    if (!isAuthorized) throw new ForbiddenException()
   }
 
   return await fn(input, { ...req, hasPermissions })
@@ -34,9 +34,10 @@ const addHasPermissions = fn => async (input, req) => {
 const addCurrentUser = fn => async (input, req) => {
   const sessionToken =
     input && input.event && input.event.headers && input.event.headers.Authorization && input.event.headers.Authorization.substring(7)
-  const currentUser = sessionToken ? JSON.parse(atob(sessionToken)) : {}
 
-  return await fn(input, { ...req, currentUser })
+  if (!sessionToken) return await fn(input, { ...req, currentUser: {} })
+
+  return await fn(input, { ...req, currentUser: JSON.parse(atob(sessionToken)) })
 }
 
 const addCurrentModel =

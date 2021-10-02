@@ -1,5 +1,6 @@
 const { creditsPolicy } = require('../types')
 // res.excludeProductOnCreateDetail: product_id
+// res.calculateSalesCommission: boolean
 
 // IMPORTANTE: especificar en el req.body el document_type del documento a crear
 // req.body: { stakeholder_id, project_id, document_type, comments, received_by, dispatched_by, start_date, end_date, payment_method, credit_days, description, products }
@@ -26,10 +27,11 @@ const handleCreateDocument = async (req, res) => {
     credit_days = null,
     description = null,
     products,
-    created_by = 1,
   } = req.body
 
   const related_internal_document_id = document_id
+  const salesCommissionPercentage = req.currentUser.sales_commission / 100
+  const sales_commission_amount = res.calculateSalesCommission ? subtotal_amount * salesCommissionPercentage : null
 
   await res.connection.query(createDocument(), [
     document_type,
@@ -44,6 +46,7 @@ const handleCreateDocument = async (req, res) => {
     end_date,
     cancel_reason,
     subtotal_amount,
+    sales_commission_amount,
     total_discount_amount,
     total_tax_amount,
     total_amount,
@@ -51,7 +54,7 @@ const handleCreateDocument = async (req, res) => {
     credit_days,
     Number(credit_days) > 0 ? creditsPolicy.creditStatusEnum.UNPAID : null,
     description,
-    created_by,
+    req.currentUser.user_id,
   ])
   const newDocumentId = await res.connection.geLastInsertId()
 
@@ -95,6 +98,7 @@ const createDocument = () => `
       end_date,
       cancel_reason,
       subtotal_amount,
+      sales_commission_amount,
       total_discount_amount,
       total_tax_amount,
       total_amount,
@@ -104,7 +108,7 @@ const createDocument = () => `
       description,
       created_by
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products

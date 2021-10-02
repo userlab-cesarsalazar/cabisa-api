@@ -1,12 +1,35 @@
 const mysql = require('mysql2/promise')
-const { mysqlConfig, helpers } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
+const { mysqlConfig, helpers, types } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
 const { handleRead, handleRequest, handleResponse } = helpers
 const db = mysqlConfig(mysql)
 
+module.exports.clientsAccountState = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    req.hasPermissions([types.permissions.REPORTS])
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.getClientAccountState })
+
+    const data = res.data.map(d => ({
+      ...d,
+      current_credit: Number(d.total_credit) - Number(d.paid_credit),
+      credit_balance: Number(d.credit_limit) - (Number(d.total_credit) - Number(d.paid_credit)),
+    }))
+
+    return await handleResponse({ req, res: { ...res, data } })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
 module.exports.accountsReceivable = async event => {
   try {
     const req = await handleRequest({ event })
+
+    req.hasPermissions([types.permissions.REPORTS])
 
     const res = await handleRead(req, { dbQuery: db.query, storage: storage.getAccountsReceivable })
 
@@ -21,6 +44,8 @@ module.exports.sales = async event => {
   try {
     const req = await handleRequest({ event })
 
+    req.hasPermissions([types.permissions.REPORTS])
+
     const res = await handleRead(req, { dbQuery: db.query, storage: storage.getSales })
 
     return await handleResponse({ req, res })
@@ -33,6 +58,8 @@ module.exports.sales = async event => {
 module.exports.inventory = async event => {
   try {
     const req = await handleRequest({ event })
+
+    req.hasPermissions([types.permissions.REPORTS])
 
     const res = await handleRead(req, {
       dbQuery: db.query,

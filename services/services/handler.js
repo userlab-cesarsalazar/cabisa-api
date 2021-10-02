@@ -39,9 +39,10 @@ module.exports.create = async event => {
       description: { type: 'string', length: 255, required: true },
     }
     const req = await handleRequest({ event, inputType })
-    const { status, code, unit_price, description, created_by = 1 } = req.body
-    const product_type = types.productsTypes.SERVICE
+    req.hasPermissions([types.permissions.INVENTORY])
 
+    const { status, code, unit_price, description } = req.body
+    const product_type = types.productsTypes.SERVICE
     const errors = []
     const requiredFields = ['status', 'code', 'unit_price', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -62,7 +63,7 @@ module.exports.create = async event => {
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.createService(), [status, code, unit_price, description, tax.id, created_by])
+      await connection.query(storage.createService(), [status, code, unit_price, description, tax.id, req.currentUser.user_id])
 
       return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Servicio creado exitosamente' }
     })
@@ -84,9 +85,9 @@ module.exports.update = async event => {
       description: { type: 'string', length: 255, required: true },
     }
     const req = await handleRequest({ event, inputType, dbQuery: db.query, storage: storage.findAllBy })
+    req.hasPermissions([types.permissions.INVENTORY])
 
-    const { id, status, code, unit_price, description, updated_by = 1 } = req.body
-
+    const { id, status, code, unit_price, description } = req.body
     const errors = []
     const requiredFields = ['id', 'status', 'code', 'unit_price', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -105,7 +106,7 @@ module.exports.update = async event => {
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.updateService(), [status, code, unit_price, description, updated_by, id])
+      await connection.query(storage.updateService(), [status, code, unit_price, description, req.currentUser.user_id, id])
 
       return { statusCode: 200, data: { id }, message: 'Servicio actualizado exitosamente' }
     })
@@ -123,9 +124,9 @@ module.exports.delete = async event => {
       id: { type: ['string', 'number'], required: true },
     }
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.INVENTORY])
 
     const { id } = req.body
-
     const errors = []
     const requiredFields = ['id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])

@@ -34,10 +34,10 @@ module.exports.approve = async event => {
         },
       },
     }
-
     const req = await handleRequest({ event, inputType })
-    const { inventory_movements } = req.body
+    req.hasPermissions([types.permissions.INVENTORY])
 
+    const { inventory_movements } = req.body
     const errors = []
     const movementsMap = inventory_movements.reduce(
       (r, im) => ({ ...r, [im.inventory_movement_id]: [...(r[im.inventory_movement_id] || []), im.inventory_movement_id] }),
@@ -119,8 +119,9 @@ module.exports.createAdjustment = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
-    const { adjustment_reason = null, products, created_by = 1 } = req.body
+    req.hasPermissions([types.permissions.INVENTORY])
 
+    const { adjustment_reason = null, products } = req.body
     const errors = []
     const productsMap = products.reduce((r, p) => {
       if (p.parent_product_id) return r
@@ -159,7 +160,7 @@ module.exports.createAdjustment = async event => {
     })
 
     const { res } = await db.transaction(async connection => {
-      await connection.query(storage.createInventoryAdjustment(), [adjustment_reason, created_by])
+      await connection.query(storage.createInventoryAdjustment(), [adjustment_reason, req.currentUser.user_id])
       const newInventoryAdjustmentId = await connection.geLastInsertId()
 
       const inventoryAdjustmentsProductsValues = products.map(

@@ -1,7 +1,7 @@
 const types = require('../types')
 
 const handleCreateStakeholder = async (req, res) => {
-  const { stakeholder_id, stakeholder_type, email, alternative_phone, business_man, payments_man, credit_limit, created_by = 1 } = req.body
+  const { stakeholder_id, stakeholder_type, email, alternative_phone, business_man, payments_man, credit_limit } = req.body
   const name = req.body.stakeholder_name || req.body.name
   const address = req.body.stakeholder_address || req.body.address
   const nit = req.body.stakeholder_nit || req.body.nit
@@ -20,7 +20,7 @@ const handleCreateStakeholder = async (req, res) => {
     business_man,
     payments_man,
     credit_limit,
-    created_by,
+    req.currentUser.user_id,
   ])
 
   const stakeholderId = await res.connection.geLastInsertId()

@@ -1,9 +1,9 @@
-// req.body: { stakeholder_id, total_credit, paid_credit, updated_by }
+// req.body: { stakeholder_id, total_credit, paid_credit }
 
 const handleUpdateStakeholderCredit = async (req, res) => {
-  const { stakeholder_id, total_credit, paid_credit, updated_by = 1 } = req.body
+  const { stakeholder_id, total_credit, paid_credit } = req.body
 
-  await res.connection.query(updateCredit(), [total_credit, paid_credit, updated_by, stakeholder_id])
+  await res.connection.query(updateCredit(), [total_credit, paid_credit, req.currentUser.user_id, stakeholder_id])
 
   return {
     req,

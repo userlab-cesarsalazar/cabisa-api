@@ -4,6 +4,12 @@ const { handleRead, handleRequest, handleResponse, handleCreateStakeholder } = h
 const storage = require('./storage')
 const db = mysqlConfig(mysql)
 
+function getStakeholderPermissionType(stakeholder_type) {
+  if (stakeholder_type === types.stakeholdersTypes.CLIENT_INDIVIDUAL) return types.permissions.CLIENTS
+  if (stakeholder_type === types.stakeholdersTypes.CLIENT_COMPANY) return types.permissions.CLIENTS
+  if (stakeholder_type === types.stakeholdersTypes.PROVIDER) return types.permissions.SUPPLIERS
+}
+
 module.exports.read = async event => {
   try {
     const req = await handleRequest({ event })
@@ -83,8 +89,9 @@ module.exports.create = async event => {
       },
     }
     const req = await handleRequest({ event, inputType })
+    const { stakeholder_type, nit, email, projects, credit_limit } = req.body
 
-    const { stakeholder_type, nit, email, projects, credit_limit, created_by = 1 } = req.body
+    req.hasPermissions([getStakeholderPermissionType(stakeholder_type)])
 
     const errors = []
     const requiredFields = ['stakeholder_type', 'name', 'address', 'nit', 'phone']
@@ -120,7 +127,7 @@ module.exports.create = async event => {
       const stakeholderCreated = await handleCreateStakeholder(req, { connection })
       const { stakeholder_id } = stakeholderCreated.res.data
 
-      await crupdateProjects({ stakeholderId: stakeholder_id, crupdatedBy: created_by, projects }, connection)
+      await crupdateProjects({ stakeholderId: stakeholder_id, crupdatedBy: req.currentUser.user_id, projects }, connection)
 
       return stakeholderCreated.res
     })
@@ -166,8 +173,9 @@ module.exports.update = async event => {
       storage: storage.findAllBy,
       nestedFieldsKeys: ['projects'],
     })
+    const { id, stakeholder_type, name, address, nit, email, phone, business_man, payments_man, projects, credit_limit } = req.body
 
-    const { id, stakeholder_type, name, address, nit, email, phone, business_man, payments_man, projects, credit_limit, updated_by = 1 } = req.body
+    req.hasPermissions([getStakeholderPermissionType(stakeholder_type)])
 
     const errors = []
     const projectsMap =
@@ -211,12 +219,12 @@ module.exports.update = async event => {
         business_man,
         payments_man,
         credit_limit,
-        updated_by,
+        req.currentUser.user_id,
         id,
       ])
 
       const crupdatedProjects = await crupdateProjects(
-        { stakeholderId: id, crupdatedBy: updated_by, oldProjects: req.currentModel.projects, projects },
+        { stakeholderId: id, crupdatedBy: req.currentUser.user_id, oldProjects: req.currentModel.projects, projects },
         connection
       )
 
@@ -238,13 +246,15 @@ module.exports.setStatus = async event => {
       block_reason: { type: 'string' },
     }
     const req = await handleRequest({ event, inputType })
+    const { id, status, block_reason } = req.body
 
-    const { id, status, block_reason, updated_by = 1 } = req.body
+    const [stakeholderExists] = id && (await db.query(storage.checkExists({ id }, '1')))
+    const stakeholderPermissionType = stakeholderExists && getStakeholderPermissionType(stakeholderExists.stakeholder_type)
+    req.hasPermissions([stakeholderPermissionType])
 
     const errors = []
     const requiredFields = status !== types.stakeholdersStatus.BLOCKED ? ['id', 'status'] : ['id', 'status'] //, 'block_reason'
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const [stakeholderExists] = await db.query(storage.checkExists({ id }, '1'))
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (!stakeholderExists) errors.push(`El stakeholder con id ${id} no se encuentra registrado`)
@@ -258,7 +268,7 @@ module.exports.setStatus = async event => {
     if (errors.length > 0) throw new ValidatorException(errors)
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.setStatusStakeholder(), [status, block_reason, updated_by, id])
+      await connection.query(storage.setStatusStakeholder(), [status, block_reason, req.currentUser.user_id, id])
 
       return { statusCode: 200, data: { id }, message: 'Status actualizado exitosamente' }
     })

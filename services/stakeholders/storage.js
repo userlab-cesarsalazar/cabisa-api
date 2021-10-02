@@ -16,8 +16,6 @@ const findAllBy = (fields = {}, initWhereCondition = `(p.is_active = 1 OR p.is_a
     s.credit_limit,
     s.total_credit,
     s.paid_credit,
-    (s.total_credit - s.paid_credit) AS current_credit,
-    (s.credit_limit - (s.total_credit - s.paid_credit)) AS credit_balance,
     s.block_reason,
     s.created_at,
     s.created_by,
@@ -47,7 +45,7 @@ const findProjectsOptionsBy = (fields = {}, initWhereCondition = `is_active = 1`
 `
 
 const checkExists = (fields = {}, initWhereCondition = `status = 'ACTIVE'`) => `
-  SELECT id FROM stakeholders WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
+  SELECT id, stakeholder_type FROM stakeholders WHERE ${initWhereCondition} ${getWhereConditions({ fields })}
 `
 
 const updateStakeholder = () => `

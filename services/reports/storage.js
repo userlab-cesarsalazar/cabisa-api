@@ -1,5 +1,31 @@
 const { types, getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 
+const getClientAccountState = (fields = {}) => `
+  SELECT 
+    s.id,
+    s.stakeholder_type,
+    s.status,
+    s.name,
+    s.address,
+    s.nit,
+    s.email,
+    s.phone,
+    s.alternative_phone,
+    s.business_man,
+    s.payments_man,
+    s.credit_limit,
+    s.total_credit,
+    s.paid_credit,
+    s.block_reason,
+    s.created_at,
+    s.created_by,
+    s.updated_at,
+    s.updated_by
+  FROM stakeholders s
+  ${getWhereConditions({ fields, tableAlias: 's', hasPreviousConditions: false })}
+  ORDER BY s.id DESC
+`
+
 const getAccountsReceivable = (fields = {}) => {
   const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'd' })
   const whereConditions = rawWhereConditions.replace(/d.stakeholder_type/i, 's.stakeholder_type').replace(/d.stakeholder_name/i, 's.name')
@@ -39,12 +65,12 @@ const getAccountsReceivable = (fields = {}) => {
 
 const getSales = (fields = {}) => {
   const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'd' })
-  const includeInvoices = /d.document_type = 'INVOICE'/i.test(rawWhereConditions)
+  const includeInvoices = /d.document_type = 'INVOICES'/i.test(rawWhereConditions)
   const includePreInvoices = /d.document_type = 'PRE_INVOICE'/i.test(rawWhereConditions)
   const includeBoth = !includeInvoices && !includePreInvoices
   const whereConditions = rawWhereConditions
     .replace(/d.stakeholder_name/i, 's.name')
-    .replace(/AND d.document_type = 'INVOICE'/i, '')
+    .replace(/AND d.document_type = 'INVOICES'/i, '')
     .replace(/AND d.document_type = 'PRE_INVOICE'/i, '')
     .replace(/start_date/i, 'created_at')
     .replace(/end_date/i, 'created_at')
@@ -153,6 +179,7 @@ const getInventory = (fields = {}) => {
 
 module.exports = {
   getAccountsReceivable,
+  getClientAccountState,
   getInventory,
   getSales,
 }

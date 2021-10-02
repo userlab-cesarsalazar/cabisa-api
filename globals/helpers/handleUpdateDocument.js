@@ -20,7 +20,6 @@
 //   credit_days,
 //   products,
 //   old_products,
-//   updated_by,
 // }
 
 const handleUpdateDocument = async (req, res) => {
@@ -45,7 +44,6 @@ const handleUpdateDocument = async (req, res) => {
     credit_days = null,
     products = [],
     old_products = [],
-    updated_by = 1,
   } = req.body
 
   await res.connection.query(updateDocument(), [
@@ -66,7 +64,7 @@ const handleUpdateDocument = async (req, res) => {
     description,
     payment_method,
     credit_days,
-    updated_by,
+    req.currentUser.user_id,
     document_id,
   ])
 

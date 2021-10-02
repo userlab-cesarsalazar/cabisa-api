@@ -42,9 +42,9 @@ module.exports.create = async event => {
       sales_commission: { type: 'number', min: 0, max: 100 },
     }
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.USERS])
 
     const { fullName, password, email, rolId, sales_commission = null } = req.body
-
     const errors = []
     const requiredFields = ['fullName', 'password', 'email', 'rolId']
     if (Number(rolId) === 2) requiredFields.push('sales_commission')
@@ -88,9 +88,9 @@ module.exports.update = async event => {
     }
     // TODO: si se cambia el rolId entonces se deben reescribir los permisos de la tabla users con los del nuevo rol
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.USERS])
 
     const { id, fullName, email, sales_commission = null, rolId, previousPassword, proposedPassword } = req.body
-
     const errors = []
     const requiredFields = ['id', 'fullName', 'email', 'rolId']
     // if (previousPassword) requiredFields.push('proposedPassword')
@@ -141,9 +141,9 @@ module.exports.delete = async event => {
       id: { type: ['string', 'number'], required: true },
     }
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.USERS])
 
     const { id } = req.body
-
     const errors = []
     const requiredFields = ['id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -186,9 +186,9 @@ module.exports.updatePermissions = async event => {
       },
     }
     const req = await handleRequest({ event, inputType, dbQuery: db.query, storage: storage.findAllBy })
+    req.hasPermissions([types.permissions.USERS])
 
     const { id, permissions } = req.body
-
     const errors = []
     const requiredFields = ['id', 'permissions']
     const requiredPermissionsFields = ['id', 'name']
@@ -228,12 +228,12 @@ module.exports.changePassword = async event => {
       previousPassword: { type: 'string', required: true },
       proposedPassword: { type: 'string', required: true },
     }
-    // TODO: obtener el accessToken del event
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.USERS])
+
+    // TODO: obtener el accessToken de cognito del event
     const userId = req.accessToken && req.accessToken.userId
-
     const { previousPassword, proposedPassword } = req.body
-
     const errors = []
     const requiredFields = ['previousPassword', 'proposedPassword']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])

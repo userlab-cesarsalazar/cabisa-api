@@ -32,16 +32,40 @@ const handleCreateInventoryMovements = async (req, res) => {
 
   const movementType = res.onCreateMovementType
 
-  const inventoryMovements = products.flatMap(p => {
-    if (p.product_type === types.productsTypes.SERVICE) return []
+  const { inventoryMovements } = products.reduce((r, p) => {
+    if (p.product_type === types.productsTypes.SERVICE) return r
 
-    const product = { ...p, movement_type: movementType }
+    const sameUpdatedProduct = (r.updatedInventoryProducts || []).find(uip => Number(uip.product_id) === Number(p.product_id))
+    const updatedProductFields = sameUpdatedProduct
+      ? {
+          stock: sameUpdatedProduct.inventory_quantity,
+          inventory_unit_value: sameUpdatedProduct.inventory_unit_cost,
+          inventory_total_value: sameUpdatedProduct.inventory_total_cost,
+        }
+      : {}
+
+    const product = { ...p, ...updatedProductFields, movement_type: movementType }
     const isInventoryReceipt = movementType === types.inventoryMovementsTypes.IN
     const isPurchase = operation_type === types.operationsTypes.PURCHASE
     const productWithInventoryCost = calculateInventoryCost('weightedAverage', { product, isInventoryReceipt, isPurchase })
 
-    return { ...productWithInventoryCost, operation_id }
-  })
+    const productWithInventoryCostAndOperationId = { ...productWithInventoryCost, operation_id }
+
+    const sameInventoryCostProduct = (r.updatedInventoryProducts || []).find(
+      uip => Number(uip.product_id) === Number(productWithInventoryCostAndOperationId.product_id)
+    )
+    const updatedInventoryProducts = sameInventoryCostProduct
+      ? r.updatedInventoryProducts.map(uip =>
+          Number(uip.product_id) === Number(productWithInventoryCostAndOperationId.product_id) ? productWithInventoryCostAndOperationId : uip
+        )
+      : [...(r.updatedInventoryProducts || []), productWithInventoryCostAndOperationId]
+
+    return {
+      ...r,
+      inventoryMovements: [...(r.inventoryMovements || []), productWithInventoryCostAndOperationId],
+      updatedInventoryProducts,
+    }
+  }, {})
 
   if (!inventoryMovements || !inventoryMovements[0]) return { req, res }
 

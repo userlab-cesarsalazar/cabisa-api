@@ -112,15 +112,15 @@ const creditsPolicy = {
 
 // PERMISSIONS
 const permissions = {
-  CONFIGURACION_GENERAL: 1,
-  USUARIOS: 2,
-  REPORTES: 3,
-  FACTURACION: 4,
-  INVENTARIO: 5,
-  VENTAS: 6,
-  CLIENTES: 7,
-  PROVEEDORES: 8,
-  REPARACIONES: 9,
+  GENERAL_CONFIG: 1,
+  USERS: 2,
+  REPORTS: 3,
+  INVOICES: 4,
+  INVENTORY: 5,
+  SALES: 6,
+  CLIENTS: 7,
+  SUPPLIERS: 8,
+  REPAIRS: 9,
 }
 
 module.exports = {

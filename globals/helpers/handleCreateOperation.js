@@ -1,9 +1,9 @@
 // req.body: { operation_type, created_by }
 
 const handleCreateOperation = async (req, res) => {
-  const { operation_type, created_by = 1 } = req.body
+  const { operation_type } = req.body
 
-  await res.connection.query(createOperation(), [operation_type, created_by])
+  await res.connection.query(createOperation(), [operation_type, req.currentUser.user_id])
   const operation_id = await res.connection.geLastInsertId()
 
   return {

@@ -39,8 +39,9 @@ module.exports.create = async event => {
       end_date: { type: 'string' },
     }
     const req = await handleRequest({ event, inputType })
-    const { stakeholder_id, name, created_by = 1 } = req.body
+    req.hasPermissions([types.permissions.SALES])
 
+    const { stakeholder_id, name } = req.body
     const errors = []
     const requiredFields = ['stakeholder_id', 'name', 'start_date']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -54,7 +55,7 @@ module.exports.create = async event => {
     const { start_date, end_date } = getFormattedDates({ start_date: req.body.start_date, end_date: req.body.end_date })
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.createProject(), [stakeholder_id, name, start_date, end_date, created_by])
+      await connection.query(storage.createProject(), [stakeholder_id, name, start_date, end_date, req.currentUser.user_id])
 
       return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Proyecto creado exitosamente' }
     })
@@ -75,8 +76,9 @@ module.exports.update = async event => {
       end_date: { type: 'string' },
     }
     const req = await handleRequest({ event, inputType })
-    const { id, name, updated_by = 1 } = req.body
+    req.hasPermissions([types.permissions.SALES])
 
+    const { id, name } = req.body
     const errors = []
     const requiredFields = ['id', 'name', 'start_date']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -90,7 +92,7 @@ module.exports.update = async event => {
     const { start_date, end_date } = getFormattedDates({ start_date: req.body.start_date, end_date: req.body.end_date })
 
     const res = await db.transaction(async connection => {
-      await connection.query(storage.updateProject(), [name, start_date, end_date, updated_by, id])
+      await connection.query(storage.updateProject(), [name, start_date, end_date, req.currentUser.user_id, id])
 
       return { statusCode: 200, data: { id }, message: 'Proyecto actualizado exitosamente' }
     })
@@ -108,8 +110,9 @@ module.exports.delete = async event => {
       id: { type: ['number', 'string'], required: true },
     }
     const req = await handleRequest({ event, inputType })
-    const { id } = req.body
+    req.hasPermissions([types.permissions.SALES])
 
+    const { id } = req.body
     const errors = !id ? [`El campo id es requerido`] : []
 
     if (errors.length > 0) throw new ValidatorException(errors)

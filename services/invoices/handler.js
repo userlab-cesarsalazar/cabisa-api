@@ -195,6 +195,8 @@ module.exports.create = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.INVOICES])
+
     const {
       stakeholder_id,
       project_id,
@@ -209,8 +211,6 @@ module.exports.create = async event => {
       products,
     } = req.body
     const operation_type = types.operationsTypes.SELL
-    // can(req.currentAction, operation_type)
-
     const errors = []
     const productsMap = products.reduce((r, p) => {
       if (p.parent_product_id) return r
@@ -305,7 +305,7 @@ module.exports.create = async event => {
 
       const finishDocumentCreated = await handleCreateDocument(
         { ...initDocumentCreated.req, body: { ...initDocumentCreated.req.body, document_type: types.documentsTypes.SELL_INVOICE } },
-        initDocumentCreated.res
+        { ...initDocumentCreated.res, calculateSalesCommission: true }
       )
 
       const creditDueDateUpdated = await handleUpdateCreditDueDate(
@@ -354,10 +354,10 @@ module.exports.updateCreditStatus = async event => {
       document_id: { type: ['number', 'string'], required: true },
       credit_status: { type: { enum: types.creditsPolicy.creditStatusEnum }, required: true },
     }
-
     const req = await handleRequest({ event, inputType })
-    const { document_id, credit_status } = req.body
+    req.hasPermissions([types.permissions.INVOICES])
 
+    const { document_id, credit_status } = req.body
     const errors = []
     const requiredFields = ['document_id', 'credit_status']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -413,10 +413,10 @@ module.exports.cancel = async event => {
       document_id: { type: ['number', 'string'], required: true },
       cancel_reason: { type: 'string' },
     }
-
     const req = await handleRequest({ event, inputType })
-    const { document_id } = req.body
+    req.hasPermissions([types.permissions.INVOICES])
 
+    const { document_id } = req.body
     const errors = []
     const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -465,9 +465,7 @@ module.exports.cronUpdateCreditDefaultStatus = async () => {
     const documents = await db.query(storage.findDocumentsWithDefaultCredits())
 
     if (documents.length > 0) {
-      const creditStatusValues = documents.map(
-        d => `(${d.id}, ${d.stakeholder_id}, '${creditStatus}', ${d.created_by}, ${d.updated_by || d.created_by})`
-      )
+      const creditStatusValues = documents.map(d => `(${d.id}, ${d.stakeholder_id}, '${creditStatus}', ${d.created_by}, ${req.currentUser.user_id})`)
 
       await db.query(storage.bulkUpdateCreditStatus(creditStatusValues))
     }

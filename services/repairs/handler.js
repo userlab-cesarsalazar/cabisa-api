@@ -77,9 +77,10 @@ module.exports.create = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.REPAIRS])
+
     const operation_type = types.operationsTypes.REPAIR
     const { product_id, start_date, end_date, products } = req.body
-
     const errors = []
     const [documentProduct] = await db.query(
       commonStorage.findProducts([product_id], `AND p.product_category = '${types.productsCategories.EQUIPMENT}'`)
@@ -168,8 +169,9 @@ module.exports.update = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
-    const { document_id, end_date, products } = req.body
+    req.hasPermissions([types.permissions.REPAIRS])
 
+    const { document_id, end_date, products } = req.body
     const document = await getDocument({
       dbQuery: db.query,
       findDocumentStorage: commonStorage.findDocument,
@@ -252,10 +254,10 @@ module.exports.approve = async event => {
     const inputType = {
       document_id: { type: ['number', 'string'], required: true },
     }
-
     const req = await handleRequest({ event, inputType })
-    const { document_id } = req.body
+    req.hasPermissions([types.permissions.REPAIRS])
 
+    const { document_id } = req.body
     const errors = []
     const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -306,10 +308,10 @@ module.exports.cancel = async event => {
       document_id: { type: ['number', 'string'], required: true },
       cancel_reason: { type: 'string' },
     }
-
     const req = await handleRequest({ event, inputType })
-    const { document_id } = req.body
+    req.hasPermissions([types.permissions.REPAIRS])
 
+    const { document_id } = req.body
     const errors = []
     const requiredFields = ['document_id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
