@@ -9,6 +9,8 @@ CREATE TABLE `products` (
   `unit_price` DOUBLE NOT NULL DEFAULT 0,
   `tax_id` INT DEFAULT NULL,
   `stock` INT DEFAULT 0 NOT NULL,
+  `inventory_unit_value` DOUBLE DEFAULT 0 NOT NULL,
+  `inventory_total_value` DOUBLE DEFAULT 0 NOT NULL,
   `image_url` TEXT DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` INT NOT NULL,

@@ -52,6 +52,7 @@ const inventoryMovementsTypes = {
 }
 
 const operationsTypes = {
+  INVENTORY_ADJUSTMENT: 'INVENTORY_ADJUSTMENT',
   PURCHASE: 'PURCHASE',
   RENT: 'RENT',
   REPAIR: 'REPAIR',
@@ -110,6 +111,19 @@ const creditsPolicy = {
   },
 }
 
+// PERMISSIONS
+const permissions = {
+  GENERAL_CONFIG: 1,
+  USERS: 2,
+  REPORTS: 3,
+  INVOICES: 4,
+  INVENTORY: 5,
+  SALES: 6,
+  CLIENTS: 7,
+  SUPPLIERS: 8,
+  REPAIRS: 9,
+}
+
 module.exports = {
   actions,
   creditsPolicy,
@@ -120,6 +134,7 @@ module.exports = {
   inventoryMovementsStatus,
   inventoryMovementsTypes,
   operationsTypes,
+  permissions,
   productsCategories,
   productsStatus,
   productsTypes,

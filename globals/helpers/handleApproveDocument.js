@@ -4,15 +4,33 @@ const types = require('../types')
 // req.body: { document_id, operation_id, related_internal_document_id, related_external_document_id }
 
 const handleApproveDocument = async (req, res) => {
-  const { operation_id, document_id, related_internal_document_id = null, related_external_document_id = null, updated_by = 1 } = req.body
+  const { operation_id, document_id, related_internal_document_id = null, related_external_document_id = null } = req.body
   const status = res.keepStatus ? res.keepStatus : types.documentsStatus.APPROVED
 
-  await res.connection.query(approveAndRelateExternalDocument(), [status, operation_id, related_external_document_id, updated_by, document_id])
+  await res.connection.query(approveAndRelateExternalDocument(), [
+    status,
+    operation_id,
+    related_external_document_id,
+    req.currentUser.user_id,
+    document_id,
+  ])
 
   if (related_internal_document_id) {
-    await res.connection.query(approveAndRelateInternalDocument(), [status, operation_id, related_internal_document_id, updated_by, document_id])
+    await res.connection.query(approveAndRelateInternalDocument(), [
+      status,
+      operation_id,
+      related_internal_document_id,
+      req.currentUser.user_id,
+      document_id,
+    ])
 
-    await res.connection.query(approveAndRelateInternalDocument(), [status, operation_id, document_id, updated_by, related_internal_document_id])
+    await res.connection.query(approveAndRelateInternalDocument(), [
+      status,
+      operation_id,
+      document_id,
+      req.currentUser.user_id,
+      related_internal_document_id,
+    ])
   }
 
   return {

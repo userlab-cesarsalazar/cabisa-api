@@ -1,16 +1,24 @@
 const types = require('../types')
+const { calculateInventoryCost } = require('../common')
+const { updateProductsInventoryCosts } = require('../commonStorage')
 
 //  res.onCreateMovementType: types.inventoryMovementsTypes.OUT | types.inventoryMovementsTypes.IN
 
 // req.body: {
 //   operation_id,
+//   operation_type,
 //   products: [
 //     {
 //       product_id,
+//       description,
+//       code,
 //       product_type,
 //       stock,
 //       product_price,
 //       product_quantity,
+//       inventory_unit_value,
+//       inventory_total_value,
+//       created_by,
 //     },
 //   ],
 // }
@@ -18,24 +26,70 @@ const types = require('../types')
 const handleCreateInventoryMovements = async (req, res) => {
   if (!res.onCreateMovementType) throw new Error('The field onCreateMovementType is required')
 
-  const { products, operation_id } = req.body
+  const { products, operation_id, operation_type } = req.body
 
   if (!operation_id) return { req, res }
 
   const movementType = res.onCreateMovementType
 
-  const inventoryMovements = products.flatMap(p => {
-    if (p.product_type === types.productsTypes.SERVICE) return []
+  const { inventoryMovements } = products.reduce((r, p) => {
+    if (p.product_type === types.productsTypes.SERVICE) return r
 
-    const unit_cost = movementType === types.inventoryMovementsTypes.IN ? p.product_price : null
+    const sameUpdatedProduct = (r.updatedInventoryProducts || []).find(uip => Number(uip.product_id) === Number(p.product_id))
+    const updatedProductFields = sameUpdatedProduct
+      ? {
+          stock: sameUpdatedProduct.inventory_quantity,
+          inventory_unit_value: sameUpdatedProduct.inventory_unit_cost,
+          inventory_total_value: sameUpdatedProduct.inventory_total_cost,
+        }
+      : {}
 
-    return { operation_id, product_id: p.product_id, quantity: p.product_quantity, unit_cost, movement_type: movementType }
-  })
+    const product = { ...p, ...updatedProductFields, movement_type: movementType }
+    const isInventoryReceipt = movementType === types.inventoryMovementsTypes.IN
+    const isPurchase = operation_type === types.operationsTypes.PURCHASE
+    const productWithInventoryCost = calculateInventoryCost(null, { product, isInventoryReceipt, isPurchase })
+
+    const productWithInventoryCostAndOperationId = { ...productWithInventoryCost, operation_id }
+
+    const sameInventoryCostProduct = (r.updatedInventoryProducts || []).find(
+      uip => Number(uip.product_id) === Number(productWithInventoryCostAndOperationId.product_id)
+    )
+    const updatedInventoryProducts = sameInventoryCostProduct
+      ? r.updatedInventoryProducts.map(uip =>
+          Number(uip.product_id) === Number(productWithInventoryCostAndOperationId.product_id) ? productWithInventoryCostAndOperationId : uip
+        )
+      : [...(r.updatedInventoryProducts || []), productWithInventoryCostAndOperationId]
+
+    return {
+      ...r,
+      inventoryMovements: [...(r.inventoryMovements || []), productWithInventoryCostAndOperationId],
+      updatedInventoryProducts,
+    }
+  }, {})
 
   if (!inventoryMovements || !inventoryMovements[0]) return { req, res }
 
-  const inventoryMovmentsQueryValues = inventoryMovements.reduce((result, im) => {
-    const insertValues = `(${im.operation_id}, ${im.product_id}, ${im.quantity}, ${im.unit_cost}, '${im.movement_type}')`
+  const { insertValues, productsInventoryValues, where } = inventoryMovements.reduce((result, im) => {
+    const insertValues = `(
+      ${im.operation_id},
+      ${im.product_id},
+      ${im.quantity},
+      '${im.movement_type}',
+      ${im.unit_cost},
+      ${im.total_cost},
+      ${im.inventory_quantity},
+      ${im.inventory_unit_cost},
+      ${im.inventory_total_cost}
+    )`
+    const productsInventoryValues = `(
+      ${im.product_id},
+      ${im.inventory_unit_cost},
+      ${im.inventory_total_cost},
+      '${im.description}',
+      '${im.code}',
+      ${im.created_by},
+      ${req.currentUser.user_id}
+    )`
     const operationsIds = (result && result.whereConditions && result.whereConditions.operationsIds) || []
     const whereConditions = {
       operationsIds: [...operationsIds, im.operation_id],
@@ -44,13 +98,13 @@ const handleCreateInventoryMovements = async (req, res) => {
     return {
       ...result,
       insertValues: [...(result.insertValues || []), insertValues],
+      productsInventoryValues: [...(result.productsInventoryValues || []), productsInventoryValues],
       where: { ...(result.whereConditions || []), ...whereConditions },
     }
   }, {})
 
-  const { insertValues, where } = inventoryMovmentsQueryValues
-
   await res.connection.query(createInventoryMovements(insertValues))
+  await res.connection.query(updateProductsInventoryCosts(productsInventoryValues))
   const [inventory_movements] = await res.connection.query(findCreatedInventoryMovements(where.operationsIds), [movementType])
 
   return {
@@ -61,14 +115,14 @@ const handleCreateInventoryMovements = async (req, res) => {
 
 const createInventoryMovements = inventoryMovementsValues => `
   INSERT INTO inventory_movements
-  (operation_id, product_id, quantity, unit_cost, movement_type)
+  (operation_id, product_id, quantity, movement_type, unit_cost, total_cost, inventory_quantity, inventory_unit_cost, inventory_total_cost)
   VALUES ${inventoryMovementsValues.join(', ')}
 `
 
 const findCreatedInventoryMovements = operationsIds => `
   SELECT id AS inventory_movement_id, product_id, quantity, movement_type
   FROM inventory_movements
-  WHERE operation_id IN (${operationsIds.join(', ')}) AND movement_type = ?
+  WHERE operation_id IN (${operationsIds.join(', ')}) AND movement_type = ? AND status <> '${types.inventoryMovementsStatus.CANCELLED}'
 `
 
 module.exports = handleCreateInventoryMovements

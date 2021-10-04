@@ -15,6 +15,7 @@ CREATE TABLE `documents` (
   `end_date` TIMESTAMP,
   `cancel_reason` TEXT DEFAULT NULL,
   `subtotal_amount` DOUBLE DEFAULT NULL,
+  `sales_commission_amount` DOUBLE DEFAULT NULL,
   `total_discount_amount` DOUBLE DEFAULT NULL,
   `total_tax_amount` DOUBLE DEFAULT NULL,
   `total_amount` DOUBLE DEFAULT NULL,
@@ -22,6 +23,8 @@ CREATE TABLE `documents` (
   `payment_method` ENUM('CARD','TRANSFER','CASH','DEPOSIT','CHECK') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
   `credit_days` INT DEFAULT NULL,
   `credit_status` ENUM('UNPAID','PAID','DEFAULT') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `credit_paid_date` TIMESTAMP,
+  `credit_due_date` TIMESTAMP,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` INT NOT NULL,
   `updated_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -44,6 +47,7 @@ CREATE TABLE `documents` (
   CONSTRAINT documents_total_amount_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'SELL_INVOICE') OR total_amount IS NOT NULL),
   CONSTRAINT documents_credit_status_check CHECK (credit_days IS NULL OR credit_status IS NOT NULL)
   -- CONSTRAINT documents_cancel_reason_check CHECK (status <> 'CANCELLED' OR cancel_reason IS NOT NULL)
+  -- CONSTRAINT documents_credit_paid_date_check CHECK (credit_status <> 'PAID' OR credit_paid_date IS NOT NULL)
 ) ENGINE=InnoDB;
 
 CREATE TABLE `documents_products` (

@@ -2,12 +2,12 @@ const types = require('../types')
 
 // req.body: {
 //   inventory_movements: [
-//     { movement_type, stock, quantity, product_id }
+//     { movement_type, quantity, product_id }
 //   ]
 // }
 
 const handleApproveInventoryMovements = async (req, res) => {
-  const { inventory_movements, created_by = 1 } = req.body
+  const { inventory_movements } = req.body
 
   if (!inventory_movements || !inventory_movements[0]) return { req, res }
 
@@ -60,7 +60,7 @@ const handleApproveInventoryMovements = async (req, res) => {
       im.quantity,
       im.storage_location ? im.storage_location : null,
       im.comments ? im.comments : null,
-      created_by,
+      req.currentUser.user_id,
     ])
 
     const status =

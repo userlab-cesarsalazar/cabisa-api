@@ -53,49 +53,26 @@ const findAllAdjustmentsBy = (fields = {}) => `
 
 const findAdjustmentProducts = whereIn => `
   SELECT
-    p.id,
+    p.id AS product_id,
     p.product_type,
     p.product_category,
     p.status,
     p.description,
     p.code,
-    p.unit_price,
+    p.inventory_unit_value AS product_price,
+    p.inventory_unit_value,
+    p.inventory_total_value,
     p.stock,
     p.created_by
   FROM products p
   WHERE p.id IN (${whereIn.join(', ')})
 `
 
-const createInventoryAdjustment = () => `INSERT INTO inventory_adjustments (adjustment_reason, created_by) VALUES(?, ?)`
+const createInventoryAdjustment = () => `INSERT INTO inventory_adjustments (adjustment_reason, operation_id, created_by) VALUES(?, ?, ?)`
 
 const createInventoryAdjustmentsProducts = valuesArray => `
   INSERT INTO inventory_adjustments_products (inventory_adjustment_id, product_id, preview_stock, next_stock)
   VALUES ${valuesArray.join(', ')}
-`
-
-const updateProductsStock = valuesArray => `
-  INSERT INTO products (
-    id,
-    product_type,
-    product_category,
-    status,
-    description,
-    code,
-    unit_price,
-    stock,
-    created_by
-  )
-  VALUES ${valuesArray.join(', ')}
-  ON DUPLICATE KEY UPDATE
-    id = VALUES(id),
-    product_type = VALUES(product_type),
-    product_category = VALUES(product_category),
-    status = VALUES(status),
-    description = VALUES(description),
-    code = VALUES(code),
-    unit_price = VALUES(unit_price),
-    stock = VALUES(stock),
-    created_by = VALUES(created_by)
 `
 
 module.exports = {
@@ -105,5 +82,4 @@ module.exports = {
   findAdjustmentProducts,
   findAllBy,
   findAllAdjustmentsBy,
-  updateProductsStock,
 }

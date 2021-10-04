@@ -1,4 +1,5 @@
 // res.excludeProductOnCreateDetail: product_id
+// res.saveInventoryUnitValueAsProductPrice: boolean,
 
 // req.body: {
 //   document_id,
@@ -20,7 +21,6 @@
 //   credit_days,
 //   products,
 //   old_products,
-//   updated_by,
 // }
 
 const handleUpdateDocument = async (req, res) => {
@@ -45,7 +45,6 @@ const handleUpdateDocument = async (req, res) => {
     credit_days = null,
     products = [],
     old_products = [],
-    updated_by = 1,
   } = req.body
 
   await res.connection.query(updateDocument(), [
@@ -66,7 +65,7 @@ const handleUpdateDocument = async (req, res) => {
     description,
     payment_method,
     credit_days,
-    updated_by,
+    req.currentUser.user_id,
     document_id,
   ])
 
@@ -78,7 +77,7 @@ const handleUpdateDocument = async (req, res) => {
       ${document_id},
       ${p.product_id},
       ${p.service_type ? `'${p.service_type}'` : null},
-      ${p.product_price},
+      ${res.saveInventoryUnitValueAsProductPrice ? p.inventory_unit_value : p.product_price},
       ${p.product_quantity},
       ${p.tax_fee || 0},
       ${p.unit_tax_amount || 0},

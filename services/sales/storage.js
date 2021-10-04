@@ -55,10 +55,7 @@ const findAllBy = (fields = {}) => `
   INNER JOIN products prod ON prod.id = dp.product_id
   INNER JOIN stakeholders s ON s.id = d.stakeholder_id
   INNER JOIN projects proj ON proj.id = d.project_id
-  WHERE (
-    d.document_type = '${types.documentsTypes.SELL_PRE_INVOICE}' OR
-    d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}'
-  ) ${getWhereConditions({ fields, tableAlias: 'd' })}
+  WHERE d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}' ${getWhereConditions({ fields, tableAlias: 'd' })}
   ORDER BY d.id DESC
 `
 

@@ -1,4 +1,4 @@
-const { decorate, escapeFields, groupJoinResult } = require('../common')
+const { decorate, escapeFields, groupJoinResult, atob, UnauthorizedException, ForbiddenException } = require('../common')
 
 const addLog =
   fn =>
@@ -9,6 +9,36 @@ const addLog =
 
     return result
   }
+
+const addHasPermissions = fn => async (input, req) => {
+  if (!req.currentUser || JSON.stringify(req.currentUser) === JSON.stringify({})) {
+    return await fn(input, {
+      ...req,
+      hasPermissions: () => {
+        throw new UnauthorizedException()
+      },
+    })
+  }
+
+  const hasPermissions = permissions => {
+    if (!permissions || !permissions[0] || !req.currentUser.userPermissions || !req.currentUser.userPermissions[0]) throw new ForbiddenException()
+
+    const isAuthorized = permissions.every(perm => req.currentUser.userPermissions.some(up => Number(up.id) === Number(perm)))
+
+    if (!isAuthorized) throw new ForbiddenException()
+  }
+
+  return await fn(input, { ...req, hasPermissions })
+}
+
+const addCurrentUser = fn => async (input, req) => {
+  const sessionToken =
+    input && input.event && input.event.headers && input.event.headers.Authorization && input.event.headers.Authorization.substring(7)
+
+  if (!sessionToken) return await fn(input, { ...req, currentUser: {} })
+
+  return await fn(input, { ...req, currentUser: JSON.parse(atob(sessionToken)) })
+}
 
 const addCurrentModel =
   fn =>
@@ -61,4 +91,4 @@ const addEvent =
 
 const baseFunction = async (input, req) => req
 
-module.exports = decorate(baseFunction)(addLog, addCurrentModel, addQuery, addBody, addEvent)
+module.exports = decorate(baseFunction)(addLog, addHasPermissions, addCurrentUser, addCurrentModel, addQuery, addBody, addEvent)

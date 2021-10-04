@@ -1,7 +1,15 @@
 const mysql = require('mysql2/promise')
 const { types, mysqlConfig, helpers, ValidatorException } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
-const { handleRequest, handleResponse, handleRead, handleApproveInventoryMovements, handleUpdateStock } = helpers
+const {
+  handleRequest,
+  handleResponse,
+  handleRead,
+  handleApproveInventoryMovements,
+  handleUpdateStock,
+  handleCreateOperation,
+  handleCreateInventoryMovements,
+} = helpers
 const db = mysqlConfig(mysql)
 
 module.exports.read = async event => {
@@ -34,10 +42,10 @@ module.exports.approve = async event => {
         },
       },
     }
-
     const req = await handleRequest({ event, inputType })
-    const { inventory_movements } = req.body
+    req.hasPermissions([types.permissions.INVENTORY])
 
+    const { inventory_movements } = req.body
     const errors = []
     const movementsMap = inventory_movements.reduce(
       (r, im) => ({ ...r, [im.inventory_movement_id]: [...(r[im.inventory_movement_id] || []), im.inventory_movement_id] }),
@@ -119,8 +127,10 @@ module.exports.createAdjustment = async event => {
 
   try {
     const req = await handleRequest({ event, inputType })
-    const { adjustment_reason = null, products, created_by = 1 } = req.body
+    req.hasPermissions([types.permissions.INVENTORY])
 
+    const { adjustment_reason = null, products } = req.body
+    const operation_type = types.operationsTypes.INVENTORY_ADJUSTMENT
     const errors = []
     const productsMap = products.reduce((r, p) => {
       if (p.parent_product_id) return r
@@ -152,14 +162,26 @@ module.exports.createAdjustment = async event => {
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
-    const updateStockProducts = products.map(p => {
-      const sameProduct = productsFromDB.find(ps => Number(ps.id) === Number(p.product_id)) || {}
+    const { inputProducts, outputProducts } = products.reduce(
+      (r, p) => {
+        const sameProduct = productsFromDB.find(ps => Number(ps.product_id) === Number(p.product_id)) || {}
+        const product_quantity = p.preview_stock - p.next_stock
+        const product = { ...sameProduct, ...p, product_quantity: Math.abs(product_quantity) }
 
-      return { ...sameProduct, ...p }
-    })
+        if (product_quantity > 0) return { ...r, outputProducts: [...r.outputProducts, product] }
+        else return { ...r, inputProducts: [...r.inputProducts, product] }
+      },
+      { inputProducts: [], outputProducts: [] }
+    )
 
     const { res } = await db.transaction(async connection => {
-      await connection.query(storage.createInventoryAdjustment(), [adjustment_reason, created_by])
+      const operationCreated = await handleCreateOperation({ ...req, body: { ...req.body, operation_type } }, { connection })
+
+      await connection.query(storage.createInventoryAdjustment(), [
+        adjustment_reason,
+        operationCreated.req.body.operation_id,
+        req.currentUser.user_id,
+      ])
       const newInventoryAdjustmentId = await connection.geLastInsertId()
 
       const inventoryAdjustmentsProductsValues = products.map(
@@ -167,23 +189,36 @@ module.exports.createAdjustment = async event => {
       )
       await connection.query(storage.createInventoryAdjustmentsProducts(inventoryAdjustmentsProductsValues))
 
-      const updateProductsStockValues = updateStockProducts.map(
-        p => `(
-          ${p.id},
-          '${p.product_type}',
-          ${p.product_category ? `'${p.product_category}'` : null},
-          '${p.status}',
-          ${p.description ? `'${p.description}'` : null},
-          ${p.code ? `'${p.code}'` : null},
-          ${p.unit_price},
-          ${p.next_stock},
-          ${p.created_by}
-        )`
+      const inputInventoryMovementsCreated = await handleCreateInventoryMovements(
+        { ...operationCreated.req, body: { ...operationCreated.req.body, products: inputProducts } },
+        { ...operationCreated.res, onCreateMovementType: types.inventoryMovementsTypes.IN }
       )
-      await connection.query(storage.updateProductsStock(updateProductsStockValues))
+
+      const outputInventoryMovementsCreated = await handleCreateInventoryMovements(
+        { ...operationCreated.req, body: { ...operationCreated.req.body, products: outputProducts } },
+        { ...operationCreated.res, onCreateMovementType: types.inventoryMovementsTypes.OUT }
+      )
+
+      const inventoryMovementsApproved = await handleApproveInventoryMovements(
+        {
+          ...operationCreated.req,
+          body: {
+            ...operationCreated.req.body,
+            inventory_movements: [
+              ...(inputInventoryMovementsCreated.req.body.inventory_movements || []),
+              ...(outputInventoryMovementsCreated.req.body.inventory_movements || []),
+            ],
+          },
+        },
+        operationCreated.res
+      )
+
+      await handleUpdateStock(inventoryMovementsApproved.req, {
+        ...inventoryMovementsApproved.res,
+        updateStockOn: types.actions.APPROVED,
+      })
 
       return {
-        req: { ...req, body: { ...req.body, inventory_adjustment_id: newInventoryAdjustmentId } },
         res: {
           statusCode: 201,
           data: { inventory_adjustment_id: newInventoryAdjustmentId },

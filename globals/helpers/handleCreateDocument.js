@@ -1,8 +1,36 @@
 const { creditsPolicy } = require('../types')
 // res.excludeProductOnCreateDetail: product_id
+// res.calculateSalesCommission: boolean
+// res.saveInventoryUnitValueAsProductPrice: boolean
 
 // IMPORTANTE: especificar en el req.body el document_type del documento a crear
-// req.body: { stakeholder_id, project_id, document_type, comments, received_by, dispatched_by, start_date, end_date, payment_method, credit_days, description, products }
+// req.body: {
+//   stakeholder_id,
+//   project_id,
+//   document_type,
+//   comments,
+//   received_by,
+//   dispatched_by,
+//   start_date,
+//   end_date,
+//   payment_method,
+//   credit_days,
+//   description,
+//   products: [
+//     {
+//       product_id,
+//       service_type,
+//       inventory_unit_value,
+//       product_price,
+//       product_quantity,
+//       tax_fee,
+//       unit_tax_amount,
+//       product_discount_percentage,
+//       product_discount,
+//       parent_product_id,
+//     }
+//   ]
+// }
 
 const handleCreateDocument = async (req, res) => {
   const {
@@ -26,10 +54,12 @@ const handleCreateDocument = async (req, res) => {
     credit_days = null,
     description = null,
     products,
-    created_by = 1,
   } = req.body
 
   const related_internal_document_id = document_id
+  const salesCommissionPercentage = req.currentUser.sales_commission / 100
+  const sales_commission_amount =
+    res.calculateSalesCommission && !isNaN(salesCommissionPercentage) ? subtotal_amount * salesCommissionPercentage : null
 
   await res.connection.query(createDocument(), [
     document_type,
@@ -44,6 +74,7 @@ const handleCreateDocument = async (req, res) => {
     end_date,
     cancel_reason,
     subtotal_amount,
+    sales_commission_amount,
     total_discount_amount,
     total_tax_amount,
     total_amount,
@@ -51,7 +82,7 @@ const handleCreateDocument = async (req, res) => {
     credit_days,
     Number(credit_days) > 0 ? creditsPolicy.creditStatusEnum.UNPAID : null,
     description,
-    created_by,
+    req.currentUser.user_id,
   ])
   const newDocumentId = await res.connection.geLastInsertId()
 
@@ -62,7 +93,7 @@ const handleCreateDocument = async (req, res) => {
       ${newDocumentId},
       ${p.product_id},
       ${p.service_type ? `'${p.service_type}'` : null},
-      ${p.product_price},
+      ${res.saveInventoryUnitValueAsProductPrice ? p.inventory_unit_value : p.product_price},
       ${p.product_quantity},
       ${p.tax_fee || 0},
       ${p.unit_tax_amount || 0},
@@ -95,6 +126,7 @@ const createDocument = () => `
       end_date,
       cancel_reason,
       subtotal_amount,
+      sales_commission_amount,
       total_discount_amount,
       total_tax_amount,
       total_amount,
@@ -104,7 +136,7 @@ const createDocument = () => `
       description,
       created_by
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products

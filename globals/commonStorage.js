@@ -4,10 +4,15 @@ const { getWhereConditions } = require('./common')
 const findProducts = (whereIn, extraWhereConditions = '') => `
   SELECT
     p.id AS product_id,
+    p.description,
+    p.code,
     p.product_type,
     p.stock,
     p.unit_price AS product_price,
-    t.fee AS tax_fee
+    p.inventory_unit_value,
+    p.inventory_total_value,
+    t.fee AS tax_fee,
+    p.created_by
   FROM products p
   LEFT JOIN taxes t ON t.id = p.tax_id
   WHERE p.id IN (${whereIn.join(', ')}) ${extraWhereConditions}
@@ -24,6 +29,9 @@ const findStakeholder = (fields = {}, initWhereCondition = `status = '${types.st
     nit,
     email,
     credit_limit,
+    total_credit,
+    paid_credit,
+    (total_credit - paid_credit) AS current_credit,
     phone,
     alternative_phone,
     business_man,
@@ -73,27 +81,42 @@ const findDocument = documentsType => {
     im.id AS old_inventory_movements__inventory_movement_id,
     im.operation_id AS old_inventory_movements__operation_id,
     im.product_id AS old_inventory_movements__product_id,
-    im.quantity AS old_inventory_movements__quantity,
-    im.unit_cost AS old_inventory_movements__unit_cost,
     im.movement_type AS old_inventory_movements__movement_type,
+    im.quantity AS old_inventory_movements__quantity,
+    im.quantity AS old_inventory_movements__product_quantity,
+    im.unit_cost AS old_inventory_movements__unit_cost,
+    im.total_cost AS old_inventory_movements__total_cost,
+    im.inventory_unit_cost AS old_inventory_movements__inventory_unit_cost,
+    im.inventory_total_cost AS old_inventory_movements__inventory_total_cost,
     im.status AS old_inventory_movements__status,
+    p.description AS old_products__description,
+    p.code AS old_products__code,
     dp.product_id AS old_products__product_id,
-    dp.service_type AS products__service_type,
     dp.product_price AS old_products__product_price,
     dp.product_quantity AS old_products__product_quantity,
     dp.tax_fee AS old_products__tax_fee,
     dp.unit_tax_amount AS old_products__unit_tax_amount,
     dp.parent_product_id AS old_products__parent_product_id,
     p.stock AS old_products__stock,
+    p.inventory_unit_value AS old_products__inventory_unit_value,
+    p.inventory_total_value AS old_products__inventory_total_value,
+    p.created_by AS old_products__created_by,
+    p.description AS products__description,
+    p.code AS products__code,
     dp.product_id AS products__product_id,
-    dp.product_quantity AS products__product_quantity,
     dp.product_price AS products__product_price,
+    dp.service_type AS products__service_type,
+    dp.product_quantity AS products__product_quantity,
     dp.tax_fee AS products__tax_fee,
     dp.unit_tax_amount AS products__unit_tax_amount,
     dp.parent_product_id AS products__parent_product_id,
+    p.stock AS products__stock,
+    p.stock AS products__product_stock,
     p.product_type AS products__product_type,
     p.status AS products__product_status,
-    p.stock AS products__product_stock
+    p.inventory_unit_value AS products__inventory_unit_value,
+    p.inventory_total_value AS products__inventory_total_value,
+    p.created_by AS products__created_by
   FROM documents d
   LEFT JOIN documents_products dp ON dp.document_id = d.id
   LEFT JOIN products p ON p.id = dp.product_id
@@ -128,28 +151,40 @@ const findDocumentMovements = documentsType => {
     LEFT JOIN operations o ON o.id = d.operation_id
     LEFT JOIN inventory_movements im ON im.operation_id = o.id
     LEFT JOIN products p ON p.id = im.product_id
-    WHERE d.id = ? AND (${documentTypeWhereValues.join(' OR ')})
+    WHERE
+      d.id = ? AND
+      im.status <> '${types.inventoryMovementsStatus.CANCELLED}' AND
+      (${documentTypeWhereValues.join(' OR ')})
   `
 }
 
-// Las ventas generan un documento con (document_type = 'RENT_PRE_INVOICE' AND credit_days = NULL AND credit_status = NULL AND status = 'PENDING') pero aun asi se consideran creditos
-// Las ventas pueden generar facturas, es decir, genera un nuevo documento asociado al docuemnto de la venta con (document_type = 'RENT_INVOICE')
-// Las facturacion genera dos documentos al mismos tiempo con (document_type = 'SELL_PRE_INVOICE' y document_type = 'SELL_INVOICE') ambos con (status = 'APPROVED')
-// Las facturas pueden ser a credito o no. Por ejemplo, pueden tener (credit_days = 30 AND credit_status = 100) o (credit_days = NULL AND credit_status = NULL)
-const findStakeholderCredit = stakeholder_id => `
-  SELECT d.id, d.subtotal_amount AS credit_amount
+const updateProductsInventoryCosts = productsInventoryValues => `
+  INSERT INTO products (id, inventory_unit_value, inventory_total_value, description, code, created_by, updated_by)
+  VALUES ${productsInventoryValues.join(', ')}
+  ON DUPLICATE KEY UPDATE
+    inventory_unit_value = VALUES(inventory_unit_value),
+    inventory_total_value = VALUES(inventory_total_value),
+    description = VALUES(description),
+    code = VALUES(code),
+    created_by = VALUES(created_by),
+    updated_by = VALUES(updated_by)
+    
+`
+
+const findDocumentProduct = () => `
+  SELECT
+    d.id,
+    d.product_id,
+    p.description,
+    p.code,
+    p.inventory_unit_value AS product_price,
+    p.stock,
+    p.inventory_unit_value,
+    p.inventory_total_value,
+    p.created_by
   FROM documents d
-  WHERE (
-      d.stakeholder_id = ${stakeholder_id} AND
-      d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}' AND
-      d.status = '${types.documentsStatus.PENDING}'
-    ) OR (
-      d.stakeholder_id = ${stakeholder_id} AND
-      (document_type = '${types.documentsTypes.RENT_INVOICE}' OR document_type = '${types.documentsTypes.SELL_INVOICE}') AND
-      d.status <> '${types.documentsStatus.CANCELLED}' AND
-      d.credit_days IS NOT NULL AND d.credit_days > 0 AND
-      d.credit_status <> '${types.creditsPolicy.creditStatusEnum.PAID}'
-    );
+  INNER JOIN products p ON p.id = d.product_id
+  WHERE d.id = ?
 `
 
 module.exports = {
@@ -157,5 +192,6 @@ module.exports = {
   findStakeholder,
   findDocument,
   findDocumentMovements,
-  findStakeholderCredit,
+  findDocumentProduct,
+  updateProductsInventoryCosts,
 }

@@ -1,10 +1,12 @@
 CREATE TABLE `inventory_adjustments` (
   `id` INT NOT NULL AUTO_INCREMENT,
+  `operation_id` INT DEFAULT NULL,
   `adjustment_reason` TEXT DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` INT NOT NULL,
   CONSTRAINT inventory_adjustments_pk PRIMARY KEY (id),
-  CONSTRAINT inventory_adjustments_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id)
+  CONSTRAINT inventory_adjustments_created_by_fk FOREIGN KEY (created_by) REFERENCES users(id),
+  CONSTRAINT inventory_adjustments_operation_id_fk FOREIGN KEY (operation_id) REFERENCES operations(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE `inventory_adjustments_products` (

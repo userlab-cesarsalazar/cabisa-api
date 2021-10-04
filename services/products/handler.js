@@ -82,9 +82,10 @@ module.exports.create = async event => {
       image_url: { type: 'string' },
     }
     const req = await handleRequest({ event, inputType })
-    const { product_category, status, code, serial_number, unit_price, tax_id, description, image_url, created_by = 1 } = req.body
-    const product_type = types.productsTypes.PRODUCT
+    req.hasPermissions([types.permissions.INVENTORY])
 
+    const { product_category, status, code, serial_number, unit_price, tax_id, description, image_url } = req.body
+    const product_type = types.productsTypes.PRODUCT
     const errors = []
     const requiredFields = ['product_category', 'status', 'code', 'serial_number', 'unit_price', 'tax_id', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -113,7 +114,7 @@ module.exports.create = async event => {
         tax_id,
         description,
         image_url,
-        created_by,
+        req.currentUser.user_id,
       ])
 
       return { statusCode: 201, data: { id: await connection.geLastInsertId() }, message: 'Producto creado exitosamente' }
@@ -140,9 +141,9 @@ module.exports.update = async event => {
       image_url: { type: 'string' },
     }
     const req = await handleRequest({ event, inputType, dbQuery: db.query, storage: storage.findAllBy })
+    req.hasPermissions([types.permissions.INVENTORY])
 
-    const { id, product_category, status, code, serial_number, unit_price, tax_id, description, image_url, updated_by = 1 } = req.body
-
+    const { id, product_category, status, code, serial_number, unit_price, tax_id, description, image_url } = req.body
     const errors = []
     const requiredFields = ['id', 'product_category', 'serial_number', 'status', 'code', 'unit_price', 'tax_id', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
@@ -173,7 +174,7 @@ module.exports.update = async event => {
         tax_id,
         description,
         image_url,
-        updated_by,
+        req.currentUser.user_id,
         id,
       ])
 
@@ -193,9 +194,9 @@ module.exports.delete = async event => {
       id: { type: ['string', 'number'], required: true },
     }
     const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.INVENTORY])
 
     const { id } = req.body
-
     const errors = []
     const requiredFields = ['id']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])

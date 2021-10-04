@@ -12,6 +12,8 @@ CREATE TABLE `stakeholders` (
   `payments_man` VARCHAR(100) DEFAULT NULL,
   `block_reason` TEXT DEFAULT NULL,
   `credit_limit` DECIMAL(11,2) DEFAULT NULL,
+  `total_credit` DECIMAL(11,2) DEFAULT NULL,
+  `paid_credit` DECIMAL(11,2) DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` INT NOT NULL,
   `updated_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP DEFAULT NULL,
