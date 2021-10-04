@@ -45,9 +45,9 @@ CREATE TABLE `documents` (
   CONSTRAINT documents_subtotal_amount_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'RENT_PRE_INVOICE' AND document_type <> 'SELL_INVOICE' AND document_type <> 'SELL_PRE_INVOICE') OR subtotal_amount IS NOT NULL),
   -- CONSTRAINT documents_total_discount_amount_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'SELL_INVOICE') OR total_discount_amount IS NOT NULL),
   CONSTRAINT documents_total_amount_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'SELL_INVOICE') OR total_amount IS NOT NULL),
-  CONSTRAINT documents_credit_status_check CHECK (credit_days IS NULL OR credit_status IS NOT NULL),
+  CONSTRAINT documents_credit_status_check CHECK (credit_days IS NULL OR credit_status IS NOT NULL)
   -- CONSTRAINT documents_cancel_reason_check CHECK (status <> 'CANCELLED' OR cancel_reason IS NOT NULL)
-  CONSTRAINT documents_credit_paid_date_check CHECK (credit_status <> 'PAID' OR credit_paid_date IS NOT NULL)
+  -- CONSTRAINT documents_credit_paid_date_check CHECK (credit_status <> 'PAID' OR credit_paid_date IS NOT NULL)
 ) ENGINE=InnoDB;
 
 CREATE TABLE `documents_products` (

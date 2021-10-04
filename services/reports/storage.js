@@ -86,13 +86,7 @@ const getSales = (fields = {}) => {
 
   const preInvoicesWhereConditions =
     includePreInvoices || includeBoth
-      ? `(
-      (
-        d.document_type = '${types.documentsTypes.SELL_PRE_INVOICE}' OR
-        d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}'
-      )
-      AND d.related_internal_document_id IS NULL
-    )`
+      ? `(d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}' AND d.related_internal_document_id IS NULL)`
       : ''
 
   const documentTypeWhereOperator = (includeInvoices && includePreInvoices) || includeBoth ? 'OR' : ''

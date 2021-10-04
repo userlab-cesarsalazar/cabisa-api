@@ -499,7 +499,6 @@ module.exports.invoice = async event => {
     const operation_type = groupedDocumentDetails.operation_type
     const document_type = config[operation_type].finish.documentType
     const related_internal_document_id = document_id
-    const credit_status = credit_days ? types.creditsPolicy.creditStatusEnum.UNPAID : types.creditsPolicy.creditStatusEnum.PAID
 
     const { res } = await db.transaction(async connection => {
       const documentCreated = await handleCreateDocument(
@@ -521,7 +520,14 @@ module.exports.invoice = async event => {
       )
 
       const creditStatusUpdated = await handleUpdateCreditStatus(
-        { ...creditPaidDateUpdated.req, body: { ...creditPaidDateUpdated.req.body, credit_status, related_internal_document_id } },
+        {
+          ...creditPaidDateUpdated.req,
+          body: {
+            ...creditPaidDateUpdated.req.body,
+            credit_status: credit_days ? types.creditsPolicy.creditStatusEnum.UNPAID : types.creditsPolicy.creditStatusEnum.PAID,
+            related_internal_document_id,
+          },
+        },
         creditPaidDateUpdated.res
       )
 

@@ -308,25 +308,27 @@ module.exports.create = async event => {
         { ...initDocumentCreated.res, calculateSalesCommission: true }
       )
 
-      const creditDueDateUpdated = await handleUpdateCreditDueDate(
-        { ...finishDocumentCreated.req, body: { ...finishDocumentCreated.req.body, credit_days } },
-        finishDocumentCreated.res
-      )
+      if (credit_days) {
+        const creditDueDateUpdated = await handleUpdateCreditDueDate(
+          { ...finishDocumentCreated.req, body: { ...finishDocumentCreated.req.body, credit_days } },
+          finishDocumentCreated.res
+        )
 
-      const creditStatusUpdated = await handleUpdateCreditStatus(
-        {
-          ...creditDueDateUpdated.req,
-          body: {
-            ...creditDueDateUpdated.req.body,
-            credit_status: credit_days ? types.creditsPolicy.creditStatusEnum.UNPAID : types.creditsPolicy.creditStatusEnum.PAID,
+        await handleUpdateCreditStatus(
+          {
+            ...creditDueDateUpdated.req,
+            body: {
+              ...creditDueDateUpdated.req.body,
+              credit_status: types.creditsPolicy.creditStatusEnum.UNPAID,
+            },
           },
-        },
-        creditDueDateUpdated.res
-      )
+          creditDueDateUpdated.res
+        )
+      }
 
       const operationCreated = await handleCreateOperation(
-        { ...creditStatusUpdated.req, body: { ...creditStatusUpdated.req.body, operation_type } },
-        creditStatusUpdated.res
+        { ...finishDocumentCreated.req, body: { ...finishDocumentCreated.req.body, operation_type } },
+        finishDocumentCreated.res
       )
 
       const documentApproved = await handleApproveDocument(operationCreated.req, operationCreated.res)
@@ -382,17 +384,20 @@ module.exports.updateCreditStatus = async event => {
 
     await db.transaction(async connection => {
       await handleUpdateCreditStatus(
-        { body: { credit_status, document_id, related_internal_document_id: document.related_internal_document_id } },
+        { ...req, body: { credit_status, document_id, related_internal_document_id: document.related_internal_document_id } },
         { connection }
       )
 
       await handleUpdateStakeholderCredit(
-        { body: { stakeholder_id: document.stakeholder_id, total_credit: Number(document.total_credit), paid_credit: paidCredit } },
+        { ...req, body: { stakeholder_id: document.stakeholder_id, total_credit: Number(document.total_credit), paid_credit: paidCredit } },
         { connection }
       )
 
       await handleUpdateCreditPaidDate(
-        { body: { document_id, creditPaidDate: credit_status === types.creditsPolicy.creditStatusEnum.PAID ? new Date().toISOString() : null } },
+        {
+          ...req,
+          body: { document_id, creditPaidDate: credit_status === types.creditsPolicy.creditStatusEnum.PAID ? new Date().toISOString() : null },
+        },
         { connection }
       )
     })
