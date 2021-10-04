@@ -159,7 +159,7 @@ const findDocumentMovements = documentsType => {
 }
 
 const updateProductsInventoryCosts = productsInventoryValues => `
-  INSERT INTO products (id, inventory_unit_value ,inventory_total_value, description, code, created_by, updated_by)
+  INSERT INTO products (id, inventory_unit_value, inventory_total_value, description, code, created_by, updated_by)
   VALUES ${productsInventoryValues.join(', ')}
   ON DUPLICATE KEY UPDATE
     inventory_unit_value = VALUES(inventory_unit_value),

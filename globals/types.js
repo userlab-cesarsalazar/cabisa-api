@@ -52,6 +52,7 @@ const inventoryMovementsTypes = {
 }
 
 const operationsTypes = {
+  INVENTORY_ADJUSTMENT: 'INVENTORY_ADJUSTMENT',
   PURCHASE: 'PURCHASE',
   RENT: 'RENT',
   REPAIR: 'REPAIR',
