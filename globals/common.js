@@ -275,7 +275,7 @@ const getFormattedDates = dates =>
   Object.keys(dates).reduce(
     (r, k) => ({
       ...r,
-      [k]: dates[k] ? dates[k].replace(/T/i, ' ').replace(/Z/i, '') : null,
+      [k]: dates[k] ? new Date(dates[k]).toISOString().replace(/T/i, ' ').replace(/Z/i, '') : null,
     }),
     {}
   )

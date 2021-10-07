@@ -1,6 +1,14 @@
 -- REMOVE FK
 ALTER TABLE documents DROP CONSTRAINT documents_related_internal_document_id_fk;
 
+-- PAYMENT_METHODS
+INSERT INTO payment_methods (name,description) VALUES
+	 ('CARD','Credit or debit card'),
+	 ('TRANSFER','Wire transfer'),
+	 ('CASH','Cash'),
+	 ('DEPOSIT','Bank deposit'),
+	 ('CHECK','Bank check');
+
 -- OPERATIONS
 INSERT INTO operations (operation_type,created_at,created_by) VALUES
 	 ('PURCHASE','2021-10-04 11:18:36',5),
@@ -33,25 +41,25 @@ INSERT INTO documents_products (service_type,document_id,product_id,product_pric
 	 (NULL,2,9,64.0,5,12.00,7.68,NULL,NULL,NULL),
 	 (NULL,2,10,29.0,16,12.00,3.48,NULL,NULL,NULL),
 	 (NULL,2,12,33.0,10,12.00,3.96,NULL,NULL,NULL),
-	 ('MACHINERY',3,5,39.0,2,12.00,4.68,NULL,NULL,NULL),
+	 ('PART',3,5,39.0,2,12.00,4.68,NULL,NULL,NULL),
 	 ('SERVICE',3,6,19.0,3,12.00,2.28,NULL,NULL,1),
 	 ('SERVICE',3,1,34.0,1,0.00,0.0,NULL,NULL,NULL),
-	 ('MACHINERY',4,8,84.0,2,12.00,10.08,NULL,NULL,NULL);
+	 ('PART',4,8,84.0,2,12.00,10.08,NULL,NULL,NULL);
 INSERT INTO documents_products (service_type,document_id,product_id,product_price,product_quantity,tax_fee,unit_tax_amount,discount_percentage,unit_discount_amount,parent_product_id) VALUES
 	 ('EQUIPMENT',4,6,19.0,4,12.00,2.28,NULL,NULL,NULL),
 	 ('SERVICE',4,9,61.0,1,12.00,7.319999999999999,NULL,NULL,2),
 	 ('SERVICE',4,2,69.0,1,0.00,0.0,NULL,NULL,NULL),
 	 ('EQUIPMENT',5,12,90.0,2,12.00,10.799999999999999,NULL,NULL,NULL),
-	 ('MACHINERY',6,12,90.0,1,12.00,10.799999999999999,NULL,NULL,NULL),
+	 ('PART',6,12,90.0,1,12.00,10.799999999999999,NULL,NULL,NULL),
 	 ('EQUIPMENT',6,9,61.0,2,12.00,7.319999999999999,NULL,NULL,NULL),
-	 ('MACHINERY',7,12,90.0,1,12.00,10.799999999999999,NULL,NULL,NULL),
+	 ('PART',7,12,90.0,1,12.00,10.799999999999999,NULL,NULL,NULL),
 	 ('EQUIPMENT',7,9,61.0,2,12.00,7.319999999999999,NULL,NULL,NULL),
-	 ('MACHINERY',8,5,37.83,4,12.00,4.539599999999999,3.00,1.17,NULL),
+	 ('PART',8,5,37.83,4,12.00,4.539599999999999,3.00,1.17,NULL),
 	 ('EQUIPMENT',8,8,81.48,2,12.00,9.7776,3.00,2.52,NULL);
 INSERT INTO documents_products (service_type,document_id,product_id,product_price,product_quantity,tax_fee,unit_tax_amount,discount_percentage,unit_discount_amount,parent_product_id) VALUES
-	 ('MACHINERY',9,5,37.83,4,12.00,4.539599999999999,3.00,1.17,NULL),
+	 ('PART',9,5,37.83,4,12.00,4.539599999999999,3.00,1.17,NULL),
 	 ('EQUIPMENT',9,8,81.48,2,12.00,9.7776,3.00,2.52,NULL),
-	 ('MACHINERY',10,5,39.0,2,12.00,4.68,NULL,NULL,NULL),
+	 ('PART',10,5,39.0,2,12.00,4.68,NULL,NULL,NULL),
 	 ('SERVICE',10,6,19.0,3,12.00,2.28,NULL,NULL,1),
 	 ('SERVICE',10,1,34.0,1,0.00,0.0,NULL,NULL,NULL);
 

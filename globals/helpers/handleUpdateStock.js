@@ -1,10 +1,12 @@
 const { ValidatorException } = require(`../common`)
 const types = require('../types')
 
+// IMPORTANTE: El campo operation_type solo es obligatorio si su valor es PURCHASE
 // res.updateStockOn: types.actions.CANCELLED | types.actions.APPROVED
 
 // req.body: {
 //   document_id,
+//   operation_type,
 //   inventory_movements: [
 //     { movement_type, stock, quantity, product_id }
 //   ],
@@ -14,9 +16,10 @@ const types = require('../types')
 // }
 
 const handleUpdateStock = async (req, res) => {
-  const { document_id, inventory_movements = [], old_inventory_movements = [] } = req.body
+  const { document_id, operation_type, inventory_movements = [], old_inventory_movements = [] } = req.body
 
-  const movements = [...old_inventory_movements, ...inventory_movements]
+  const isPurchase = operation_type === types.operationsTypes.PURCHASE
+  const movements = isPurchase ? [...inventory_movements, ...old_inventory_movements] : [...old_inventory_movements, ...inventory_movements]
 
   if (!movements || !movements[0]) return { req, res }
 

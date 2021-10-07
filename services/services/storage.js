@@ -5,7 +5,6 @@ const findAllBy = (fields = {}, initWhereCondition = `p.product_type = '${types.
     p.id,
     p.status,
     p.code,
-    p.unit_price,
     p.description,
     p.created_at,
     p.created_by,
@@ -28,12 +27,12 @@ const checkExists = (
 const findTaxIdExento = () => `SELECT id FROM taxes WHERE name = 'EXENTO'`
 
 const createService = () => `
-  INSERT INTO products (status, code, unit_price, description, tax_id, created_by, stock)
-  VALUES(?, ?, ?, ?, ?, ?, 1)
+  INSERT INTO products (status, code, description, tax_id, created_by, stock)
+  VALUES(?, ?, ?, ?, ?, 1)
 `
 
 const updateService = () => `
-  UPDATE products SET status = ?, code = ?, unit_price = ?, description = ?, updated_by = ? WHERE id = ?
+  UPDATE products SET status = ?, code = ?, description = ?, updated_by = ? WHERE id = ?
 `
 
 const deleteService = () => `DELETE FROM products WHERE product_type = '${types.productsTypes.SERVICE}' AND id = ?`

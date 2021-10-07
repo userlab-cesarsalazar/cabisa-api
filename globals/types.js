@@ -9,7 +9,7 @@ const actions = {
   CANCELLED: 'CANCEL',
 }
 
-const documentsPaymentMethods = {
+const paymentMethods = {
   CARD: 'CARD',
   CASH: 'CASH',
   CHECK: 'CHECK',
@@ -28,7 +28,7 @@ const documentsTypes = {
 }
 
 const documentsServiceType = {
-  MACHINERY: 'MACHINERY',
+  PART: 'PART',
   EQUIPMENT: 'EQUIPMENT',
   SERVICE: 'SERVICE',
 }
@@ -122,12 +122,13 @@ const permissions = {
   CLIENTS: 7,
   SUPPLIERS: 8,
   REPAIRS: 9,
+  PAGOS: 10,
 }
 
 module.exports = {
   actions,
   creditsPolicy,
-  documentsPaymentMethods,
+  paymentMethods,
   documentsServiceType,
   documentsStatus,
   documentsTypes,
