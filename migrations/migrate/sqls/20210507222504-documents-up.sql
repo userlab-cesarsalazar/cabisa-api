@@ -19,8 +19,9 @@ CREATE TABLE `documents` (
   `total_discount_amount` DOUBLE DEFAULT NULL,
   `total_tax_amount` DOUBLE DEFAULT NULL,
   `total_amount` DOUBLE DEFAULT NULL,
+  `paid_credit_amount` DOUBLE DEFAULT NULL,
   `description` TEXT DEFAULT NULL,
-  `payment_method` ENUM('CARD','TRANSFER','CASH','DEPOSIT','CHECK') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `payment_method` VARCHAR(25),
   `credit_days` INT DEFAULT NULL,
   `credit_status` ENUM('UNPAID','PAID','DEFAULT') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `credit_paid_date` TIMESTAMP,
@@ -41,7 +42,6 @@ CREATE TABLE `documents` (
   CONSTRAINT documents_stakeholder_id_check CHECK (document_type = 'REPAIR_ORDER' OR stakeholder_id IS NOT NULL),
   -- CONSTRAINT documents_start_date_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'RENT_PRE_INVOICE') OR start_date IS NOT NULL),
   -- CONSTRAINT documents_end_date_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'RENT_PRE_INVOICE') OR end_date IS NOT NULL),
-  -- CONSTRAINT documents_payment_method_check CHECK (document_type <> 'SELL_INVOICE' OR payment_method IS NOT NULL),
   CONSTRAINT documents_subtotal_amount_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'RENT_PRE_INVOICE' AND document_type <> 'SELL_INVOICE' AND document_type <> 'SELL_PRE_INVOICE') OR subtotal_amount IS NOT NULL),
   -- CONSTRAINT documents_total_discount_amount_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'SELL_INVOICE') OR total_discount_amount IS NOT NULL),
   CONSTRAINT documents_total_amount_check CHECK ((document_type <> 'RENT_INVOICE' AND document_type <> 'SELL_INVOICE') OR total_amount IS NOT NULL),
@@ -52,7 +52,7 @@ CREATE TABLE `documents` (
 
 CREATE TABLE `documents_products` (
   `id` INT NOT NULL AUTO_INCREMENT,
-  `service_type` ENUM('MACHINERY','EQUIPMENT','SERVICE') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `service_type` ENUM('PART','EQUIPMENT','SERVICE') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `document_id` INT NOT NULL,
   `product_id` INT NOT NULL,
   `product_price` DOUBLE NOT NULL,

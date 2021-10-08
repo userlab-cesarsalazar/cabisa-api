@@ -1,6 +1,7 @@
 const handleApproveDocument = require('./handleApproveDocument')
 const handleApproveInventoryMovements = require('./handleApproveInventoryMovements')
 const handleCancelDocument = require('./handleCancelDocument')
+const handleCancelInventoryMovements = require('./handleCancelInventoryMovements')
 const handleCreateDocument = require('./handleCreateDocument')
 const handleCreateInventoryMovements = require('./handleCreateInventoryMovements')
 const handleCreateOperation = require('./handleCreateOperation')
@@ -8,7 +9,6 @@ const handleCreateStakeholder = require('./handleCreateStakeholder')
 const handleRead = require('./handleRead')
 const handleRequest = require('./handleRequest')
 const handleResponse = require('./handleResponse')
-const handleCancelInventoryMovements = require('./handleCancelInventoryMovements')
 const handleUpdateCreditDueDate = require('./handleUpdateCreditDueDate')
 const handleUpdateCreditPaidDate = require('./handleUpdateCreditPaidDate')
 const handleUpdateCreditStatus = require('./handleUpdateCreditStatus')
@@ -20,6 +20,7 @@ module.exports = {
   handleApproveDocument,
   handleApproveInventoryMovements,
   handleCancelDocument,
+  handleCancelInventoryMovements,
   handleCreateDocument,
   handleCreateInventoryMovements,
   handleCreateOperation,
@@ -27,7 +28,6 @@ module.exports = {
   handleRead,
   handleRequest,
   handleResponse,
-  handleCancelInventoryMovements,
   handleUpdateCreditDueDate,
   handleUpdateCreditPaidDate,
   handleUpdateCreditStatus,

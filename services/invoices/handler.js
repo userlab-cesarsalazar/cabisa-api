@@ -25,7 +25,6 @@ const {
   handleUpdateStakeholderCredit,
   handleUpdateCreditStatus,
   handleUpdateCreditDueDate,
-  handleUpdateCreditPaidDate,
   handleCancelInventoryMovements,
 } = helpers
 const { parentChildProductsValidator } = validators
@@ -97,7 +96,9 @@ module.exports.readPaymentMethods = async event => {
 
     const res = await handleRead(req, { dbQuery: db.query, storage: storage.findPaymentMethods })
 
-    return await handleResponse({ req, res })
+    const data = res.data.map(d => d.name)
+
+    return await handleResponse({ req, res: { ...res, data } })
   } catch (error) {
     console.log(error)
     return await handleResponse({ error })
@@ -161,7 +162,7 @@ module.exports.readCreditStatus = async event => {
 module.exports.create = async event => {
   const inputType = {
     stakeholder_id: { type: ['string', 'number'], required: true },
-    payment_method: { type: { enum: types.documentsPaymentMethods }, required: true },
+    payment_method: { type: { enum: types.paymentMethods }, required: true },
     project_id: { type: ['string', 'number'], required: true },
     credit_days: { type: { enum: types.creditsPolicy.creditDaysEnum } },
     subtotal_amount: { type: 'number', min: 1, required: true },
@@ -241,10 +242,10 @@ module.exports.create = async event => {
           .map(k => types.operationsTypes[k])
           .join(', ')}`
       )
-    if (Object.keys(types.documentsPaymentMethods).every(k => types.documentsPaymentMethods[k] !== payment_method))
+    if (Object.keys(types.paymentMethods).every(k => types.paymentMethods[k] !== payment_method))
       errors.push(
-        `The field payment_method must contain one of these values: ${Object.keys(types.documentsPaymentMethods)
-          .map(k => types.documentsPaymentMethods[k])
+        `The field payment_method must contain one of these values: ${Object.keys(types.paymentMethods)
+          .map(k => types.paymentMethods[k])
           .join(', ')}`
       )
     if (credit_days && Object.keys(types.creditsPolicy.creditDaysEnum).every(k => types.creditsPolicy.creditDaysEnum[k] !== credit_days))
@@ -350,68 +351,6 @@ module.exports.create = async event => {
   }
 }
 
-module.exports.updateCreditStatus = async event => {
-  try {
-    const inputType = {
-      document_id: { type: ['number', 'string'], required: true },
-      credit_status: { type: { enum: types.creditsPolicy.creditStatusEnum }, required: true },
-    }
-    const req = await handleRequest({ event, inputType })
-    req.hasPermissions([types.permissions.INVOICES])
-
-    const { document_id, credit_status } = req.body
-    const errors = []
-    const requiredFields = ['document_id', 'credit_status']
-    const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const [document] = await db.query(storage.findRelatedDocument(), [document_id])
-
-    if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (!document || !document.id)
-      errors.push(`El documento debe ser del tipo ${types.documentsTypes.SELL_INVOICE} o ${types.documentsTypes.RENT_INVOICE}`)
-    if (!document || !document.credit_days) errors.push(`El documento debe estar asociado a un credito`)
-    if (Object.keys(types.creditsPolicy.creditStatusEnum).every(k => types.creditsPolicy.creditStatusEnum[k] !== credit_status))
-      errors.push(
-        `The field credit_status must contain one of these values: ${Object.keys(types.creditsPolicy.creditStatusEnum)
-          .map(k => types.creditsPolicy.creditStatusEnum[k])
-          .join(', ')}`
-      )
-
-    if (errors.length > 0) throw new ValidatorException(errors)
-    const basePaidCredit =
-      Number(document.paid_credit) +
-      Number(document.subtotal_amount) * (document.credit_status === types.creditsPolicy.creditStatusEnum.PAID ? -1 : 0)
-    const paidCredit = basePaidCredit + Number(document.subtotal_amount) * (credit_status === types.creditsPolicy.creditStatusEnum.PAID ? 1 : 0)
-
-    await db.transaction(async connection => {
-      await handleUpdateCreditStatus(
-        { ...req, body: { credit_status, document_id, related_internal_document_id: document.related_internal_document_id } },
-        { connection }
-      )
-
-      await handleUpdateStakeholderCredit(
-        { ...req, body: { stakeholder_id: document.stakeholder_id, total_credit: Number(document.total_credit), paid_credit: paidCredit } },
-        { connection }
-      )
-
-      await handleUpdateCreditPaidDate(
-        {
-          ...req,
-          body: { document_id, creditPaidDate: credit_status === types.creditsPolicy.creditStatusEnum.PAID ? new Date().toISOString() : null },
-        },
-        { connection }
-      )
-    })
-
-    return await handleResponse({
-      req,
-      res: { statusCode: 200, data: { document_id, credit_status }, message: 'Documento actualizado exitosamente' },
-    })
-  } catch (error) {
-    console.log(error)
-    return await handleResponse({ error })
-  }
-}
-
 module.exports.cancel = async event => {
   try {
     const inputType = {
@@ -455,27 +394,6 @@ module.exports.cancel = async event => {
     })
 
     return await handleResponse({ req, res })
-  } catch (error) {
-    console.log(error)
-    return await handleResponse({ error })
-  }
-}
-
-module.exports.cronUpdateCreditDefaultStatus = async () => {
-  try {
-    const creditStatus = types.creditsPolicy.creditStatusEnum.DEFAULT
-    const documents = await db.query(storage.findDocumentsWithDefaultCredits())
-
-    if (documents.length > 0) {
-      const creditStatusValues = documents.map(d => `(${d.id}, ${d.stakeholder_id}, '${creditStatus}', ${d.created_by}, ${req.currentUser.user_id})`)
-
-      await db.query(storage.bulkUpdateCreditStatus(creditStatusValues))
-    }
-
-    return await handleResponse({
-      req: {},
-      res: { statusCode: 200, data: { documents: documents.map(d => d.id) }, message: 'Documento actualizado exitosamente' },
-    })
   } catch (error) {
     console.log(error)
     return await handleResponse({ error })

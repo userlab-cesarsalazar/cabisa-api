@@ -359,7 +359,7 @@ module.exports.update = async event => {
 module.exports.invoice = async event => {
   const inputType = {
     document_id: { type: ['number', 'string'], required: true },
-    payment_method: { type: { enum: types.documentsPaymentMethods }, required: true },
+    payment_method: { type: { enum: types.paymentMethods }, required: true },
     credit_days: { type: { enum: types.creditsPolicy.creditDaysEnum } },
     subtotal_amount: { type: 'number', min: 1, required: true },
     total_discount_amount: { type: 'number', required: true },
@@ -438,10 +438,10 @@ module.exports.invoice = async event => {
       errors.push(`El documento ya esta relacionado a una factura con id ${documentDetails[0].related_internal_document_id}`)
     if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)
     if (total_amount <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
-    if (Object.keys(types.documentsPaymentMethods).every(k => types.documentsPaymentMethods[k] !== payment_method))
+    if (Object.keys(types.paymentMethods).every(k => types.paymentMethods[k] !== payment_method))
       errors.push(
-        `The field payment_method must contain one of these values: ${Object.keys(types.documentsPaymentMethods)
-          .map(k => types.documentsPaymentMethods[k])
+        `The field payment_method must contain one of these values: ${Object.keys(types.paymentMethods)
+          .map(k => types.paymentMethods[k])
           .join(', ')}`
       )
 

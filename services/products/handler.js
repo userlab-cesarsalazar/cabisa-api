@@ -77,17 +77,16 @@ module.exports.create = async event => {
       code: { type: 'string', length: 50, required: true, unique: true },
       tax_id: { type: ['number', 'string'], required: true },
       serial_number: { type: 'string', length: 50, required: true },
-      unit_price: { type: 'number', min: 0, required: true, defaultValue: 0 },
       description: { type: 'string', length: 255, required: true },
       image_url: { type: 'string' },
     }
     const req = await handleRequest({ event, inputType })
     req.hasPermissions([types.permissions.INVENTORY])
 
-    const { product_category, status, code, serial_number, unit_price, tax_id, description, image_url } = req.body
+    const { product_category, status, code, serial_number, tax_id, description, image_url } = req.body
     const product_type = types.productsTypes.PRODUCT
     const errors = []
-    const requiredFields = ['product_category', 'status', 'code', 'serial_number', 'unit_price', 'tax_id', 'description']
+    const requiredFields = ['product_category', 'status', 'code', 'serial_number', 'tax_id', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [codeExists] = await db.query(storage.checkExists({ code, product_category }))
     if (Object.keys(types.productsStatus).every(k => types.productsStatus[k] !== status))
@@ -99,7 +98,6 @@ module.exports.create = async event => {
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (codeExists) errors.push(`El codigo ya se encuentra registrado`)
-    if (unit_price < 0) errors.push(`El precio debe ser un monto mayor o igual a cero`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -110,7 +108,6 @@ module.exports.create = async event => {
         status,
         code,
         serial_number,
-        unit_price,
         tax_id,
         description,
         image_url,
@@ -135,7 +132,6 @@ module.exports.update = async event => {
       status: { type: { enum: types.productsStatus }, required: true },
       code: { type: 'string', length: 50, required: true, unique: true },
       serial_number: { type: 'string', length: 50, required: true },
-      unit_price: { type: 'number', min: 0, required: true, defaultValue: 0 },
       tax_id: { type: ['number', 'string'], required: true },
       description: { type: 'string', length: 255, required: true },
       image_url: { type: 'string' },
@@ -143,9 +139,9 @@ module.exports.update = async event => {
     const req = await handleRequest({ event, inputType, dbQuery: db.query, storage: storage.findAllBy })
     req.hasPermissions([types.permissions.INVENTORY])
 
-    const { id, product_category, status, code, serial_number, unit_price, tax_id, description, image_url } = req.body
+    const { id, product_category, status, code, serial_number, tax_id, description, image_url } = req.body
     const errors = []
-    const requiredFields = ['id', 'product_category', 'serial_number', 'status', 'code', 'unit_price', 'tax_id', 'description']
+    const requiredFields = ['id', 'product_category', 'serial_number', 'status', 'code', 'tax_id', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [product] =
       req.currentModel && req.currentModel.product_type
@@ -160,7 +156,6 @@ module.exports.update = async event => {
           .map(k => types.productsStatus[k])
           .join(', ')}`
       )
-    if (unit_price < 0) errors.push(`El precio debe ser un monto mayor o igual a cero`)
 
     if (errors.length > 0) throw new ValidatorException(errors)
 
@@ -170,7 +165,6 @@ module.exports.update = async event => {
         status,
         code,
         serial_number,
-        unit_price,
         tax_id,
         description,
         image_url,

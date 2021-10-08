@@ -7,7 +7,6 @@ const findAllBy = (fields = {}, initWhereCondition = `p.product_type = '${types.
     p.status,
     p.code,
     p.serial_number,
-    p.unit_price,
     p.tax_id,
     t.fee AS tax_fee,
     t.name AS tax_name,
@@ -45,12 +44,12 @@ const checkExists = (fields = {}, initWhereCondition = `p.product_type = '${type
 `
 
 const createProduct = () => `
-  INSERT INTO products (product_type, product_category, status, code, serial_number, unit_price, tax_id, description, image_url, created_by)
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO products (product_type, product_category, status, code, serial_number, tax_id, description, image_url, created_by)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 const updateProduct = () => `
-  UPDATE products SET product_category = ?, status = ?, code = ?, serial_number = ?, unit_price = ?, tax_id = ?, description = ?, image_url = ?, updated_by = ? WHERE id = ?
+  UPDATE products SET product_category = ?, status = ?, code = ?, serial_number = ?, tax_id = ?, description = ?, image_url = ?, updated_by = ? WHERE id = ?
 `
 
 const deleteProduct = () => `DELETE FROM products WHERE product_type = '${types.productsTypes.PRODUCT}' AND id = ?`
@@ -61,7 +60,6 @@ const findOptionsBy = (fields = {}) => `
     p.id,
     p.code,
     p.serial_number,
-    p.unit_price,
     p.description,
     t.fee AS tax_fee,
     t.name AS tax_name,

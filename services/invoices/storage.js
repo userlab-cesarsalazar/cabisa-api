@@ -35,20 +35,21 @@ const findAllBy = (fields = {}) => {
       prod.id AS products__id,
       prod.product_type AS products__product_type,
       prod.status AS products__status,
+      prod.code AS products__code,
+      prod.serial_number AS products__serial_number,
+      prod.description AS products__description,
+      prod.image_url AS products__image_url,
+      prod.created_at AS products__created_at,
+      prod.created_by AS products__created_by,
       dp.service_type AS products__service_type,
+      dp.document_id AS products__document_id,
       dp.product_price AS products__product_price,
       dp.product_quantity AS products__product_quantity,
       dp.tax_fee AS products__tax_fee,
       dp.unit_tax_amount AS products__unit_tax_amount,
       dp.discount_percentage AS products__discount_percentage,
       dp.unit_discount_amount AS products__unit_discount_amount,
-      dp.parent_product_id AS products__parent_product_id,
-      prod.code AS products__code,
-      prod.serial_number AS products__serial_number,
-      prod.description AS products__description,
-      prod.image_url AS products__image_url,
-      prod.created_at AS products__created_at,
-      prod.created_by AS products__created_by
+      dp.parent_product_id AS products__parent_product_id
     FROM documents d
     LEFT JOIN projects proj ON proj.id = d.project_id
     LEFT JOIN stakeholders s ON s.id = d.stakeholder_id
@@ -62,7 +63,7 @@ const findAllBy = (fields = {}) => {
   `
 }
 
-const findPaymentMethods = () => `DESCRIBE documents payment_method`
+const findPaymentMethods = () => `SELECT name, description FROM payment_methods`
 
 const findInvoiceStatus = () => `DESCRIBE documents status`
 
@@ -83,53 +84,12 @@ const checkInventoryMovementsOnApprove = whereIn => `
   GROUP BY im.id, imd.inventory_movement_id
 `
 
-const findRelatedDocument = () => `
-  SELECT
-    d.id,
-    d.credit_days,
-    d.related_internal_document_id,
-    d.subtotal_amount,
-    d.credit_status,
-    d.stakeholder_id,
-    s.total_credit,
-    s.paid_credit
-  FROM documents d
-  LEFT JOIN stakeholders s ON s.id = d.stakeholder_id
-  WHERE
-    d.id = ? AND (
-      d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
-      d.document_type = '${types.documentsTypes.RENT_INVOICE}'
-    )
-`
-
-const findDocumentsWithDefaultCredits = () => `
-  SELECT d.id, d.stakeholder_id, d.created_by, d.updated_by
-  FROM documents d
-  WHERE (
-      d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
-      d.document_type = '${types.documentsTypes.RENT_INVOICE}'
-    )
-    AND DATEDIFF(NOW(), d.created_at) > d.credit_days
-    AND d.credit_status = '${types.creditsPolicy.creditStatusEnum.UNPAID}'
-`
-
-const bulkUpdateCreditStatus = creditStatusValues => `
-  INSERT INTO documents (id, stakeholder_id, credit_status, created_by, updated_by)
-    VALUES ${creditStatusValues.join(',')}
-    ON DUPLICATE KEY UPDATE
-      credit_status = VALUES(credit_status),
-      updated_by = VALUES(updated_by)
-`
-
 module.exports = {
-  bulkUpdateCreditStatus,
   checkInventoryMovementsOnApprove,
   checkProjectExists,
   findAllBy,
   findCreditStatus,
-  findDocumentsWithDefaultCredits,
   findInvoiceServiceType,
   findInvoiceStatus,
   findPaymentMethods,
-  findRelatedDocument,
 }

@@ -1,4 +1,4 @@
-service: ca-invoices
+service: ca-payments
 
 plugins:
   - serverless-offline
@@ -29,91 +29,41 @@ package:
   include:
     - ../../globals/**
 functions:
-  invoicesVersion:
+  paymentsVersion:
     handler: handler.readServiceVersion
     events:
       - http:
-          path: invoices/version
+          path: payments/version
           method: get
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  invoices:
+  payments:
     handler: handler.read
     events:
       - http:
-          path: invoices
+          path: payments
           method: get
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  invoicesPaymentMethod:
-    handler: handler.readPaymentMethods
+  crupdate:
+    handler: handler.crupdate
     events:
       - http:
-          path: invoices/payment-methods
-          method: get
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
-  invoicesStatus:
-    handler: handler.readInvoicesStatus
-    events:
-      - http:
-          path: invoices-status
-          method: get
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
-  invoicesServiceTypes:
-    handler: handler.readInvoiceServiceType
-    events:
-      - http:
-          path: invoices/service-types
-          method: get
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
-  invoicesCreditDays:
-    handler: handler.readCreditDays
-    events:
-      - http:
-          path: invoices/credit-days
-          method: get
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
-  invoicesCrediStatus:
-    handler: handler.readCreditStatus
-    events:
-      - http:
-          path: invoices/credit-status
-          method: get
-          cors: true
-    layers:
-      - arn:${file(${self:custom.config}):layer}
-
-  invoicesCreate:
-    handler: handler.create
-    events:
-      - http:
-          path: invoices
+          path: payments
           method: post
           cors: true
     layers:
       - arn:${file(${self:custom.config}):layer}
 
-  invoicesCancel:
-    handler: handler.cancel
+  updateCreditDefaultStatus:
+    handler: handler.cronUpdateCreditStatus
     events:
       - http:
-          path: invoices/cancel
+          path: payments/credit-default-status
           method: put
           cors: true
     layers:
