@@ -30,6 +30,7 @@ const {
   handleUpdateCreditStatus,
   handleUpdateCreditPaidDate,
   handleUpdateCreditDueDate,
+  handleUpdateDocumentPaidAmount,
 } = helpers
 const { parentChildProductsValidator } = validators
 const db = mysqlConfig(mysql)
@@ -92,6 +93,9 @@ module.exports.create = async event => {
     start_date: { type: 'string' },
     end_date: { type: 'string' },
     subtotal_amount: { type: 'number', min: 1, required: true },
+    total_discount_amount: { type: 'number', required: true },
+    total_tax_amount: { type: 'number', required: true },
+    total_amount: { type: 'number', min: 0, required: true },
     products: {
       type: 'array',
       required: true,
@@ -111,7 +115,7 @@ module.exports.create = async event => {
   try {
     const req = await handleRequest({ event, inputType })
     const operation_type = types.operationsTypes.RENT
-    const { stakeholder_id, subtotal_amount = 0, products } = req.body
+    const { stakeholder_id, total_discount_amount, total_tax_amount, subtotal_amount = 0, total_amount, products } = req.body
 
     req.hasPermissions([types.permissions.SALES])
 
@@ -125,15 +129,17 @@ module.exports.create = async event => {
     const productsIds = products.map(p => p.product_id)
     const productsFromDB = await db.query(commonStorage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
-    const requiredFields = ['stakeholder_id', 'project_id', 'products', 'subtotal_amount']
+    const requiredFields = ['stakeholder_id', 'project_id', 'products', 'subtotal_amount', 'total_amount']
+    if (Number(total_discount_amount) !== 0) requiredFields.push('total_discount_amount')
+    if (Number(total_tax_amount) !== 0) requiredFields.push('total_tax_amount')
     const requiredProductFields = ['product_id', 'service_type', 'product_quantity', 'product_price']
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     if (operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
     const [stakeholderIdExists] = stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: stakeholder_id })) : []
-    const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + subtotal_amount
-    const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + subtotal_amount
+    const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + total_amount
+    const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + total_amount
     const isInvalidCreditAmount = stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit > stakeholderIdExists.credit_limit
 
     if (Object.keys(types.operationsTypes).every(k => types.operationsTypes[k] !== operation_type))
@@ -147,7 +153,8 @@ module.exports.create = async event => {
     if (stakeholder_id && !stakeholderIdExists) errors.push('El cliente no se encuentra registrado')
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
-    if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)
+    if (subtotal_amount <= 0) errors.push(`El monto subtotal de la nota de servicio debe ser mayor a cero`)
+    if (total_amount <= 0) errors.push(`El monto total de la nota de servicio debe ser mayor a cero`)
     if (!stakeholderIdExists || !stakeholderIdExists.credit_limit)
       errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
     if (isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
@@ -235,6 +242,9 @@ module.exports.update = async event => {
     start_date: { type: 'string' },
     end_date: { type: 'string' },
     subtotal_amount: { type: 'number', min: 1, required: true },
+    total_discount_amount: { type: 'number', required: true },
+    total_tax_amount: { type: 'number', required: true },
+    total_amount: { type: 'number', min: 0, required: true },
     products: {
       type: 'array',
       required: true,
@@ -255,7 +265,7 @@ module.exports.update = async event => {
     const req = await handleRequest({ event, inputType })
     req.hasPermissions([types.permissions.SALES])
 
-    const { document_id, products, start_date, end_date, subtotal_amount = 0 } = req.body
+    const { document_id, products, start_date, end_date, total_discount_amount, total_tax_amount, subtotal_amount = 0, total_amount } = req.body
     const document = await getDocument({
       dbQuery: db.query,
       findDocumentStorage: commonStorage.findDocument,
@@ -277,15 +287,17 @@ module.exports.update = async event => {
     const productsExists = products.flatMap(p =>
       !productsFromDB || !productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []
     )
-    const requiredFields = ['document_id', 'project_id', 'products', 'subtotal_amount']
+    const requiredFields = ['document_id', 'project_id', 'products', , 'subtotal_amount', 'total_amount']
+    if (Number(total_discount_amount) !== 0) requiredFields.push('total_discount_amount')
+    if (Number(total_tax_amount) !== 0) requiredFields.push('total_tax_amount')
     const requiredProductFields = ['product_id', 'service_type', 'product_quantity', 'product_price']
     if (document && document.operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
     const [stakeholderIdExists] =
       document && document.stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: document.stakeholder_id })) : []
-    const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + (subtotal_amount - document.subtotal_amount)
-    const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + (subtotal_amount - document.subtotal_amount)
+    const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + (total_amount - document.total_amount)
+    const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + (total_amount - document.total_amount)
     const isInvalidCreditAmount = stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit > stakeholderIdExists.credit_limit
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
@@ -295,7 +307,8 @@ module.exports.update = async event => {
     if (!document || !document.document_id) errors.push(`El documento con id ${document_id} no se encuentra registrado`)
     if (document && document.status !== types.documentsStatus.PENDING)
       errors.push(`La edicion solo es permitida en documentos con status ${types.documentsStatus.PENDING}`)
-    if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)
+    if (subtotal_amount <= 0) errors.push(`El monto subtotal de la nota de servicio debe ser mayor a cero`)
+    if (total_amount <= 0) errors.push(`El monto total de la nota de servicio debe ser mayor a cero`)
     if (!stakeholderIdExists || !stakeholderIdExists.credit_limit)
       errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
     if (isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
@@ -499,6 +512,7 @@ module.exports.invoice = async event => {
     const operation_type = groupedDocumentDetails.operation_type
     const document_type = config[operation_type].finish.documentType
     const related_internal_document_id = document_id
+    const paidCredit = Number(stakeholderIdExists.paid_credit || 0) + (credit_days ? 0 : total_amount)
 
     const { res } = await db.transaction(async connection => {
       const documentCreated = await handleCreateDocument(
@@ -537,13 +551,15 @@ module.exports.invoice = async event => {
           body: {
             ...creditStatusUpdated.req.body,
             total_credit: Number(stakeholderIdExists.total_credit),
-            paid_credit: Number(stakeholderIdExists.paid_credit || 0) + (credit_days ? 0 : subtotal_amount),
+            paid_credit: paidCredit,
           },
         },
         creditStatusUpdated.res
       )
 
-      const documentApproved = await handleApproveDocument(stakeholderCreditUpdated.req, stakeholderCreditUpdated.res)
+      const documentPaidAmountUpdated = await handleUpdateDocumentPaidAmount(stakeholderCreditUpdated.req, stakeholderCreditUpdated.res)
+
+      const documentApproved = await handleApproveDocument(documentPaidAmountUpdated.req, documentPaidAmountUpdated.res)
 
       const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, {
         ...documentApproved.res,

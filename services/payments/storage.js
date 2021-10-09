@@ -80,6 +80,7 @@ const findDocumentPayments = () => `
     d.credit_status,
     d.related_internal_document_id,
     d.subtotal_amount,
+    d.total_amount,
     d.paid_credit_amount,
     d.credit_status,
     d.stakeholder_id,
@@ -131,8 +132,6 @@ const getPaymentsByDocumentId = () => `
   WHERE document_id = ?
 `
 
-const updateDocumentUnpaidAmount = () => `UPDATE documents SET paid_credit_amount = ?, updated_by = ? WHERE id = ?`
-
 const findDocumentsWithDefaultCredits = () => `
   SELECT d.id, d.stakeholder_id, d.created_by, d.updated_by
   FROM documents d
@@ -159,6 +158,5 @@ module.exports = {
   findAllBy,
   findDocumentsWithDefaultCredits,
   findDocumentPayments,
-  updateDocumentUnpaidAmount,
   getPaymentsByDocumentId,
 }
