@@ -74,10 +74,16 @@ const findDocument = documentsType => {
     d.total_amount AS total_amount,
     d.credit_days AS credit_days,
     d.credit_status AS credit_status,
+    d.paid_credit_amount AS paid_credit_amount,
+    d.credit_paid_date AS credit_paid_date,
+    d.credit_due_date AS credit_due_date,
     d.created_at AS created_at,
     d.created_by AS created_by,
     d.updated_at AS updated_at,
     d.updated_by AS updated_by,
+    s.credit_limit AS stakeholder_credit_limit,
+    s.total_credit AS stakeholder_total_credit,
+    s.paid_credit AS stakeholder_paid_credit,
     im.id AS old_inventory_movements__inventory_movement_id,
     im.operation_id AS old_inventory_movements__operation_id,
     im.product_id AS old_inventory_movements__product_id,
@@ -122,6 +128,7 @@ const findDocument = documentsType => {
   LEFT JOIN products p ON p.id = dp.product_id
   LEFT JOIN operations o ON o.id = d.operation_id
   LEFT JOIN inventory_movements im ON im.operation_id = o.id
+  LEFT JOIN stakeholders s ON s.id = d.stakeholder_id
   WHERE d.id = ? AND (${documentTypeWhereValues.join(' OR ')})
 `
 }

@@ -147,7 +147,7 @@ module.exports.crupdate = async event => {
       await handleUpdateDocumentPaidAmount(
         {
           ...req,
-          body: { document_id, paid_credit: paidCreditAmount },
+          body: { document_id, paid_credit_amount: paidCreditAmount },
         },
         { connection }
       )

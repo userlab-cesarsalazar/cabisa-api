@@ -1,9 +1,9 @@
-// req.body: { document_id, paid_credit }
+// req.body: { document_id, paid_credit_amount }
 
 const handleUpdateDocumentPaidAmount = async (req, res) => {
-  const { document_id, paid_credit } = req.body
+  const { document_id, paid_credit_amount } = req.body
 
-  await res.connection.query(updateDocumentPaidAmount(), [paid_credit, document_id])
+  await res.connection.query(updateDocumentPaidAmount(), [paid_credit_amount, document_id])
 
   return {
     req,

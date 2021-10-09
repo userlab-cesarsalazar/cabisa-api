@@ -512,7 +512,6 @@ module.exports.invoice = async event => {
     const operation_type = groupedDocumentDetails.operation_type
     const document_type = config[operation_type].finish.documentType
     const related_internal_document_id = document_id
-    const paidCredit = Number(stakeholderIdExists.paid_credit || 0) + (credit_days ? 0 : total_amount)
 
     const { res } = await db.transaction(async connection => {
       const documentCreated = await handleCreateDocument(
@@ -550,14 +549,23 @@ module.exports.invoice = async event => {
           ...creditStatusUpdated.req,
           body: {
             ...creditStatusUpdated.req.body,
-            total_credit: Number(stakeholderIdExists.total_credit),
-            paid_credit: paidCredit,
+            total_credit: Number(stakeholderIdExists.total_credit) - Number(groupedDocumentDetails.total_amount) + Number(total_amount),
+            paid_credit: Number(stakeholderIdExists.paid_credit || 0) + (credit_days ? 0 : total_amount),
           },
         },
         creditStatusUpdated.res
       )
 
-      const documentPaidAmountUpdated = await handleUpdateDocumentPaidAmount(stakeholderCreditUpdated.req, stakeholderCreditUpdated.res)
+      const documentPaidAmountUpdated = await handleUpdateDocumentPaidAmount(
+        {
+          ...stakeholderCreditUpdated.req,
+          body: {
+            ...stakeholderCreditUpdated.req.body,
+            paid_credit_amount: credit_days ? 0 : total_amount,
+          },
+        },
+        stakeholderCreditUpdated.res
+      )
 
       const documentApproved = await handleApproveDocument(documentPaidAmountUpdated.req, documentPaidAmountUpdated.res)
 
@@ -615,9 +623,21 @@ module.exports.cancel = async event => {
 
       const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentCancelled.req, documentCancelled.res)
 
+      const stakeholderCreditUpdated = await handleUpdateStakeholderCredit(
+        {
+          ...inventoryMovementsCancelled.req,
+          body: {
+            ...inventoryMovementsCancelled.req.body,
+            total_credit: Number(document.stakeholder_total_credit) - Number(document.total_amount),
+            paid_credit: Number(document.stakeholder_paid_credit) - Number(document.paid_credit_amount),
+          },
+        },
+        inventoryMovementsCancelled.res
+      )
+
       return await handleUpdateStock(
-        { ...inventoryMovementsCancelled.req, body: { ...inventoryMovementsCancelled.req.body, old_inventory_movements: [] } },
-        { ...inventoryMovementsCancelled.res, updateStockOn: types.actions.CANCELLED }
+        { ...stakeholderCreditUpdated.req, body: { ...stakeholderCreditUpdated.req.body, old_inventory_movements: [] } },
+        { ...stakeholderCreditUpdated.res, updateStockOn: types.actions.CANCELLED }
       )
     })
 

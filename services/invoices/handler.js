@@ -387,6 +387,23 @@ module.exports.cancel = async event => {
 
       const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentCancelled.req, documentCancelled.res)
 
+      if (
+        document.document_type === types.documentsTypes.RENT_INVOICE ||
+        (document.document_type === types.documentsTypes.SELL_INVOICE && document.credit_days)
+      ) {
+        await handleUpdateStakeholderCredit(
+          {
+            ...inventoryMovementsCancelled.req,
+            body: {
+              ...inventoryMovementsCancelled.req.body,
+              total_credit: Number(document.stakeholder_total_credit) - Number(document.total_amount),
+              paid_credit: Number(document.stakeholder_paid_credit) - Number(document.paid_credit_amount),
+            },
+          },
+          inventoryMovementsCancelled.res
+        )
+      }
+
       return await handleUpdateStock(
         { ...inventoryMovementsCancelled.req, body: { ...inventoryMovementsCancelled.req.body, old_inventory_movements: [] } },
         { ...inventoryMovementsCancelled.res, updateStockOn: types.actions.CANCELLED }

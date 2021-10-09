@@ -323,21 +323,11 @@ const weightedAverageInventoryCostStrategy = (product, isInventoryReceipt, isPur
 
 const calculateInventoryCost = (strategy, { product, isInventoryReceipt = null, isPurchase = null }) => {
   const errors = []
-  const requiredFields = [
-    'product_id',
-    'product_quantity',
-    'product_price',
-    'stock',
-    'inventory_unit_value',
-    'inventory_total_value',
-    'movement_type',
-    'description',
-    'code',
-    'created_by',
-  ]
+  const requiredFields = ['product_id', 'product_quantity', 'movement_type', 'description', 'code', 'created_by']
   const requiredErrorFields = requiredFields.filter(k => !product[k] && product[k] !== 0)
 
-  if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required in product argument`))
+  if (requiredErrorFields.length > 0)
+    requiredErrorFields.forEach(ef => errors.push(`The field ${ef} is required in the calculateInventoryCost's product argument`))
   if (isInventoryReceipt === null) errors.push('The isInventoryReceipt argument is required')
   if (isPurchase === null) errors.push('The isPurchase argument is required')
 
