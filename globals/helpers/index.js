@@ -13,6 +13,7 @@ const handleUpdateCreditDueDate = require('./handleUpdateCreditDueDate')
 const handleUpdateCreditPaidDate = require('./handleUpdateCreditPaidDate')
 const handleUpdateCreditStatus = require('./handleUpdateCreditStatus')
 const handleUpdateDocument = require('./handleUpdateDocument')
+const handleUpdateDocumentPaidAmount = require('./handleUpdateDocumentPaidAmount')
 const handleUpdateStakeholderCredit = require('./handleUpdateStakeholderCredit')
 const handleUpdateStock = require('./handleUpdateStock')
 
@@ -32,6 +33,7 @@ module.exports = {
   handleUpdateCreditPaidDate,
   handleUpdateCreditStatus,
   handleUpdateDocument,
+  handleUpdateDocumentPaidAmount,
   handleUpdateStakeholderCredit,
   handleUpdateStock,
 }

@@ -1,7 +1,15 @@
 const mysql = require('mysql2/promise')
 const { types, mysqlConfig, helpers, ValidatorException, groupJoinResult, getFormattedDates } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 const storage = require('./storage')
-const { handleRequest, handleResponse, handleRead, handleUpdateStakeholderCredit, handleUpdateCreditStatus, handleUpdateCreditPaidDate } = helpers
+const {
+  handleRequest,
+  handleResponse,
+  handleRead,
+  handleUpdateStakeholderCredit,
+  handleUpdateCreditStatus,
+  handleUpdateCreditPaidDate,
+  handleUpdateDocumentPaidAmount,
+} = helpers
 const db = mysqlConfig(mysql)
 
 module.exports.readServiceVersion = async () => {
@@ -92,7 +100,7 @@ module.exports.crupdate = async event => {
       documentOldPayments && documentOldPayments[0] && documentOldPayments.reduce((r, op) => r + (op.is_deleted ? 0 : Number(op.payment_amount)), 0)
     const paidCreditAmount = payments && payments[0] && payments.reduce((r, p) => r + Number(p.payment_amount), 0)
     const stakeholderPaidCredit = Number(document.stakeholder_paid_credit) - oldPaidCreditAmount + paidCreditAmount
-    const documentCreditAmount = document && document.subtotal_amount ? Number(document.subtotal_amount) : 0
+    const documentCreditAmount = document && document.total_amount ? Number(document.total_amount) : 0
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredPaymentErrorFields) errors.push(`Los campos ${requiredPaymentFields.join(', ')} son obligatorios`)
@@ -132,6 +140,14 @@ module.exports.crupdate = async event => {
         {
           ...req,
           body: { document_id, creditPaidDate: credit_status === types.creditsPolicy.creditStatusEnum.PAID ? new Date().toISOString() : null },
+        },
+        { connection }
+      )
+
+      await handleUpdateDocumentPaidAmount(
+        {
+          ...req,
+          body: { document_id, paid_credit_amount: paidCreditAmount },
         },
         { connection }
       )

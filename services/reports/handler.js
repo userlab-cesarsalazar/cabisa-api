@@ -14,8 +14,8 @@ module.exports.clientsAccountState = async event => {
 
     const data = res.data.map(d => ({
       ...d,
-      current_credit: Number(d.total_credit) - Number(d.paid_credit),
-      credit_balance: Number(d.credit_limit) - (Number(d.total_credit) - Number(d.paid_credit)),
+      current_credit: Number(d.total_credit) - Number(d.paid_credit), // unpaid_credit
+      credit_balance: Number(d.credit_limit) - (Number(d.total_credit) - Number(d.paid_credit)), // available_credit
     }))
 
     return await handleResponse({ req, res: { ...res, data } })

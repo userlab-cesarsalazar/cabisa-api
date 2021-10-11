@@ -232,8 +232,8 @@ module.exports.create = async event => {
     const [stakeholderNitUnique] = stakeholder_nit ? await db.query(commonStorage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
     const [stakeholderIdExists] = stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: stakeholder_id })) : []
     const [projectExists] = project_id ? await db.query(storage.checkProjectExists(), [project_id]) : []
-    const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + (credit_days ? subtotal_amount : 0)
-    const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + (credit_days ? subtotal_amount : 0)
+    const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + (credit_days ? total_amount : 0)
+    const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + (credit_days ? total_amount : 0)
     const isInvalidCreditAmount = stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit > stakeholderIdExists.credit_limit
 
     if (Object.keys(types.operationsTypes).every(k => types.operationsTypes[k] !== operation_type))
@@ -386,6 +386,23 @@ module.exports.cancel = async event => {
       const documentCancelled = await handleCancelDocument({ ...req, body: { ...document, ...req.body } }, { connection })
 
       const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentCancelled.req, documentCancelled.res)
+
+      if (
+        document.document_type === types.documentsTypes.RENT_INVOICE ||
+        (document.document_type === types.documentsTypes.SELL_INVOICE && document.credit_days)
+      ) {
+        await handleUpdateStakeholderCredit(
+          {
+            ...inventoryMovementsCancelled.req,
+            body: {
+              ...inventoryMovementsCancelled.req.body,
+              total_credit: Number(document.stakeholder_total_credit) - Number(document.total_amount),
+              paid_credit: Number(document.stakeholder_paid_credit) - Number(document.paid_credit_amount),
+            },
+          },
+          inventoryMovementsCancelled.res
+        )
+      }
 
       return await handleUpdateStock(
         { ...inventoryMovementsCancelled.req, body: { ...inventoryMovementsCancelled.req.body, old_inventory_movements: [] } },
