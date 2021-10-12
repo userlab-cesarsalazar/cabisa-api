@@ -3,9 +3,7 @@ const { getFormattedDates } = require('../common')
 // req.body: { document_id, credit_days, created_at }
 
 const handleUpdateCreditDueDate = async (req, res) => {
-  const { document_id, credit_days } = req.body
-
-  if (!credit_days) return { req, res }
+  const { document_id, credit_days = 0 } = req.body
 
   const [[{ created_at }]] = req.body.created_at
     ? [[{ created_at: req.body.created_at }]]
