@@ -55,7 +55,7 @@ CREATE TABLE `documents_products` (
   `service_type` ENUM('PART','EQUIPMENT','SERVICE') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `document_id` INT NOT NULL,
   `product_id` INT NOT NULL,
-  `product_price` DOUBLE NOT NULL,
+  `product_price` DOUBLE DEFAULT 0,
   `product_quantity` INT NOT NULL,
   `tax_fee` DECIMAL(5,2) NOT NULL,
   `unit_tax_amount` DOUBLE NOT NULL,
