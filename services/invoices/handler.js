@@ -442,8 +442,8 @@ module.exports.update = async event => {
     })
     const [stakeholderIdExists] =
       document && document.stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: document.stakeholder_id })) : []
-    const totalAmount = credit_days ? total_amount : 0
-    const documentTotalAmount = document.credit_days ? document.total_amount : 0
+    const totalAmount = document.document_type === types.documentsTypes.RENT_INVOICE || credit_days ? total_amount : 0
+    const documentTotalAmount = document.document_type === types.documentsTypes.RENT_INVOICE || document.credit_days ? document.total_amount : 0
     const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + (totalAmount - documentTotalAmount)
     const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + (totalAmount - documentTotalAmount)
     const isInvalidCreditAmount = stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit > stakeholderIdExists.credit_limit
@@ -498,39 +498,46 @@ module.exports.update = async event => {
         { connection }
       )
 
-      const stakeholderCreditUpdated = await handleUpdateStakeholderCredit(
-        {
-          ...documentUpdated.req,
-          body: {
-            ...documentUpdated.req.body,
-            total_credit: totalCredit,
-            paid_credit: Number(stakeholderIdExists.paid_credit) + totalAmount - documentTotalAmount,
+      if (document.document_type === types.documentsTypes.RENT_INVOICE || document.credit_days) {
+        const stakeholderCreditUpdated = await handleUpdateStakeholderCredit(
+          {
+            ...documentUpdated.req,
+            body: {
+              ...documentUpdated.req.body,
+              total_credit: totalCredit,
+              paid_credit: document.credit_days
+                ? Number(stakeholderIdExists.paid_credit)
+                : Number(stakeholderIdExists.paid_credit) + totalAmount - documentTotalAmount,
+            },
           },
-        },
-        documentUpdated.res
-      )
+          documentUpdated.res
+        )
 
-      const creditPaidDateUpdated = await handleUpdateCreditPaidDate(
-        {
-          ...stakeholderCreditUpdated.req,
-          body: { ...stakeholderCreditUpdated.req.body, creditPaidDate: document.credit_days ? document.credit_paid_date : new Date().toISOString() },
-        },
-        stakeholderCreditUpdated.res
-      )
-
-      const documentPaidAmountUpdated = await handleUpdateDocumentPaidAmount(
-        {
-          ...creditPaidDateUpdated.req,
-          body: {
-            ...creditPaidDateUpdated.req.body,
-            document_id,
-            paid_credit_amount: document.credit_days ? document.paid_credit_amount : totalAmount,
+        const creditPaidDateUpdated = await handleUpdateCreditPaidDate(
+          {
+            ...stakeholderCreditUpdated.req,
+            body: {
+              ...stakeholderCreditUpdated.req.body,
+              creditPaidDate: document.credit_days ? document.credit_paid_date : new Date().toISOString(),
+            },
           },
-        },
-        creditPaidDateUpdated.res
-      )
+          stakeholderCreditUpdated.res
+        )
 
-      const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentPaidAmountUpdated.req, documentPaidAmountUpdated.res)
+        await handleUpdateDocumentPaidAmount(
+          {
+            ...creditPaidDateUpdated.req,
+            body: {
+              ...creditPaidDateUpdated.req.body,
+              document_id,
+              paid_credit_amount: document.credit_days ? document.paid_credit_amount : totalAmount,
+            },
+          },
+          creditPaidDateUpdated.res
+        )
+      }
+
+      const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentUpdated.req, documentUpdated.res)
 
       const inventoryMovementsCreated = await handleCreateInventoryMovements(inventoryMovementsCancelled.req, {
         ...inventoryMovementsCancelled.res,
