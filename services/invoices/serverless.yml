@@ -109,6 +109,16 @@ functions:
     layers:
       - arn:${file(${self:custom.config}):layer}
 
+  invoicesUpdate:
+    handler: handler.update
+    events:
+      - http:
+          path: invoices
+          method: put
+          cors: true
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
   invoicesCancel:
     handler: handler.cancel
     events:

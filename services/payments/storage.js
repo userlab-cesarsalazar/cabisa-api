@@ -56,6 +56,7 @@ const findAllBy = (fields = {}) => {
       pay.payment_amount AS payments__payment_amount,
       pay.payment_method AS payments__payment_method,
       pay.payment_date AS payments__payment_date,
+      pay.related_external_document AS payments__related_external_document,
       pay.is_deleted AS payments__is_deleted,
       pay.created_at AS payments__created_at,
       pay.created_by AS payments__created_by
@@ -107,7 +108,7 @@ const findDocumentPayments = () => `
 const deletePayments = paymentsIds => `UPDATE payments SET is_deleted = 1 WHERE id IN (${paymentsIds.join(', ')})`
 
 const crupdatePayments = crupdatePaymentsValues => `
-  INSERT INTO payments (id, document_id, payment_method, payment_amount, payment_date, created_at, created_by)
+  INSERT INTO payments (id, document_id, payment_method, payment_amount, payment_date, related_external_document, created_at, created_by)
   VALUES ${crupdatePaymentsValues.join(', ')}
   ON DUPLICATE KEY UPDATE
     id = VALUES(id),
@@ -115,6 +116,7 @@ const crupdatePayments = crupdatePaymentsValues => `
     payment_method = VALUES(payment_method),
     payment_amount = VALUES(payment_amount),
     payment_date = VALUES(payment_date),
+    related_external_document = VALUES(related_external_document),
     created_at = VALUES(created_at),
     created_by = VALUES(created_by)
 `
@@ -126,6 +128,7 @@ const getPaymentsByDocumentId = () => `
     payment_amount,
     payment_method,
     payment_date,
+    related_external_document,
     created_at,
     created_by
   FROM payments

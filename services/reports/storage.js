@@ -61,7 +61,8 @@ const getAccountsReceivable = (fields = {}) => {
         )
         AND d.related_internal_document_id IS NULL
       )
-    ) AND d.status <> '${types.documentsStatus.CANCELLED}' ${whereConditions}
+    ) AND d.status <> '${types.documentsStatus.CANCELLED}'
+    AND d.credit_status IS NOT NULL ${whereConditions}
     ORDER BY d.id DESC
   `
 }

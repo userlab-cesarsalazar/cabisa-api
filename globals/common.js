@@ -344,7 +344,7 @@ const getDocument = async ({
   document_id,
   documentsTypes,
   documentProduct = [],
-  includeDocumentProductMovement = false,
+  includeDocumentProductMovement = false, // Aplica a reparaciones. Cuando es true excluye de los movimientos de inventario el producto que se esta reparando
   includeOldInventoryMovements = true,
   includeInventoryMovements = false,
 }) => {

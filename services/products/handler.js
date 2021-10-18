@@ -76,7 +76,7 @@ module.exports.create = async event => {
       status: { type: { enum: types.productsStatus }, required: true },
       code: { type: 'string', length: 50, required: true, unique: true },
       tax_id: { type: ['number', 'string'], required: true },
-      serial_number: { type: 'string', length: 50, required: true },
+      serial_number: { type: 'string', length: 50 },
       description: { type: 'string', length: 255, required: true },
       image_url: { type: 'string' },
     }
@@ -86,7 +86,7 @@ module.exports.create = async event => {
     const { product_category, status, code, serial_number, tax_id, description, image_url } = req.body
     const product_type = types.productsTypes.PRODUCT
     const errors = []
-    const requiredFields = ['product_category', 'status', 'code', 'serial_number', 'tax_id', 'description']
+    const requiredFields = ['product_category', 'status', 'code', 'tax_id', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [codeExists] = await db.query(storage.checkExists({ code, product_category }))
     if (Object.keys(types.productsStatus).every(k => types.productsStatus[k] !== status))
@@ -131,7 +131,7 @@ module.exports.update = async event => {
       product_category: { type: { enum: types.productsCategories }, required: true },
       status: { type: { enum: types.productsStatus }, required: true },
       code: { type: 'string', length: 50, required: true, unique: true },
-      serial_number: { type: 'string', length: 50, required: true },
+      serial_number: { type: 'string', length: 50 },
       tax_id: { type: ['number', 'string'], required: true },
       description: { type: 'string', length: 255, required: true },
       image_url: { type: 'string' },
@@ -141,7 +141,7 @@ module.exports.update = async event => {
 
     const { id, product_category, status, code, serial_number, tax_id, description, image_url } = req.body
     const errors = []
-    const requiredFields = ['id', 'product_category', 'serial_number', 'status', 'code', 'tax_id', 'description']
+    const requiredFields = ['id', 'product_category', 'status', 'code', 'tax_id', 'description']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const [product] =
       req.currentModel && req.currentModel.product_type

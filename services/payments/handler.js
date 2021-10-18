@@ -76,6 +76,7 @@ module.exports.crupdate = async event => {
             payment_amount: { type: 'number', min: 1, required: true },
             payment_method: { type: { enum: types.paymentMethods }, required: true },
             payment_date: { type: 'string', required: true },
+            related_external_document: { type: 'string' },
           },
         },
       },
@@ -97,8 +98,10 @@ module.exports.crupdate = async event => {
       payments && payments[0] && payments.find(p => Object.keys(types.paymentMethods).every(k => types.paymentMethods[k] !== p.payment_method))
 
     const oldPaidCreditAmount =
-      documentOldPayments && documentOldPayments[0] && documentOldPayments.reduce((r, op) => r + (op.is_deleted ? 0 : Number(op.payment_amount)), 0)
-    const paidCreditAmount = payments && payments[0] && payments.reduce((r, p) => r + Number(p.payment_amount), 0)
+      documentOldPayments && documentOldPayments[0]
+        ? documentOldPayments.reduce((r, op) => r + (op.is_deleted ? 0 : Number(op.payment_amount)), 0)
+        : 0
+    const paidCreditAmount = payments && payments[0] ? payments.reduce((r, p) => r + Number(p.payment_amount), 0) : 0
     const stakeholderPaidCredit = Number(document.stakeholder_paid_credit) - oldPaidCreditAmount + paidCreditAmount
     const documentCreditAmount = document && document.total_amount ? Number(document.total_amount) : 0
 
@@ -170,6 +173,7 @@ module.exports.crupdate = async event => {
               '${p.payment_method}',
               ${p.payment_amount},
               '${payment_date}',
+              ${p.related_external_document ? `'${p.related_external_document}'` : null},
               '${created_at}',
               ${oldPayment && oldPayment.created_by ? oldPayment.created_by : req.currentUser.user_id}
             )`

@@ -1,5 +1,6 @@
 // res.excludeProductOnCreateDetail: product_id
 // res.saveInventoryUnitValueAsProductPrice: boolean,
+// res.calculateSalesCommission: boolean
 
 // req.body: {
 //   document_id,
@@ -14,6 +15,7 @@
 //   end_date,
 //   cancel_reason,
 //   subtotal_amount,
+//   sales_commission_amount,
 //   total_discount_amount
 //   total_tax_amount
 //   total_amount,
@@ -37,6 +39,7 @@ const handleUpdateDocument = async (req, res) => {
     end_date = null,
     cancel_reason = null,
     subtotal_amount = null,
+    sales_commission_amount = null,
     total_discount_amount = null,
     total_tax_amount = null,
     total_amount = null,
@@ -59,6 +62,7 @@ const handleUpdateDocument = async (req, res) => {
     end_date,
     cancel_reason,
     subtotal_amount,
+    sales_commission_amount,
     total_discount_amount,
     total_tax_amount,
     total_amount,
@@ -111,6 +115,7 @@ const updateDocument = () => `
       end_date = ?,
       cancel_reason = ?,
       subtotal_amount = ?,
+      sales_commission_amount = ?,
       total_discount_amount = ?,
       total_tax_amount = ?,
       total_amount = ?,

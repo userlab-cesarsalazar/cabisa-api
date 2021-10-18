@@ -105,7 +105,7 @@ module.exports.create = async event => {
           product_id: { type: ['string', 'number'], required: true },
           service_type: { type: { enum: types.documentsServiceType }, required: true },
           product_quantity: { type: 'number', min: 0, required: true },
-          product_price: { type: 'number', min: 0, required: true },
+          product_price: { type: 'number', min: 0 },
           parent_product_id: { type: ['string', 'number'] },
         },
       },
@@ -132,11 +132,16 @@ module.exports.create = async event => {
     const requiredFields = ['stakeholder_id', 'project_id', 'products', 'subtotal_amount', 'total_amount']
     if (Number(total_discount_amount) !== 0) requiredFields.push('total_discount_amount')
     if (Number(total_tax_amount) !== 0) requiredFields.push('total_tax_amount')
-    const requiredProductFields = ['product_id', 'service_type', 'product_quantity', 'product_price']
+    const requiredParentProductFields = ['product_id', 'service_type', 'product_quantity']
+    const requiredChildProductFields = ['product_id', 'service_type', 'product_quantity', 'product_price']
     // if (!stakeholder_id) requiredFields.push('stakeholder_type', 'stakeholder_name', 'stakeholder_address', 'stakeholder_nit', 'stakeholder_phone')
     if (operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
+    const requiredProductErrorFields = products.some(p => {
+      const isParentProduct = !p.parent_product_id && p.parent_product_id !== null
+      if (isParentProduct) return requiredParentProductFields.some(k => !p[k] || p[k] <= 0)
+      else return requiredChildProductFields.some(k => !p[k] || p[k] <= 0)
+    })
     const [stakeholderIdExists] = stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: stakeholder_id })) : []
     const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + total_amount
     const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + total_amount
@@ -149,7 +154,8 @@ module.exports.create = async event => {
           .join(', ')}`
       )
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
+    if (requiredProductErrorFields)
+      errors.push(`Los campos ${requiredParentProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (stakeholder_id && !stakeholderIdExists) errors.push('El cliente no se encuentra registrado')
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
@@ -254,7 +260,7 @@ module.exports.update = async event => {
           product_id: { type: ['string', 'number'], required: true },
           service_type: { type: { enum: types.documentsServiceType }, required: true },
           product_quantity: { type: 'number', min: 0, required: true },
-          product_price: { type: 'number', min: 0, required: true },
+          product_price: { type: 'number', min: 0 },
           parent_product_id: { type: ['string', 'number'] },
         },
       },
@@ -290,10 +296,15 @@ module.exports.update = async event => {
     const requiredFields = ['document_id', 'project_id', 'products', , 'subtotal_amount', 'total_amount']
     if (Number(total_discount_amount) !== 0) requiredFields.push('total_discount_amount')
     if (Number(total_tax_amount) !== 0) requiredFields.push('total_tax_amount')
-    const requiredProductFields = ['product_id', 'service_type', 'product_quantity', 'product_price']
+    const requiredParentProductFields = ['product_id', 'service_type', 'product_quantity']
+    const requiredChildProductFields = ['product_id', 'service_type', 'product_quantity', 'product_price']
     if (document && document.operation_type === types.operationsTypes.RENT) requiredFields.push('start_date', 'end_date')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
+    const requiredProductErrorFields = products.some(p => {
+      const isParentProduct = !p.parent_product_id && p.parent_product_id !== null
+      if (isParentProduct) return requiredParentProductFields.some(k => !p[k] || p[k] <= 0)
+      else return requiredChildProductFields.some(k => !p[k] || p[k] <= 0)
+    })
     const [stakeholderIdExists] =
       document && document.stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: document.stakeholder_id })) : []
     const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + (total_amount - document.total_amount)
@@ -301,7 +312,8 @@ module.exports.update = async event => {
     const isInvalidCreditAmount = stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit > stakeholderIdExists.credit_limit
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
+    if (requiredProductErrorFields)
+      errors.push(`Los campos ${requiredParentProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
     if (!document || !document.document_id) errors.push(`El documento con id ${document_id} no se encuentra registrado`)
@@ -394,7 +406,7 @@ module.exports.invoice = async event => {
           product_id: { type: ['string', 'number'], required: true },
           service_type: { type: { enum: types.documentsServiceType }, required: true },
           product_quantity: { type: 'number', min: 0, required: true },
-          product_price: { type: 'number', min: 0, required: true },
+          product_price: { type: 'number', min: 0 },
           product_discount_percentage: { type: 'number', min: 0 },
           product_discount: { type: 'number', min: 0 },
           parent_product_id: { type: ['string', 'number'] },
@@ -430,8 +442,13 @@ module.exports.invoice = async event => {
     if (Number(total_discount_amount) !== 0) requiredFields.push('total_discount_amount')
     if (Number(total_tax_amount) !== 0) requiredFields.push('total_tax_amount')
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
-    const requiredProductFields = ['product_id', 'service_type', 'product_quantity', 'product_price']
-    const requiredProductErrorFields = requiredProductFields.some(k => products.some(p => !p[k] || p[k] <= 0))
+    const requiredParentProductFields = ['product_id', 'service_type', 'product_quantity']
+    const requiredChildProductFields = ['product_id', 'service_type', 'product_quantity', 'product_price']
+    const requiredProductErrorFields = products.some(p => {
+      const isParentProduct = !p.parent_product_id && p.parent_product_id !== null
+      if (isParentProduct) return requiredParentProductFields.some(k => !p[k] || p[k] <= 0)
+      else return requiredChildProductFields.some(k => !p[k] || p[k] <= 0)
+    })
     const documentDetails = document_id
       ? await db.query(commonStorage.findDocument([types.documentsTypes.SELL_PRE_INVOICE, types.documentsTypes.RENT_PRE_INVOICE]), [document_id])
       : []
@@ -440,7 +457,8 @@ module.exports.invoice = async event => {
     )
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
-    if (requiredProductErrorFields) errors.push(`Los campos ${requiredProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
+    if (requiredProductErrorFields)
+      errors.push(`Los campos ${requiredParentProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (!documentDetails || !documentDetails[0]) errors.push('El documento recibido no se encuentra registrado')
     if (invalidStatusProducts && invalidStatusProducts[0])
