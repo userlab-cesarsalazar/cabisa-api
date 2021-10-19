@@ -154,6 +154,7 @@ const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousCondition
     $lte: '<=',
     $like: 'LIKE',
     $notlike: 'NOT LIKE',
+    $in: 'IN',
   }
 
   const { whereConditionsFields, paginationSQL } = getPaginationSQL(fields)
@@ -177,6 +178,8 @@ const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousCondition
       value = fieldValue.substring(fieldValue.indexOf(':') + 1)
     }
 
+    value = operators[paramOperator] === 'IN' ? `(${value})` : `'${value}'`
+
     if (!operators[paramOperator]) throw new Error(`The provided operator doesn't exists`)
 
     const openParenthesis = whereConditionsFields.open_parenthesis === k ? '(' : ''
@@ -185,7 +188,7 @@ const getWhereConditions = ({ fields = {}, tableAlias = '', hasPreviousCondition
     const previousCondition = !hasPreviousConditions && i === 0 ? 'WHERE ' : prefixOperator
     const field = tableAlias ? `${tableAlias}.${k}` : k
 
-    return ` ${previousCondition} ${openParenthesis}${field} ${operators[paramOperator]} '${value}'${closeParenthesis}`
+    return ` ${previousCondition} ${openParenthesis}${field} ${operators[paramOperator]} ${value}${closeParenthesis}`
   })
 
   return `${whereConditions.join('')} ${paginationSQL}`
