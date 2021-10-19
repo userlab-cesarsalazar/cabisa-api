@@ -32,6 +32,19 @@ module.exports.readRoles = async event => {
   }
 }
 
+module.exports.readUsersOptions = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findOptionsBy })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
 module.exports.create = async event => {
   try {
     const inputType = {
