@@ -73,12 +73,12 @@ const getSales = (fields = {}) => {
   const includePreInvoices = /d.document_type = 'PRE_INVOICE'/i.test(rawWhereConditions)
   const includeBoth = !includeInvoices && !includePreInvoices
   const whereConditions = rawWhereConditions
-    .replace(/d.stakeholder_name/i, 's.name')
+    .replace(/d.client_id/i, 's.id')
     .replace(/AND d.document_type = 'INVOICES'/i, '')
     .replace(/AND d.document_type = 'PRE_INVOICE'/i, '')
     .replace(/start_date/i, 'created_at')
     .replace(/end_date/i, 'created_at')
-    .replace(/d.seller_name/i, 'u.full_name')
+    .replace(/d.seller_id/i, 'u.id')
 
   const invoicesWhereConditions =
     includeInvoices || includeBoth
