@@ -21,6 +21,15 @@ const findRoles = (fields = {}, initCondition = `is_active = 1`) => `
   WHERE ${initCondition} ${getWhereConditions({ fields })}
 `
 
+const findOptionsBy = (fields = {}, initCondition = `u.is_active = 1`) => `
+  SELECT
+    u.id,
+    u.full_name
+  FROM users u
+  WHERE ${initCondition} ${getWhereConditions({ fields, tableAlias: 'u' })}
+  ORDER BY u.full_name ASC
+`
+
 const checkExists = (fields = {}) => `SELECT id, email, password FROM users ${getWhereConditions({ fields, hasPreviousConditions: false })}`
 
 const createUser = () => `
@@ -42,6 +51,7 @@ module.exports = {
   createUser,
   deleteUser,
   findAllBy,
+  findOptionsBy,
   findPassword,
   findRoles,
   updatePassword,
