@@ -1,4 +1,4 @@
-const { creditsPolicy } = require('../types')
+const { creditsPolicy, documentsTypes } = require('../types')
 // res.excludeProductOnCreateDetail: product_id
 // res.calculateSalesCommission: boolean
 // res.saveInventoryUnitValueAsProductPrice: boolean
@@ -61,6 +61,12 @@ const handleCreateDocument = async (req, res) => {
   const sales_commission_amount =
     res.calculateSalesCommission && !isNaN(salesCommissionPercentage) ? subtotal_amount * salesCommissionPercentage : null
 
+  const isInvoiceOrPreInvoice = () =>
+    document_type === documentsTypes.SELL_INVOICE ||
+    document_type === documentsTypes.SELL_PRE_INVOICE ||
+    document_type === documentsTypes.RENT_INVOICE ||
+    document_type === documentsTypes.RENT_PRE_INVOICE
+
   await res.connection.query(createDocument(), [
     document_type,
     stakeholder_id,
@@ -80,7 +86,8 @@ const handleCreateDocument = async (req, res) => {
     total_amount,
     payment_method,
     credit_days,
-    Number(credit_days) > 0 ? creditsPolicy.creditStatusEnum.UNPAID : null,
+    // Number(credit_days) > 0 ? creditsPolicy.creditStatusEnum.UNPAID : null,
+    isInvoiceOrPreInvoice() ? creditsPolicy.creditStatusEnum.UNPAID : null,
     description,
     req.currentUser.user_id,
   ])
