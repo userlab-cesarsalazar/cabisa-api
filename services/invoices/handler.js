@@ -70,7 +70,7 @@ module.exports.readPaymentMethods = async event => {
 
     const res = await handleRead(req, { dbQuery: db.query, storage: storage.findPaymentMethods })
 
-    const data = res.data.flatMap(d => d.name)
+    const data = res.data.map(d => d.name)
 
     return await handleResponse({ req, res: { ...res, data } })
   } catch (error) {
