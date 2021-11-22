@@ -11,6 +11,7 @@ CREATE TABLE `payments` (
   `payment_amount` DOUBLE NOT NULL,
   `payment_date` TIMESTAMP NOT NULL,
   `related_external_document` VARCHAR(100) DEFAULT NULL,
+  `description` TEXT DEFAULT NULL,
   `is_deleted` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` INT NOT NULL,

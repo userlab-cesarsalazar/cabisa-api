@@ -38,7 +38,8 @@ module.exports.read = async event => {
           products:
             d.products && d.products[0]
               ? d.products.reduce((r, p) => {
-                  const isDuplicate = r[0] && r.some(rp => Number(rp.id) === Number(p.id))
+                  const isDuplicate =
+                    r[0] && r.some(rp => Number(rp.id) === Number(p.id) && Number(rp.parent_product_id) === Number(p.parent_product_id))
 
                   if (isDuplicate) return r
                   else return [...r, p]
@@ -77,6 +78,7 @@ module.exports.crupdate = async event => {
             payment_method: { type: { enum: types.paymentMethods }, required: true },
             payment_date: { type: 'string', required: true },
             related_external_document: { type: 'string' },
+            description: { type: 'string' },
           },
         },
       },
@@ -109,7 +111,7 @@ module.exports.crupdate = async event => {
     if (requiredPaymentErrorFields) errors.push(`Los campos ${requiredPaymentFields.join(', ')} son obligatorios`)
     if (!document || !document.document_id)
       errors.push(`El documento debe ser del tipo ${types.documentsTypes.SELL_INVOICE} o ${types.documentsTypes.RENT_INVOICE}`)
-    if (!document || !document.credit_days) errors.push(`El documento debe estar asociado a un credito`)
+    // if (!document || !document.credit_days) errors.push(`El documento debe estar asociado a un credito`)
     if (paidCreditAmount > documentCreditAmount) errors.push(`El total de los pagos no puede ser superior al total del credito para este documento`)
     if (invalidPaymentMethod)
       errors.push(
@@ -174,6 +176,7 @@ module.exports.crupdate = async event => {
               ${p.payment_amount},
               '${payment_date}',
               ${p.related_external_document ? `'${p.related_external_document}'` : null},
+              ${p.description ? `'${p.description}'` : null},
               '${created_at}',
               ${oldPayment && oldPayment.created_by ? oldPayment.created_by : req.currentUser.user_id}
             )`

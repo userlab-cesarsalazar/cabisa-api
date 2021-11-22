@@ -52,39 +52,10 @@ module.exports.read = async event => {
 
     const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['products'] })
 
-    const data = res.data.map(invoice => {
-      const { discount, discount_percentage, subtotal, total_tax, total } = invoice.products.reduce((r, p) => {
-        const discount = (r.discount || 0) + p.unit_discount_amount * p.product_quantity
-        const subtotal = (r.subtotal || 0) + p.product_price * p.product_quantity
-        const total_tax = (r.total_tax || 0) + p.unit_tax_amount * p.product_quantity
-
-        return {
-          discount,
-          discount_percentage: p.discount_percentage,
-          subtotal,
-          total_tax,
-          total: subtotal + total_tax,
-        }
-      }, {})
-
-      const products = invoice.products.map(p => {
-        return {
-          ...p,
-          subtotal: p.product_price * p.product_quantity,
-          subtotal_tax: p.unit_tax_amount * p.product_quantity,
-        }
-      })
-
-      return {
-        ...invoice,
-        discount,
-        discount_percentage,
-        subtotal,
-        total_tax,
-        total,
-        products,
-      }
-    })
+    const data = res.data.map(invoice => ({
+      ...invoice,
+      discount_percentage: invoice.products[0].discount_percentage,
+    }))
 
     return await handleResponse({ req, res: { ...res, data } })
   } catch (error) {
@@ -240,8 +211,10 @@ module.exports.create = async event => {
     const [stakeholderNitUnique] = stakeholder_nit ? await db.query(commonStorage.findStakeholder({ nit: stakeholder_nit, stakeholder_type })) : []
     const [stakeholderIdExists] = stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: stakeholder_id })) : []
     const [projectExists] = project_id ? await db.query(storage.checkProjectExists(), [project_id]) : []
-    const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + (credit_days ? total_amount : 0)
-    const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + (credit_days ? total_amount : 0)
+    // const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + (credit_days ? total_amount : 0)
+    // const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + (credit_days ? total_amount : 0)
+    const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + total_amount
+    const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + total_amount
     const isInvalidCreditAmount = stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit > stakeholderIdExists.credit_limit
 
     if (Object.keys(types.operationsTypes).every(k => types.operationsTypes[k] !== operation_type))
@@ -272,9 +245,11 @@ module.exports.create = async event => {
     if (project_id && !projectExists) errors.push(`El proyecto no se encuentra registrado`)
     if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)
     if (total_amount <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
-    if (credit_days && (!stakeholderIdExists || !stakeholderIdExists.credit_limit))
+    // if (credit_days && (!stakeholderIdExists || !stakeholderIdExists.credit_limit))
+    if (!stakeholderIdExists || !stakeholderIdExists.credit_limit)
       errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
-    if (credit_days && isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
+    // if (credit_days && isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
+    if (isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
     products.forEach(p => {
       if (Object.keys(types.documentsServiceType).every(k => types.documentsServiceType[k] !== p.service_type))
         errors.push(
@@ -442,8 +417,10 @@ module.exports.update = async event => {
     })
     const [stakeholderIdExists] =
       document && document.stakeholder_id ? await db.query(commonStorage.findStakeholder({ id: document.stakeholder_id })) : []
-    const totalAmount = document.document_type === types.documentsTypes.RENT_INVOICE || credit_days ? total_amount : 0
-    const documentTotalAmount = document.document_type === types.documentsTypes.RENT_INVOICE || document.credit_days ? document.total_amount : 0
+    // const totalAmount = document.document_type === types.documentsTypes.RENT_INVOICE || credit_days ? total_amount : 0
+    // const documentTotalAmount = document.document_type === types.documentsTypes.RENT_INVOICE || document.credit_days ? document.total_amount : 0
+    const totalAmount = total_amount
+    const documentTotalAmount = document.total_amount
     const totalCredit = (Number(stakeholderIdExists.total_credit) || 0) + (totalAmount - documentTotalAmount)
     const currentCredit = (Number(stakeholderIdExists.current_credit) || 0) + (totalAmount - documentTotalAmount)
     const isInvalidCreditAmount = stakeholderIdExists && stakeholderIdExists.credit_limit && currentCredit > stakeholderIdExists.credit_limit
@@ -468,9 +445,11 @@ module.exports.update = async event => {
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no esta registrado`))
     if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)
     if (total_amount <= 0) errors.push(`El monto total de la factura debe ser mayor a cero`)
-    if (credit_days && (!stakeholderIdExists || !stakeholderIdExists.credit_limit))
+    // if (credit_days && (!stakeholderIdExists || !stakeholderIdExists.credit_limit))
+    if (!stakeholderIdExists || !stakeholderIdExists.credit_limit)
       errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
-    if (credit_days && isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
+    // if (credit_days && isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
+    if (isInvalidCreditAmount) errors.push(`Se ha superado el limite de credito del cliente`)
     products.forEach(p => {
       if (Object.keys(types.documentsServiceType).every(k => types.documentsServiceType[k] !== p.service_type))
         errors.push(
@@ -498,44 +477,56 @@ module.exports.update = async event => {
         { connection }
       )
 
-      if (document.document_type === types.documentsTypes.RENT_INVOICE || document.credit_days) {
-        const stakeholderCreditUpdated = await handleUpdateStakeholderCredit(
-          {
-            ...documentUpdated.req,
-            body: {
-              ...documentUpdated.req.body,
-              total_credit: totalCredit,
-              paid_credit: document.credit_days
-                ? Number(stakeholderIdExists.paid_credit)
-                : Number(stakeholderIdExists.paid_credit) + totalAmount - documentTotalAmount,
-            },
-          },
-          documentUpdated.res
-        )
+      // if (document.document_type === types.documentsTypes.RENT_INVOICE || document.credit_days) {
+      // const stakeholderCreditUpdated = await handleUpdateStakeholderCredit(
+      //   {
+      //     ...documentUpdated.req,
+      //     body: {
+      //       ...documentUpdated.req.body,
+      //       total_credit: totalCredit,
+      //       paid_credit: document.credit_days
+      //         ? Number(stakeholderIdExists.paid_credit)
+      //         : Number(stakeholderIdExists.paid_credit) + totalAmount - documentTotalAmount,
+      //     },
+      //   },
+      //   documentUpdated.res
+      // )
 
-        const creditPaidDateUpdated = await handleUpdateCreditPaidDate(
-          {
-            ...stakeholderCreditUpdated.req,
-            body: {
-              ...stakeholderCreditUpdated.req.body,
-              creditPaidDate: document.credit_days ? document.credit_paid_date : new Date().toISOString(),
-            },
-          },
-          stakeholderCreditUpdated.res
-        )
+      // const creditPaidDateUpdated = await handleUpdateCreditPaidDate(
+      //   {
+      //     ...stakeholderCreditUpdated.req,
+      //     body: {
+      //       ...stakeholderCreditUpdated.req.body,
+      //       creditPaidDate: document.credit_days ? document.credit_paid_date : new Date().toISOString(),
+      //     },
+      //   },
+      //   stakeholderCreditUpdated.res
+      // )
 
-        await handleUpdateDocumentPaidAmount(
-          {
-            ...creditPaidDateUpdated.req,
-            body: {
-              ...creditPaidDateUpdated.req.body,
-              document_id,
-              paid_credit_amount: document.credit_days ? document.paid_credit_amount : totalAmount,
-            },
+      // await handleUpdateDocumentPaidAmount(
+      //   {
+      //     ...creditPaidDateUpdated.req,
+      //     body: {
+      //       ...creditPaidDateUpdated.req.body,
+      //       document_id,
+      //       paid_credit_amount: document.credit_days ? document.paid_credit_amount : totalAmount,
+      //     },
+      //   },
+      //   creditPaidDateUpdated.res
+      // )
+      // }
+
+      await handleUpdateStakeholderCredit(
+        {
+          ...documentUpdated.req,
+          body: {
+            ...documentUpdated.req.body,
+            total_credit: totalCredit,
+            paid_credit: Number(stakeholderIdExists.paid_credit), // ahora todos los pagos los ingresan manualmente
           },
-          creditPaidDateUpdated.res
-        )
-      }
+        },
+        documentUpdated.res
+      )
 
       const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentUpdated.req, documentUpdated.res)
 
@@ -592,22 +583,22 @@ module.exports.cancel = async event => {
 
       const inventoryMovementsCancelled = await handleCancelInventoryMovements(documentCancelled.req, documentCancelled.res)
 
-      if (
-        document.document_type === types.documentsTypes.RENT_INVOICE ||
-        (document.document_type === types.documentsTypes.SELL_INVOICE && document.credit_days)
-      ) {
-        await handleUpdateStakeholderCredit(
-          {
-            ...inventoryMovementsCancelled.req,
-            body: {
-              ...inventoryMovementsCancelled.req.body,
-              total_credit: Number(document.stakeholder_total_credit) - Number(document.total_amount),
-              paid_credit: Number(document.stakeholder_paid_credit) - Number(document.paid_credit_amount),
-            },
+      // if (
+      //   document.document_type === types.documentsTypes.RENT_INVOICE ||
+      //   (document.document_type === types.documentsTypes.SELL_INVOICE && document.credit_days)
+      // ) {
+      await handleUpdateStakeholderCredit(
+        {
+          ...inventoryMovementsCancelled.req,
+          body: {
+            ...inventoryMovementsCancelled.req.body,
+            total_credit: Number(document.stakeholder_total_credit) - Number(document.total_amount),
+            paid_credit: Number(document.stakeholder_paid_credit) - Number(document.paid_credit_amount),
           },
-          inventoryMovementsCancelled.res
-        )
-      }
+        },
+        inventoryMovementsCancelled.res
+      )
+      // }
 
       return await handleUpdateStock(
         { ...inventoryMovementsCancelled.req, body: { ...inventoryMovementsCancelled.req.body, old_inventory_movements: [] } },

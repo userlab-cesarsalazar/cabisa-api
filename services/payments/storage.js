@@ -7,6 +7,7 @@ const findAllBy = (fields = {}) => {
   return `
     SELECT
       d.id,
+      d.related_internal_document_id,
       d.document_type,
       d.stakeholder_id,
       s.name AS stakeholder_name,
@@ -57,6 +58,7 @@ const findAllBy = (fields = {}) => {
       pay.payment_method AS payments__payment_method,
       pay.payment_date AS payments__payment_date,
       pay.related_external_document AS payments__related_external_document,
+      pay.description AS payments__description,
       pay.is_deleted AS payments__is_deleted,
       pay.created_at AS payments__created_at,
       pay.created_by AS payments__created_by
@@ -66,7 +68,7 @@ const findAllBy = (fields = {}) => {
     LEFT JOIN documents_products dp ON dp.document_id = d.id
     LEFT JOIN products prod ON prod.id = dp.product_id
     LEFT JOIN payments pay ON pay.document_id = d.id
-    WHERE d.credit_days IS NOT NULL AND (
+    WHERE (
       d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
       d.document_type = '${types.documentsTypes.RENT_INVOICE}'
     ) ${whereConditions}
@@ -78,7 +80,6 @@ const findDocumentPayments = () => `
   SELECT
     d.id AS document_id,
     d.credit_days,
-    d.credit_status,
     d.related_internal_document_id,
     d.subtotal_amount,
     d.total_amount,
@@ -92,6 +93,7 @@ const findDocumentPayments = () => `
     p.payment_amount AS old_payments__payment_amount,
     p.payment_method AS old_payments__payment_method,
     p.payment_date AS old_payments__payment_date,
+    p.description AS old_payments__description,
     p.is_deleted AS old_payments__is_deleted,
     p.created_at AS old_payments__created_at,
     p.created_by AS old_payments__created_by
@@ -99,7 +101,7 @@ const findDocumentPayments = () => `
   LEFT JOIN stakeholders s ON s.id = d.stakeholder_id
   LEFT JOIN payments p ON p.document_id = d.id
   WHERE
-    d.id = ? AND d.credit_days IS NOT NULL AND (
+    d.id = ? AND (
       d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
       d.document_type = '${types.documentsTypes.RENT_INVOICE}'
     )
@@ -108,7 +110,7 @@ const findDocumentPayments = () => `
 const deletePayments = paymentsIds => `UPDATE payments SET is_deleted = 1 WHERE id IN (${paymentsIds.join(', ')})`
 
 const crupdatePayments = crupdatePaymentsValues => `
-  INSERT INTO payments (id, document_id, payment_method, payment_amount, payment_date, related_external_document, created_at, created_by)
+  INSERT INTO payments (id, document_id, payment_method, payment_amount, payment_date, related_external_document, description, created_at, created_by)
   VALUES ${crupdatePaymentsValues.join(', ')}
   ON DUPLICATE KEY UPDATE
     id = VALUES(id),
@@ -117,6 +119,7 @@ const crupdatePayments = crupdatePaymentsValues => `
     payment_amount = VALUES(payment_amount),
     payment_date = VALUES(payment_date),
     related_external_document = VALUES(related_external_document),
+    description = VALUES(description),
     created_at = VALUES(created_at),
     created_by = VALUES(created_by)
 `
@@ -129,6 +132,7 @@ const getPaymentsByDocumentId = () => `
     payment_method,
     payment_date,
     related_external_document,
+    description,
     created_at,
     created_by
   FROM payments

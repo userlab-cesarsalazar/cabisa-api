@@ -507,7 +507,8 @@ module.exports.invoice = async event => {
           .map(k => types.creditsPolicy.creditDaysEnum[k])
           .join(', ')}`
       )
-    if ((credit_days && !stakeholderIdExists) || !stakeholderIdExists.credit_limit)
+    // if (credit_days && (!stakeholderIdExists || !stakeholderIdExists.credit_limit))
+    if (!stakeholderIdExists || !stakeholderIdExists.credit_limit)
       errors.push(`Debe asignar un limite de credito al cliente antes de otorgarle un credito`)
 
     products.forEach(p => {
@@ -540,52 +541,69 @@ module.exports.invoice = async event => {
         { connection, calculateSalesCommission: true }
       )
 
-      const creditDueDateUpdated = await handleUpdateCreditDueDate(
-        { ...documentCreated.req, body: { ...documentCreated.req.body, credit_days } },
-        documentCreated.res
-      )
+      // const creditDueDateUpdated = await handleUpdateCreditDueDate(
+      //   { ...documentCreated.req, body: { ...documentCreated.req.body, credit_days } },
+      //   documentCreated.res
+      // )
 
-      const creditPaidDateUpdated = await handleUpdateCreditPaidDate(
-        { ...creditDueDateUpdated.req, body: { ...creditDueDateUpdated.req.body, creditPaidDate: credit_days ? null : new Date().toISOString() } },
-        creditDueDateUpdated.res
-      )
+      // const creditPaidDateUpdated = await handleUpdateCreditPaidDate(
+      //   { ...creditDueDateUpdated.req, body: { ...creditDueDateUpdated.req.body, creditPaidDate: credit_days ? null : new Date().toISOString() } },
+      //   creditDueDateUpdated.res
+      // )
 
-      const creditStatusUpdated = await handleUpdateCreditStatus(
-        {
-          ...creditPaidDateUpdated.req,
-          body: {
-            ...creditPaidDateUpdated.req.body,
-            credit_status: credit_days ? types.creditsPolicy.creditStatusEnum.UNPAID : types.creditsPolicy.creditStatusEnum.PAID,
-            related_internal_document_id,
-          },
-        },
-        creditPaidDateUpdated.res
-      )
+      // const creditStatusUpdated = await handleUpdateCreditStatus(
+      //   {
+      //     ...creditPaidDateUpdated.req,
+      //     body: {
+      //       ...creditPaidDateUpdated.req.body,
+      //       credit_status: credit_days ? types.creditsPolicy.creditStatusEnum.UNPAID : types.creditsPolicy.creditStatusEnum.PAID,
+      //       related_internal_document_id,
+      //     },
+      //   },
+      //   creditPaidDateUpdated.res
+      // )
+
+      // const stakeholderCreditUpdated = await handleUpdateStakeholderCredit(
+      //   {
+      //     ...creditStatusUpdated.req,
+      //     body: {
+      //       ...creditStatusUpdated.req.body,
+      //       total_credit: Number(stakeholderIdExists.total_credit) - Number(groupedDocumentDetails.total_amount) + Number(total_amount),
+      //       paid_credit: Number(stakeholderIdExists.paid_credit) + (credit_days ? 0 : total_amount),
+      //     },
+      //   },
+      //   creditStatusUpdated.res
+      // )
+
+      // const documentPaidAmountUpdated = await handleUpdateDocumentPaidAmount(
+      //   {
+      //     ...stakeholderCreditUpdated.req,
+      //     body: {
+      //       ...stakeholderCreditUpdated.req.body,
+      //       paid_credit_amount: credit_days ? 0 : total_amount,
+      //     },
+      //   },
+      //   stakeholderCreditUpdated.res
+      // )
+
+      // const documentApproved = await handleApproveDocument(documentPaidAmountUpdated.req, documentPaidAmountUpdated.res)
+
+      if (credit_days)
+        await handleUpdateCreditDueDate({ ...documentCreated.req, body: { ...documentCreated.req.body, credit_days } }, documentCreated.res)
 
       const stakeholderCreditUpdated = await handleUpdateStakeholderCredit(
         {
-          ...creditStatusUpdated.req,
+          ...documentCreated.req,
           body: {
-            ...creditStatusUpdated.req.body,
+            ...documentCreated.req.body,
             total_credit: Number(stakeholderIdExists.total_credit) - Number(groupedDocumentDetails.total_amount) + Number(total_amount),
-            paid_credit: Number(stakeholderIdExists.paid_credit || 0) + (credit_days ? 0 : total_amount),
+            paid_credit: Number(stakeholderIdExists.paid_credit),
           },
         },
-        creditStatusUpdated.res
+        documentCreated.res
       )
 
-      const documentPaidAmountUpdated = await handleUpdateDocumentPaidAmount(
-        {
-          ...stakeholderCreditUpdated.req,
-          body: {
-            ...stakeholderCreditUpdated.req.body,
-            paid_credit_amount: credit_days ? 0 : total_amount,
-          },
-        },
-        stakeholderCreditUpdated.res
-      )
-
-      const documentApproved = await handleApproveDocument(documentPaidAmountUpdated.req, documentPaidAmountUpdated.res)
+      const documentApproved = await handleApproveDocument(stakeholderCreditUpdated.req, stakeholderCreditUpdated.res)
 
       const inventoryMovementsCreated = await handleCreateInventoryMovements(documentApproved.req, {
         ...documentApproved.res,
