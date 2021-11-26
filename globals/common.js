@@ -263,13 +263,15 @@ const calculateProductTaxes = (products, productsStocks) => {
   return products.map(p => {
     const sameProduct = productsStocks.find(ps => Number(ps.product_id) === Number(p.product_id)) || {}
     const product_price = p && p.product_price > 0 ? p.product_price : sameProduct.product_price
+    const taxFee = Number(sameProduct.tax_fee)
+    const taxPercent = taxFee ? taxFee / 100 : 0
 
     return {
       ...sameProduct,
       ...p,
       product_price,
-      tax_fee: sameProduct.tax_fee,
-      unit_tax_amount: product_price * (sameProduct.tax_fee / 100),
+      tax_fee: taxFee,
+      unit_tax_amount: product_price / (1 - taxPercent) - product_price,
     }
   })
 }
