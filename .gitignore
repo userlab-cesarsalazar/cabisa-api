@@ -48,3 +48,4 @@ credentials.local_prod.json
 
 serverless-api\.iml
 layers/nodejs/package-lock.json
+**/package-lock.json
