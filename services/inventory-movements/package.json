@@ -5,8 +5,8 @@
   "main": "handler.js",
   "author": "Cesar Salazar",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "deploy-dev": "export AWS_PROFILE=cabisa && serverless deploy",
+    "test": "echo \"Error: no test specified\" && exit 1",    
+    "deploy-prod": "export AWS_PROFILE=cabisa && serverless deploy",
     "sls-local": "nodemon --exec sls offline"
   },
   "license": "ISC",
