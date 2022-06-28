@@ -41,7 +41,7 @@ const buildXml = (data,moment) => {
 
     let xmlDescription = `<dte:Adenda>
                             <Codigo_cliente>C01</Codigo_cliente>
-                            <Observaciones>ESTA ES UNA ADENDA</Observaciones>
+                            <Observaciones>${data.observations}</Observaciones>
                         </dte:Adenda>
                 </dte:SAT>
         </dte:GTDocumento>`            
@@ -70,6 +70,7 @@ const headerInvoice = (data, moment) => {
               <dte:Pais>GT</dte:Pais>
             </dte:DireccionEmisor>
           </dte:Emisor>
+
           <dte:Receptor CorreoReceptor="${data.client.email}" IDReceptor="${data.client.nit}" NombreReceptor="${data.client.name}">
             <dte:DireccionReceptor>
               <dte:Direccion>${data.client.address}</dte:Direccion>
@@ -79,9 +80,15 @@ const headerInvoice = (data, moment) => {
               <dte:Pais>GT</dte:Pais>
             </dte:DireccionReceptor>
           </dte:Receptor>
+
           <dte:Frases>
             <dte:Frase CodigoEscenario="1" TipoFrase="1"></dte:Frase>
           </dte:Frases>`
     
     return headerStructure
+  }
+
+
+  module.exports = {
+    buildXml
   }
