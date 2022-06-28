@@ -35,7 +35,7 @@ functions:
     timeout: 30
     events:
       - http:
-          path: invoice/create
+          path: invoicefel/create
           method: post
           cors:
             origin: '*'
