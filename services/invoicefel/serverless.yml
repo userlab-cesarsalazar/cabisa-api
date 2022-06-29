@@ -23,6 +23,12 @@ provider:
     DATABASE_NAME: ${file(${self:custom.config}):dbName}
     DATABASE_PASSWORD: ${file(${self:custom.config}):dbPassword}
     ENCRYPTION_KEY: ${file(${self:custom.config}):encryptionKey}
+    CERTIFIER_URL: ${file(${self:custom.config}):certifierUrl}
+    SIGNATURE_USER_SAT: ${file(${self:custom.config}):signatureUserSat}
+    SIGNATURE_KEY_SAT: ${file(${self:custom.config}):signatureKeySat}
+    API_USER_SAT: ${file(${self:custom.config}):apiUserSat}
+    API_KEY_SAT: ${file(${self:custom.config}):apiKeySat}
+    IDENTIFIER_SAT: ${file(${self:custom.config}):identifierSat}
 
 package:
   exclude:
