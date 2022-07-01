@@ -1,10 +1,11 @@
-//const mysql = require('mysql2/promise')
-//const storage = require('./storage')
-//const db = mysqlConfig(mysql)
-const axios = require('../../layers/nodejs/node_modules/axios')
-const moment = require('../../layers/nodejs/node_modules/moment-timezone')
-const helpers = require('../../globals/helpers')
-const { buildXml, handleRequest, handleResponse, handleRead } = helpers
+const { mysqlConfig, helpers } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
+const axios = require(`${process.env['FILE_ENVIRONMENT']}/layers/nodejs/node_modules/axios`)
+const moment = require(`${process.env['FILE_ENVIRONMENT']}/layers/nodejs/node_modules/moment-timezone`)
+const mysql = require(`${process.env['FILE_ENVIRONMENT']}/layers/nodejs/node_modules/mysql2/promise`)
+const { v4: uuidv4 } = require(`${process.env['FILE_ENVIRONMENT']}/layers/nodejs/node_modules/uuid`)
+const { buildXml, handleRequest, handleResponse } = helpers
+const { createInvoiceFelLogDocument } = require('./storage')
+const db = mysqlConfig(mysql)
 
 module.exports.create = async (event, context) => {
   try {
@@ -20,13 +21,30 @@ module.exports.create = async (event, context) => {
         LlaveFirma: process.env.SIGNATURE_KEY_SAT,
         UsuarioApi: process.env.API_USER_SAT,
         LlaveApi: process.env.API_KEY_SAT,
-        identificador: process.env.IDENTIFIER_SAT,
+        identificador: `${process.env.IDENTIFIER_SAT}${uuidv4()}`,
       },
     })
 
     if (!response && !response.data) throw new Error('The request to the SAT certification service has failed.')
 
-    const res = { statusCode: 200, data: response.data, message: 'Successful response' }
+    const { data } = response
+    const { cantidad_errores, serie, numero, xml_certificado } = data
+
+    const dbValues = [
+      cantidad_errores > 0 ? '' : xml_certificado,
+      xml,
+      cantidad_errores > 0 ? 'ERROR' : 'NO ERRORS',
+      JSON.stringify(data),
+      cantidad_errores > 0 ? '' : numero,
+      cantidad_errores > 0 ? '' : serie,
+      body.invoice.created_by,
+    ]
+
+    const res = await db.transaction(async connection => {
+      await connection.query(createInvoiceFelLogDocument(), dbValues, false)
+
+      return { statusCode: 201, data, message: 'Successful response' }
+    })
 
     return await handleResponse({ req: {}, res })
   } catch (error) {

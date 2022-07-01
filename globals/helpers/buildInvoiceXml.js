@@ -92,7 +92,7 @@ const headerInvoice = (data, moment) => {
           </dte:Receptor>
 
           <dte:Frases>
-            <dte:Frase CodigoEscenario="1" TipoFrase="1"></dte:Frase>
+            <dte:Frase CodigoEscenario="2" TipoFrase="1"></dte:Frase>
           </dte:Frases>
   `
 
