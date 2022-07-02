@@ -1,8 +1,8 @@
 const { mysqlConfig, helpers } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
-const axios = require(`${process.env['FILE_ENVIRONMENT']}/layers/nodejs/node_modules/axios`)
-const moment = require(`${process.env['FILE_ENVIRONMENT']}/layers/nodejs/node_modules/moment-timezone`)
-const mysql = require(`${process.env['FILE_ENVIRONMENT']}/layers/nodejs/node_modules/mysql2/promise`)
-const { v4: uuidv4 } = require(`${process.env['FILE_ENVIRONMENT']}/layers/nodejs/node_modules/uuid`)
+const axios = require(`axios`)
+const moment = require(`moment-timezone`)
+const mysql = require(`mysql2/promise`)
+const { v4: uuidv4 } = require(`uuid`)
 const { buildXml, handleRequest, handleResponse } = helpers
 const { createInvoiceFelLogDocument } = require('./storage')
 const db = mysqlConfig(mysql)
@@ -28,7 +28,7 @@ module.exports.create = async (event, context) => {
     if (!response && !response.data) throw new Error('The request to the SAT certification service has failed.')
 
     const { data } = response
-    const { cantidad_errores, serie, numero, xml_certificado } = data
+    const { cantidad_errores, serie, numero, xml_certificado,descripcion } = data
 
     const dbValues = [
       cantidad_errores > 0 ? '' : xml_certificado,
@@ -41,14 +41,16 @@ module.exports.create = async (event, context) => {
     ]
 
     const res = await db.transaction(async connection => {
-      await connection.query(createInvoiceFelLogDocument(), dbValues, false)
-
-      return { statusCode: 201, data, message: 'Successful response' }
+      await connection.query(createInvoiceFelLogDocument(), dbValues, false)      
+      return { statusCode: 201, data, message:  (cantidad_errores > 0 ? descripcion :'SUCCESSFUL') }
     })
 
     return await handleResponse({ req: {}, res })
   } catch (error) {
     console.log('invoicefel Errors', error)
     return await handleResponse({ error })
+  }finally{
+
   }
 }
+

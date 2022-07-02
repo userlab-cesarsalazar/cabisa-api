@@ -13,10 +13,10 @@ const buildXml = (data, moment) => {
 
     totalTaxAmount += taxAmount
     grandTotal += total
-
+    console.log("data >> ",x)
     let str = `
       <dte:Item BienOServicio="B" NumeroLinea="1">
-        <dte:Cantidad>1.00</dte:Cantidad>
+        <dte:Cantidad>${x.quantity.toFixed(2)}</dte:Cantidad>
         <dte:UnidadMedida>UND</dte:UnidadMedida>
         <dte:Descripcion>${x.description}</dte:Descripcion>
         <dte:PrecioUnitario>${x.price.toFixed(2)}</dte:PrecioUnitario>
@@ -53,7 +53,7 @@ const buildXml = (data, moment) => {
   let xmlDescription = `
         <dte:Adenda>
           <Codigo_cliente>C01</Codigo_cliente>
-          <Observaciones>${data.invoice.observations}</Observaciones>
+          <Observaciones>${data.invoice.observations ? data.invoice.observations : 'sin observaciones'}</Observaciones>
         </dte:Adenda>
       </dte:SAT>
     </dte:GTDocumento>
@@ -84,9 +84,9 @@ const headerInvoice = (data, moment) => {
           <dte:Receptor CorreoReceptor="${data.client.email}" IDReceptor="${data.client.nit}" NombreReceptor="${data.client.name}">
             <dte:DireccionReceptor>
               <dte:Direccion>${data.client.address}</dte:Direccion>
-              <dte:CodigoPostal>${data.client.zip}</dte:CodigoPostal>
-              <dte:Municipio>${data.client.municipio}</dte:Municipio>
-              <dte:Departamento>${data.client.departamento}</dte:Departamento>
+              <dte:CodigoPostal>01001</dte:CodigoPostal>
+              <dte:Municipio>GUATEMALA</dte:Municipio>
+              <dte:Departamento>GUATEMALA</dte:Departamento>
               <dte:Pais>GT</dte:Pais>
             </dte:DireccionReceptor>
           </dte:Receptor>
