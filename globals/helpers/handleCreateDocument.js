@@ -54,8 +54,10 @@ const handleCreateDocument = async (req, res) => {
     credit_days = null,
     description = null,
     products,
+    serie,
+    document_number
   } = req.body
-
+  
   const related_internal_document_id = document_id
   const salesCommissionPercentage = req.currentUser.sales_commission / 100
   const sales_commission_amount =
@@ -90,6 +92,8 @@ const handleCreateDocument = async (req, res) => {
     isInvoiceOrPreInvoice() ? creditsPolicy.creditStatusEnum.UNPAID : null,
     description,
     req.currentUser.user_id,
+    serie,
+    document_number
   ])
   const newDocumentId = await res.connection.geLastInsertId()
 
@@ -141,9 +145,11 @@ const createDocument = () => `
       credit_days,
       credit_status,
       description,
-      created_by
+      created_by,
+      serie,
+      document_number
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products

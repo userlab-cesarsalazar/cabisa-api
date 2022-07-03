@@ -166,6 +166,8 @@ module.exports.create = async event => {
         },
       },
     },
+    serie: { type: ['string', 'number'], required: true },
+    document_number: { type: ['string', 'number'], required: true }
   }
 
   try {
@@ -184,6 +186,8 @@ module.exports.create = async event => {
       subtotal_amount = 0,
       total_amount,
       products,
+      serie,
+      document_number
     } = req.body
     const operation_type = types.operationsTypes.SELL
     const errors = []
