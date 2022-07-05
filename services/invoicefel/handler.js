@@ -4,7 +4,7 @@ const moment = require(`moment-timezone`)
 const mysql = require(`mysql2/promise`)
 const xml2js = require('xml2js')
 const { v4: uuidv4 } = require(`uuid`)
-const { buildXml, cancelXml, handleRequest, handleResponse,handleRead } = helpers
+const { buildXml,handleRequest, handleResponse,handleRead,buidCancelXml } = helpers
 const { createInvoiceFelLogDocument,findByDocumentId,parseToJson } = require('./storage')
 const db = mysqlConfig(mysql)
 
@@ -87,14 +87,41 @@ module.exports.cancelDocument = async (event,context) => {
   try {
     
     const { body } = await handleRequest({ event })
-    
     if (!body) throw new Error('Missing body')
+        
+    const xml = buidCancelXml(body, moment)   
     
-    console.log("start Body",body)
-    const xml = cancelXml(body, moment)
+    const response = await axios.post(process.env.CERTIFIER_URL, xml, {
+      headers: {
+        UsuarioFirma: process.env.SIGNATURE_USER_SAT,
+        LlaveFirma: process.env.SIGNATURE_KEY_SAT,
+        UsuarioApi: process.env.API_USER_SAT,
+        LlaveApi: process.env.API_KEY_SAT        
+      },
+    })
     
+    if (!response && !response.data) throw new Error('The request to cancel the SAT certification service has failed.')
 
-    console.log("xml body",xml)
+    const { data } = response
+    const { cantidad_errores, serie, numero, xml_certificado,descripcion,uuid } = data
+
+    const dbValues = [
+      cantidad_errores > 0 ? '' : xml_certificado,
+      xml,
+      cantidad_errores > 0 ? 'ERROR' : 'CORRECT CANCELLATION',
+      JSON.stringify(data),
+      cantidad_errores > 0 ? '' : numero,
+      cantidad_errores > 0 ? '' : serie,      
+      body.created_by,
+      cantidad_errores > 0 ? '' : uuid,
+    ]
+
+    const res = await db.transaction(async connection => {
+      await connection.query(createInvoiceFelLogDocument(), dbValues, false)      
+      return { statusCode: 201, data, message:  (cantidad_errores > 0 ? descripcion :'SUCCESSFUL') }
+    })
+
+    return await handleResponse({ req: {}, res })
 
   } catch (error) {
     console.log('invoicefel Errors', error)
