@@ -75,3 +75,23 @@ functions:
               - X-Amz-User-Agent
     layers:
       - arn:${file(${self:custom.config}):layer}
+
+  invoicesCancelDocument:
+      handler: handler.cancelDocument
+      timeout: 30
+      events:
+        - http:
+            path: invoicefel/cancelDocument
+            method: post
+            cors:
+              origin: '*'
+              allowCredentials: true
+              headers:
+                - Content-Type
+                - X-Amz-Date
+                - Authorization
+                - X-Api-Key
+                - X-Amz-Security-Token
+                - X-Amz-User-Agent
+      layers:
+        - arn:${file(${self:custom.config}):layer}

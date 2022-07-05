@@ -4,10 +4,9 @@ const moment = require(`moment-timezone`)
 const mysql = require(`mysql2/promise`)
 const xml2js = require('xml2js')
 const { v4: uuidv4 } = require(`uuid`)
-const { buildXml, handleRequest, handleResponse,handleRead } = helpers
+const { buildXml, cancelXml, handleRequest, handleResponse,handleRead } = helpers
 const { createInvoiceFelLogDocument,findByDocumentId,parseToJson } = require('./storage')
 const db = mysqlConfig(mysql)
-
 
 module.exports.create = async (event, context) => {
   try {
@@ -83,6 +82,23 @@ module.exports.getDocument = async (event, context) => {
   }
 }
 
-// module.export.cancelDocument = async (event,context) => {
+module.exports.cancelDocument = async (event,context) => {
+  
+  try {
+    
+    const { body } = await handleRequest({ event })
+    
+    if (!body) throw new Error('Missing body')
+    
+    console.log("start Body",body)
+    const xml = cancelXml(body, moment)
+    
 
-// }
+    console.log("xml body",xml)
+
+  } catch (error) {
+    console.log('invoicefel Errors', error)
+    return await handleResponse({ error })
+  }
+
+}
