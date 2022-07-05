@@ -7,6 +7,9 @@ const findAllBy = (fields = {}) => {
   return `
     SELECT
       d.id,
+      d.serie,
+      d.document_number,
+      d.uuid,
       d.document_type,
       d.stakeholder_id,
       s.name AS stakeholder_name,

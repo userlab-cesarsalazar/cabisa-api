@@ -55,3 +55,23 @@ functions:
               - X-Amz-User-Agent
     layers:
       - arn:${file(${self:custom.config}):layer}
+  
+  invoicesGetDocument:
+    handler: handler.getDocument
+    timeout: 30
+    events:
+      - http:
+          path: invoicefel/getDocument
+          method: get
+          cors:
+            origin: '*'
+            allowCredentials: true
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+    layers:
+      - arn:${file(${self:custom.config}):layer}

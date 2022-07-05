@@ -16,6 +16,7 @@
     "lambda-warmer": "^1.2.1",
     "moment-timezone": "^0.5.25",
     "mysql2": "^1.6.5",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "xml2js": "^0.4.23"
   }
 }
