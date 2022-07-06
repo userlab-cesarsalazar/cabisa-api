@@ -7,20 +7,23 @@ const buildXml = (data, moment) => {
   let grandTotal = 0
 
   data.invoice.items.forEach(x => {
-    let taxableAmount = (x.price - x.discount) / 1.12
+    
+    let price_ = x.price * x.quantity
+    let taxableAmount = (price_ - x.discount) / 1.12
     let taxAmount = taxableAmount * 0.12
-    let total = x.price - x.discount
+    let total = price_ - x.discount
 
     totalTaxAmount += taxAmount
     grandTotal += total
     console.log("data >> ",x)
+    
     let str = `
       <dte:Item BienOServicio="B" NumeroLinea="1">
         <dte:Cantidad>${x.quantity.toFixed(2)}</dte:Cantidad>
         <dte:UnidadMedida>UND</dte:UnidadMedida>
         <dte:Descripcion>${x.description}</dte:Descripcion>
         <dte:PrecioUnitario>${x.price.toFixed(2)}</dte:PrecioUnitario>
-        <dte:Precio>${x.price.toFixed(2)}</dte:Precio>
+        <dte:Precio>${(price_).toFixed(2)}</dte:Precio>
         <dte:Descuento>${x.discount.toFixed(2)}</dte:Descuento>
         <dte:Impuestos>
           <dte:Impuesto>
