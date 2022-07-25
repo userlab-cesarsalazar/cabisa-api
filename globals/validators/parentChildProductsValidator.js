@@ -15,13 +15,13 @@ const parentChildProductsValidator = (currentProduct, products, productsFromDB) 
   if (!newProduct.parent_product_id) {
     const hasChildProduct = products.some(p => Number(p.parent_product_id) === Number(newProduct.product_id))
 
-    if (newProduct.product_type !== types.productsTypes.SERVICE)
-      errors.push(`The parent product with id ${newProduct.product_id} must have a product_type equal to: ${types.productsTypes.SERVICE}`)
+    // if (newProduct.product_type !== types.productsTypes.SERVICE)
+    //   errors.push(`The parent product with id ${newProduct.product_id} must have a product_type equal to: ${types.productsTypes.SERVICE}`)
 
-    if (Number(newProduct.product_quantity) !== 1)
-      errors.push(`The parent product with id ${newProduct.product_id} must have a product_quantity equal to one`)
+    // if (Number(newProduct.product_quantity) !== 1)
+    //   errors.push(`The parent product with id ${newProduct.product_id} must have a product_quantity equal to one`)
 
-    if (!hasChildProduct) errors.push(`The parent product with id ${newProduct.product_id} must have a linked child product`)
+    //if (!hasChildProduct) errors.push(`The parent product with id ${newProduct.product_id} must have a linked child product`)
   }
 
   return errors
