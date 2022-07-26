@@ -54,9 +54,9 @@ const handleCreateDocument = async (req, res) => {
     credit_days = null,
     description = null,
     products,
-    serie,
-    document_number,
-    uuid
+    serie = null,
+    document_number = null,
+    uuid = null
   } = req.body
   
   const related_internal_document_id = document_id
@@ -69,8 +69,8 @@ const handleCreateDocument = async (req, res) => {
     document_type === documentsTypes.SELL_PRE_INVOICE ||
     document_type === documentsTypes.RENT_INVOICE ||
     document_type === documentsTypes.RENT_PRE_INVOICE
-
-  await res.connection.query(createDocument(), [
+    
+  await res.connection.query({sql:createDocument(), values:[
     document_type,
     stakeholder_id,
     product_id,
@@ -96,7 +96,8 @@ const handleCreateDocument = async (req, res) => {
     serie,
     document_number,
     uuid
-  ])
+  ]})
+  
   const newDocumentId = await res.connection.geLastInsertId()
 
   const documentsProductsValues = products.flatMap(p => {

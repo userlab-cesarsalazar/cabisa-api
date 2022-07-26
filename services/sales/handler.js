@@ -232,7 +232,7 @@ module.exports.create = async event => {
 
     return await handleResponse({ req, res })
   } catch (error) {
-    console.log(error)
+    console.log("XX",error)
     return await handleResponse({ error })
   }
 }
@@ -413,6 +413,9 @@ module.exports.invoice = async event => {
         },
       },
     },
+    serie: { type: ['string', 'number'], required: true },
+    document_number: { type: ['string', 'number'], required: true },
+    uuid: { type: ['string', 'number'], required: true }
   }
 
   try {
@@ -428,6 +431,9 @@ module.exports.invoice = async event => {
       total_tax_amount,
       total_amount,
       products,
+      serie,
+      document_number,
+      uuid
     } = req.body
     const errors = []
     const productsMap = products.reduce((r, p) => {
