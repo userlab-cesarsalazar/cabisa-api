@@ -168,7 +168,7 @@ module.exports.create = async event => {
     },
     serie: { type: ['string', 'number'], required: true },
     document_number: { type: ['string', 'number'], required: true },
-    uuid: { type: ['string', 'number'], required: true }
+    uuid: { type: ['string', 'number'], required: true },
   }
 
   try {
@@ -189,7 +189,7 @@ module.exports.create = async event => {
       products,
       serie,
       document_number,
-      uuid
+      uuid,
     } = req.body
     const operation_type = types.operationsTypes.SELL
     const errors = []
@@ -198,7 +198,7 @@ module.exports.create = async event => {
 
       return { ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }
     }, {})
-    const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
+    // const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
     const productsFromDB = await db.query(commonStorage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
@@ -246,7 +246,7 @@ module.exports.create = async event => {
       errors.push(`Los campos ${requiredParentProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (stakeholderNitUnique) errors.push('El nit ya se encuentra registrado')
     if (stakeholder_id && !stakeholderIdExists) errors.push('El cliente ya se encuentra registrado')
-    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
+    // if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no esta registrado`))
     if (project_id && !projectExists) errors.push(`El proyecto no se encuentra registrado`)
     if (subtotal_amount <= 0) errors.push(`El monto subtotal de la factura debe ser mayor a cero`)

@@ -125,7 +125,7 @@ module.exports.create = async event => {
 
       return { ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }
     }, {})
-    const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
+    // const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
     const productsFromDB = await db.query(commonStorage.findProducts(productsIds))
     const productsExists = products.flatMap(p => (!productsFromDB.some(ps => Number(ps.product_id) === Number(p.product_id)) ? p.product_id : []))
@@ -157,7 +157,7 @@ module.exports.create = async event => {
     if (requiredProductErrorFields)
       errors.push(`Los campos ${requiredParentProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
     if (stakeholder_id && !stakeholderIdExists) errors.push('El cliente no se encuentra registrado')
-    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
+    // if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
     if (subtotal_amount <= 0) errors.push(`El monto subtotal de la nota de servicio debe ser mayor a cero`)
     if (total_amount <= 0) errors.push(`El monto total de la nota de servicio debe ser mayor a cero`)
@@ -232,7 +232,7 @@ module.exports.create = async event => {
 
     return await handleResponse({ req, res })
   } catch (error) {
-    console.log("XX",error)
+    console.log('XX', error)
     return await handleResponse({ error })
   }
 }
@@ -287,7 +287,7 @@ module.exports.update = async event => {
 
       return { ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }
     }, {})
-    const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
+    // const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
     const productsFromDB = await db.query(commonStorage.findProducts(productsIds))
     const productsExists = products.flatMap(p =>
@@ -314,7 +314,7 @@ module.exports.update = async event => {
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredProductErrorFields)
       errors.push(`Los campos ${requiredParentProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
-    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
+    // if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (productsExists.length > 0) productsExists.forEach(id => errors.push(`El producto con id ${id} no se encuentra registrado`))
     if (!document || !document.document_id) errors.push(`El documento con id ${document_id} no se encuentra registrado`)
     if (document && document.status !== types.documentsStatus.PENDING)
@@ -415,7 +415,7 @@ module.exports.invoice = async event => {
     },
     serie: { type: ['string', 'number'], required: true },
     document_number: { type: ['string', 'number'], required: true },
-    uuid: { type: ['string', 'number'], required: true }
+    uuid: { type: ['string', 'number'], required: true },
   }
 
   try {
@@ -433,7 +433,7 @@ module.exports.invoice = async event => {
       products,
       serie,
       document_number,
-      uuid
+      uuid,
     } = req.body
     const errors = []
     const productsMap = products.reduce((r, p) => {
@@ -441,7 +441,7 @@ module.exports.invoice = async event => {
 
       return { ...r, [p.product_id]: [...(r[p.product_id] || []), p.product_id] }
     }, {})
-    const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
+    // const duplicateProducts = Object.keys(productsMap).flatMap(k => (productsMap[k].length > 1 ? k : []))
     const productsIds = products.map(p => p.product_id)
     const productsFromDB = await db.query(commonStorage.findProducts(productsIds))
     const requiredFields = ['document_id', 'payment_method', 'subtotal_amount', 'total_amount']
@@ -465,7 +465,7 @@ module.exports.invoice = async event => {
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredProductErrorFields)
       errors.push(`Los campos ${requiredParentProductFields.join(', ')} en productos deben contener un numero mayor a cero`)
-    if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
+    // if (duplicateProducts.length > 0) duplicateProducts.forEach(id => errors.push(`Los productos con id ${id} no deben estar duplicados`))
     if (!documentDetails || !documentDetails[0]) errors.push('El documento recibido no se encuentra registrado')
     if (invalidStatusProducts && invalidStatusProducts[0])
       invalidStatusProducts.forEach(id => errors.push(`El producto con id ${id} debe tener status ${types.productsStatus.ACTIVE}`))
