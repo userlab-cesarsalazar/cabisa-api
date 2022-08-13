@@ -21,10 +21,10 @@ const buildXml = (data, moment) => {
       <dte:Item BienOServicio="B" NumeroLinea="1">
         <dte:Cantidad>${x.quantity.toFixed(2)}</dte:Cantidad>
         <dte:UnidadMedida>UND</dte:UnidadMedida>
-        <dte:Descripcion>${x.description}</dte:Descripcion>
+        <dte:Descripcion>"${x.code}|${x.description}"</dte:Descripcion>        
         <dte:PrecioUnitario>${x.price.toFixed(2)}</dte:PrecioUnitario>
         <dte:Precio>${(price_).toFixed(2)}</dte:Precio>
-        <dte:Descuento>${x.discount.toFixed(2)}</dte:Descuento>
+        <dte:Descuento>${x.discount.toFixed(2)}</dte:Descuento>        
         <dte:Impuestos>
           <dte:Impuesto>
             <dte:NombreCorto>IVA</dte:NombreCorto>
@@ -33,7 +33,7 @@ const buildXml = (data, moment) => {
             <dte:MontoImpuesto>${taxAmount.toFixed(2)}</dte:MontoImpuesto>
           </dte:Impuesto>
         </dte:Impuestos>
-        <dte:Total>${total.toFixed(2)}</dte:Total>
+        <dte:Total>${total.toFixed(2)}</dte:Total>        
       </dte:Item>
     `
 
