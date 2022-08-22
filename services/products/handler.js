@@ -59,8 +59,8 @@ module.exports.readProductTaxes = async event => {
 module.exports.readProductsOptions = async event => {
   try {
     const req = await handleRequest({ event })
-
-    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findOptionsBy })
+    
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findOptionsByDescriptionAndCode })
 
     return await handleResponse({ req, res })
   } catch (error) {
