@@ -9,6 +9,7 @@ const findAllBy = (fields = {}) => {
       d.id,
       d.serie,
       d.document_number,
+      d.related_internal_document_id,
       d.uuid,
       d.document_type,
       d.stakeholder_id,
