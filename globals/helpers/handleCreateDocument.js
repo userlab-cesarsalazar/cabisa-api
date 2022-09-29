@@ -54,8 +54,11 @@ const handleCreateDocument = async (req, res) => {
     credit_days = null,
     description = null,
     products,
+    serie = null,
+    document_number = null,
+    uuid = null
   } = req.body
-
+  
   const related_internal_document_id = document_id
   const salesCommissionPercentage = req.currentUser.sales_commission / 100
   const sales_commission_amount =
@@ -66,8 +69,8 @@ const handleCreateDocument = async (req, res) => {
     document_type === documentsTypes.SELL_PRE_INVOICE ||
     document_type === documentsTypes.RENT_INVOICE ||
     document_type === documentsTypes.RENT_PRE_INVOICE
-
-  await res.connection.query(createDocument(), [
+    
+  await res.connection.query({sql:createDocument(), values:[
     document_type,
     stakeholder_id,
     product_id,
@@ -90,7 +93,11 @@ const handleCreateDocument = async (req, res) => {
     isInvoiceOrPreInvoice() ? creditsPolicy.creditStatusEnum.UNPAID : null,
     description,
     req.currentUser.user_id,
-  ])
+    serie,
+    document_number,
+    uuid
+  ]})
+  
   const newDocumentId = await res.connection.geLastInsertId()
 
   const documentsProductsValues = products.flatMap(p => {
@@ -141,9 +148,12 @@ const createDocument = () => `
       credit_days,
       credit_status,
       description,
-      created_by
+      created_by,
+      serie,
+      document_number,
+      uuid
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products

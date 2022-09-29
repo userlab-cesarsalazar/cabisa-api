@@ -69,6 +69,25 @@ const findOptionsBy = (fields = {}) => `
   LEFT JOIN taxes t ON t.id = p.tax_id
   ${getWhereConditions({ fields, tableAlias: 'p', hasPreviousConditions: false })}
 `
+const findOptionsByDescriptionAndCode = (fields = {},initWhereCondition = `(1 = 1)`) => 
+{
+  const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'p' })
+  const whereConditions = rawWhereConditions.replace(/p.nit/i, 'p.code')
+  return `
+  SELECT
+    p.id,
+    p.code,
+    p.serial_number,
+    p.description,
+    t.fee AS tax_fee,
+    t.name AS tax_name,
+    p.stock,
+    p.inventory_unit_value
+  FROM products p
+  LEFT JOIN taxes t ON t.id = p.tax_id
+  WHERE ${initWhereCondition} ${whereConditions}
+`
+}
 
 module.exports = {
   checkExists,
@@ -80,4 +99,5 @@ module.exports = {
   findProductsStatus,
   findProductsTaxes,
   updateProduct,
+  findOptionsByDescriptionAndCode
 }

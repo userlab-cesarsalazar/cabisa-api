@@ -1,6 +1,6 @@
 {
   "name": "cabisa-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "API Services",
   "main": "handler.js",
   "author": "Cesar Salazar",
@@ -12,10 +12,10 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.467.0",
-    "lambda-warmer": "^1.2.1",
-    "mysql2": "^1.6.5"
+    "lambda-warmer": "^1.2.1"
   },
   "devDependencies": {
+    "nodemon": "^2.0.18",
     "serverless-offline": "^8.8.1"
   }
 }

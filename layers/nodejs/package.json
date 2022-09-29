@@ -5,14 +5,18 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "deploy-dev": "export AWS_PROFILE=cabisa && serverless deploy",
+    "deploy": "export AWS_PROFILE=cabisa && serverless deploy",
     "db": "./node_modules/db-migrate/bin/db-migrate -m ../../migrations"
   },
   "dependencies": {
     "aws-sdk": "^2.467.0",
+    "axios": "^0.27.2",
     "db-migrate": "^0.11.12",
     "db-migrate-mysql": "^2.1.2",
     "lambda-warmer": "^1.2.1",
-    "moment-timezone": "^0.5.25"
+    "moment-timezone": "^0.5.25",
+    "mysql2": "^1.6.5",
+    "uuid": "^8.3.2",
+    "xml2js": "^0.4.23"
   }
 }

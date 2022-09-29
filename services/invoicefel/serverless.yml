@@ -1,0 +1,97 @@
+service: ca-invoicefel
+
+plugins:
+  - serverless-offline
+
+custom:
+  config: ../../envs/credentials.${self:provider.stage}.json
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage, 'prod'}
+  region: us-east-1
+  deploymentBucket:
+    name: ${file(${self:custom.config}):deploymentBucket}
+  environment:
+    STAGE: ${file(${self:custom.config}):stage}
+    ACCOUNT_ID: ${file(${self:custom.config}):awsAccountId}
+    FILE_ENVIRONMENT: ${file(${self:custom.config}):fileEnvironment}
+    RUN_LIKE: ${file(${self:custom.config}):run_like}
+    DATABASE_HOST: ${file(${self:custom.config}):dbHost}
+    DATABASE_USER: ${file(${self:custom.config}):dbUser}
+    DATABASE_NAME: ${file(${self:custom.config}):dbName}
+    DATABASE_PASSWORD: ${file(${self:custom.config}):dbPassword}
+    ENCRYPTION_KEY: ${file(${self:custom.config}):encryptionKey}
+    CERTIFIER_URL: ${file(${self:custom.config}):certifierUrl}
+    SIGNATURE_USER_SAT: ${file(${self:custom.config}):signatureUserSat}
+    SIGNATURE_KEY_SAT: ${file(${self:custom.config}):signatureKeySat}
+    API_USER_SAT: ${file(${self:custom.config}):apiUserSat}
+    API_KEY_SAT: ${file(${self:custom.config}):apiKeySat}
+    IDENTIFIER_SAT: ${file(${self:custom.config}):identifierSat}
+
+package:
+  exclude:
+    - node_modules/**
+  include:
+    - ../../globals/**
+functions:
+  invoicesCreate:
+    handler: handler.create
+    timeout: 30
+    events:
+      - http:
+          path: invoicefel/create
+          method: post
+          cors:
+            origin: '*'
+            allowCredentials: true
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+  
+  invoicesGetDocument:
+    handler: handler.getDocument
+    timeout: 30
+    events:
+      - http:
+          path: invoicefel/getDocument
+          method: get
+          cors:
+            origin: '*'
+            allowCredentials: true
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  invoicesCancelDocument:
+      handler: handler.cancelDocument
+      timeout: 30
+      events:
+        - http:
+            path: invoicefel/cancelDocument
+            method: post
+            cors:
+              origin: '*'
+              allowCredentials: true
+              headers:
+                - Content-Type
+                - X-Amz-Date
+                - Authorization
+                - X-Api-Key
+                - X-Amz-Security-Token
+                - X-Amz-User-Agent
+      layers:
+        - arn:${file(${self:custom.config}):layer}

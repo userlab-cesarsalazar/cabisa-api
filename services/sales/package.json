@@ -6,7 +6,7 @@
   "author": "Cesar Salazar",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "deploy-prod": "export AWS_PROFILE=cabisa && serverless deploy",
+    "deploy": "export AWS_PROFILE=cabisa && serverless deploy",
     "sls-local": "nodemon --exec sls offline"
   },
   "license": "ISC",
@@ -16,6 +16,6 @@
     "mysql2": "^1.6.5"
   },
   "devDependencies": {
-    "serverless-offline": "^4.10.3"
+    "serverless-offline": "^8.8.1"
   }
 }

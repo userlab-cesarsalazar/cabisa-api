@@ -16,6 +16,8 @@ const handleUpdateDocument = require('./handleUpdateDocument')
 const handleUpdateDocumentPaidAmount = require('./handleUpdateDocumentPaidAmount')
 const handleUpdateStakeholderCredit = require('./handleUpdateStakeholderCredit')
 const handleUpdateStock = require('./handleUpdateStock')
+const buildXml = require('./buildInvoiceXml')
+const buidCancelXml = require('./buildCancelXml')
 
 module.exports = {
   handleApproveDocument,
@@ -36,4 +38,6 @@ module.exports = {
   handleUpdateDocumentPaidAmount,
   handleUpdateStakeholderCredit,
   handleUpdateStock,
+  buildXml,
+  buidCancelXml
 }
