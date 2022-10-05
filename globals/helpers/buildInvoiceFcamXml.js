@@ -4,7 +4,7 @@ let nitDev = '92000000359K'
 let emisorFactProd = 'CABISA, SOCIEDAD ANONIMA'
 let nitProd = '53982746'
 
-const buildXml = (data, moment) => {
+const buildXmlFcam = (data, moment) => {
   //BUILD XML HEADER
   let xml_header = headerInvoice(data, moment)
   let xml_details = ``
@@ -47,6 +47,20 @@ const buildXml = (data, moment) => {
 
   let xmlBody = `<dte:Items>${xml_details}</dte:Items>`
 
+  let xmlComplemento = `
+  <dte:Complementos>
+  <dte:Complemento IDComplemento="TEXT" NombreComplemento="TEXT" URIComplemento="TEXT">
+    <cfc:AbonosFacturaCambiaria xmlns:cfc="http://www.sat.gob.gt/dte/fel/CompCambiaria/0.1.0" Version="1" xsi:schemaLocation="http://www.sat.gob.gt/dte/fel/CompCambiaria/0.1.0 C:\Users\Desktop\SAT_FEL_FINAL_V1\Esquemas\GT_Complemento_Cambiaria-0.1.0.xsd">
+      <cfc:Abono>
+        <cfc:NumeroAbono>1</cfc:NumeroAbono>
+        <cfc:FechaVencimiento>${moment().add(1, 'months').tz('America/Guatemala').format('YYYY-MM-DD')}</cfc:FechaVencimiento>
+        <cfc:MontoAbono>${grandTotal.toFixed(2)}</cfc:MontoAbono>
+      </cfc:Abono>
+    </cfc:AbonosFacturaCambiaria>
+  </dte:Complemento>
+</dte:Complementos>
+  `
+
   let xmlTotales = `
       <dte:Totales>
         <dte:TotalImpuestos>
@@ -54,6 +68,7 @@ const buildXml = (data, moment) => {
         </dte:TotalImpuestos>
         <dte:GranTotal>${grandTotal.toFixed(2)}</dte:GranTotal>
       </dte:Totales>
+      ${xmlComplemento}
       </dte:DatosEmision>
     </dte:DTE>
   `
@@ -78,7 +93,7 @@ const headerInvoice = (data, moment) => {
     <dte:SAT ClaseDocumento="dte">
       <dte:DTE ID="DatosCertificados">
         <dte:DatosEmision ID="DatosEmision">
-          <dte:DatosGenerales CodigoMoneda="GTQ" FechaHoraEmision="${moment().tz('America/Guatemala').format()}" Tipo="FACT"></dte:DatosGenerales>
+          <dte:DatosGenerales CodigoMoneda="GTQ" FechaHoraEmision="${moment().tz('America/Guatemala').format()}" Tipo="FCAM"></dte:DatosGenerales>
           <dte:Emisor AfiliacionIVA="GEN" CodigoEstablecimiento="1" CorreoEmisor="cabisarent@hotmail.com " NITEmisor="${nitDev}" NombreComercial="${emisorFactDev}" NombreEmisor="${emisorFactDev}">
             <dte:DireccionEmisor>
               <dte:Direccion>CALLE REAL ALDEA CONCEPCION COLMENAS CALLEJON 6, LOTE 06 Y 07</dte:Direccion>
@@ -108,4 +123,4 @@ const headerInvoice = (data, moment) => {
 }
 
 
-module.exports = buildXml
+module.exports = buildXmlFcam
