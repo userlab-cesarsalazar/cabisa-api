@@ -29,22 +29,11 @@ module.exports.read = async event => {
   try {
     const req = await handleRequest({ event })
 
-    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['products', 'payments'] })
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['payments'] })
       
     const data = res.data[0]
       ? res.data.map(d => ({
-          ...d,
-          discount_percentage: d.products[0].discount_percentage,
-          products:
-            d.products && d.products[0]
-              ? d.products.reduce((r, p) => {
-                  const isDuplicate =
-                    r[0] && r.some(rp => Number(rp.id) === Number(p.id) && Number(rp.parent_product_id) === Number(p.parent_product_id))
-
-                  if (isDuplicate) return r
-                  else return [...r, p]
-                }, [])
-              : [],
+          ...d,                    
           payments:
             d.payments && d.payments[0]
               ? d.payments.reduce((r, p) => {
@@ -68,6 +57,7 @@ module.exports.crupdate = async event => {
   try {
     const inputType = {
       document_id: { type: ['number', 'string'], required: true },
+      total_amount: { type: ['number', 'string'], required: true },      
       payments: {
         type: 'array',
         fields: {
@@ -83,35 +73,34 @@ module.exports.crupdate = async event => {
         },
       },
     }
+        
     const req = await handleRequest({ event, inputType })
     req.hasPermissions([types.permissions.PAGOS])
-
-    const { document_id, payments } = req.body
+    
+    const {document_id, payments } = req.body
+    const manual_payment = document_id
     const errors = []
     const requiredFields = ['document_id']
     const requiredPaymentFields = ['payment_amount', 'payment_method', 'payment_date']
     const requiredErrorFields = requiredFields.filter(k => !req.body[k])
     const requiredPaymentErrorFields = requiredPaymentFields.some(k => payments.some(p => !p[k] || p[k] <= 0))
-    const rawDocument = await db.query(storage.findDocumentPayments(), [document_id])
-    const [document] = rawDocument ? groupJoinResult({ data: rawDocument, nestedFieldsKeys: ['old_payments'], uniqueKey: ['document_id'] }) : []
+    
+    
+    const rawDocument = await db.query(storage.findDocumentPayments(), [document_id])    
+    const [document] = rawDocument ? groupJoinResult({ data: rawDocument, nestedFieldsKeys: ['old_payments'], uniqueKey: ['id'] }) : []
+    
     const documentOldPayments =
       document && document.old_payments && document.old_payments[0] ? document.old_payments.flatMap(op => (op.is_deleted ? [] : op)) : []
+
     const invalidPaymentMethod =
       payments && payments[0] && payments.find(p => Object.keys(types.paymentMethods).every(k => types.paymentMethods[k] !== p.payment_method))
 
-    const oldPaidCreditAmount =
-      documentOldPayments && documentOldPayments[0]
-        ? documentOldPayments.reduce((r, op) => r + (op.is_deleted ? 0 : Number(op.payment_amount)), 0)
-        : 0
-    const paidCreditAmount = payments && payments[0] ? payments.reduce((r, p) => r + Number(p.payment_amount), 0) : 0
-    const stakeholderPaidCredit = Number(document.stakeholder_paid_credit) - oldPaidCreditAmount + paidCreditAmount
+    const paidCreditAmount = payments && payments[0] ? payments.reduce((r, p) => r + Number(p.payment_amount), 0) : 0      
     const documentCreditAmount = document && document.total_amount ? Number(document.total_amount) : 0
 
     if (requiredErrorFields.length > 0) requiredErrorFields.forEach(ef => errors.push(`El campo ${ef} es requerido`))
     if (requiredPaymentErrorFields) errors.push(`Los campos ${requiredPaymentFields.join(', ')} son obligatorios`)
-    if (!document || !document.document_id)
-      errors.push(`El documento debe ser del tipo ${types.documentsTypes.SELL_INVOICE} o ${types.documentsTypes.RENT_INVOICE}`)
-    // if (!document || !document.credit_days) errors.push(`El documento debe estar asociado a un credito`)
+    
     if (paidCreditAmount > documentCreditAmount) errors.push(`El total de los pagos no puede ser superior al total del credito para este documento`)
     if (invalidPaymentMethod)
       errors.push(
@@ -127,68 +116,42 @@ module.exports.crupdate = async event => {
       if (documentCreditStatus === types.creditsPolicy.creditStatusEnum.DEFAULT) return documentCreditStatus
       return types.creditsPolicy.creditStatusEnum.UNPAID
     }
-    const stakeholderTotalCredit = Number(document.stakeholder_total_credit)
-    const credit_status = getCreditStatus(paidCreditAmount, documentCreditAmount, document.credit_status)
 
-    const { res } = await db.transaction(async connection => {
-      await handleUpdateCreditStatus(
-        { ...req, body: { credit_status, document_id, related_internal_document_id: document.related_internal_document_id } },
-        { connection }
-      )
-
-      await handleUpdateStakeholderCredit(
-        { ...req, body: { stakeholder_id: document.stakeholder_id, total_credit: stakeholderTotalCredit, paid_credit: stakeholderPaidCredit } },
-        { connection }
-      )
-
-      await handleUpdateCreditPaidDate(
-        {
-          ...req,
-          body: { document_id, creditPaidDate: credit_status === types.creditsPolicy.creditStatusEnum.PAID ? new Date().toISOString() : null },
-        },
-        { connection }
-      )
-
-      await handleUpdateDocumentPaidAmount(
-        {
-          ...req,
-          body: { document_id, paid_credit_amount: paidCreditAmount },
-        },
-        { connection }
-      )
-
+    
+    const credit_status = getCreditStatus(paidCreditAmount, documentCreditAmount, document.status)
+    const { res } = await db.transaction(async connection => {      
+      await connection.query(storage.updateManualPaymentStatus(document.id,credit_status))
+     
       const deletePaymentIds =
         documentOldPayments &&
         documentOldPayments[0] &&
         documentOldPayments.flatMap(op =>
           payments && payments[0] && payments.some(p => Number(p.payment_id) === Number(op.payment_id)) ? [] : op.payment_id
         )
-      const crupdatePaymentsValues = payments.map(p => {
-        const oldPayment =
-          documentOldPayments && documentOldPayments[0] && documentOldPayments.find(op => Number(op.payment_id) === Number(p.payment_id))
-        const createdAt = oldPayment && oldPayment.created_at ? oldPayment.created_at : new Date()
+
+      const crupdatePaymentsValues = payments.map(p => {        
+      const createdAt = new Date()
         const { payment_date, created_at } = getFormattedDates({ payment_date: p.payment_date, created_at: createdAt })
 
         return `(
               ${p.payment_id ? p.payment_id : null},
-              ${document_id},
+              ${manual_payment},              
               '${p.payment_method}',
               ${p.payment_amount},
-              '${payment_date}',
+              '${p.payment_date}',
               ${p.related_external_document ? `'${p.related_external_document}'` : null},
               ${p.description ? `'${p.description}'` : null},
               '${created_at}',
-              ${oldPayment && oldPayment.created_by ? oldPayment.created_by : req.currentUser.user_id}
+              ${req.currentUser.user_id}
             )`
       })
 
       if (deletePaymentIds && deletePaymentIds[0]) await connection.query(storage.deletePayments(deletePaymentIds))
       if (crupdatePaymentsValues && crupdatePaymentsValues[0]) await connection.query(storage.crupdatePayments(crupdatePaymentsValues))
-      const [updatedPayments] = await connection.query(storage.getPaymentsByDocumentId(), [document_id])
-
+      
       return {
-        req,
-        res: { statusCode: 200, data: { payments: updatedPayments }, message: 'Pagos actualizados exitosamente' },
+        req,        
+        res: { statusCode: 200, data: { }, message: 'Pagos actualizados exitosamente' },
       }
     })
 
@@ -220,39 +183,49 @@ module.exports.cronUpdateCreditStatus = async () => {
   }
 }
 
-module.exports.readManualPayments = async event => {
+
+module.exports.createManualPayment = async event => {
   try {
-    const req = await handleRequest({ event })
+    const inputType = {
+      project_id: { type: ['number', 'string'], required: true },
+      stakeholder_id: { type: ['number', 'string'], required: true },      
+      total_amount: { type: ['number', 'string'], required: true },            
+    }        
+    const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.PAGOS])    
+    const {project_id,stakeholder_id,total_amount } = req.body    
+    const { res } = await db.transaction(async connection => {      
+      await connection.query(storage.createManualPayment([total_amount,stakeholder_id,project_id]))  
+      return {
+        req,        
+        res: { statusCode: 200, data: { }, message: 'Recibo Creado exitosamente' },
+      }
+    })
 
-    const res = await handleRead(req, { dbQuery: db.query, storage: storage.findAllBy, nestedFieldsKeys: ['products', 'payments'] })
-      console.log("FUCK ",res)
-    const data = res.data[0]
-      ? res.data.map(d => ({
-          ...d,
-          discount_percentage: d.products[0].discount_percentage,
-          products:
-            d.products && d.products[0]
-              ? d.products.reduce((r, p) => {
-                  const isDuplicate =
-                    r[0] && r.some(rp => Number(rp.id) === Number(p.id) && Number(rp.parent_product_id) === Number(p.parent_product_id))
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
 
-                  if (isDuplicate) return r
-                  else return [...r, p]
-                }, [])
-              : [],
-          payments:
-            d.payments && d.payments[0]
-              ? d.payments.reduce((r, p) => {
-                  const isDuplicate = r[0] && r.some(rp => Number(rp.payment_id) === Number(p.payment_id))
+module.exports.removeManualPayment = async event => {
+  try {
+    const inputType = {
+      id: { type: ['number', 'string'], required: true }      
+    }        
+    const req = await handleRequest({ event, inputType })
+    req.hasPermissions([types.permissions.PAGOS])    
+    const {id} = req.body    
+    const { res } = await db.transaction(async connection => {      
+      await connection.query(storage.deleteManualPayment(id))  
+      return {
+        req,        
+        res: { statusCode: 200, data: { }, message: 'Recibo Eliminado exitosamente' },
+      }
+    })
 
-                  if (isDuplicate || !p.payment_id || p.is_deleted) return r
-                  else return [...r, p]
-                }, [])
-              : [],
-        }))
-      : []
-
-    return await handleResponse({ req, res: { ...res, data } })
+    return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
     return await handleResponse({ error })
