@@ -94,7 +94,7 @@ const headerInvoice = (data, moment) => {
       <dte:DTE ID="DatosCertificados">
         <dte:DatosEmision ID="DatosEmision">
           <dte:DatosGenerales CodigoMoneda="GTQ" FechaHoraEmision="${moment().tz('America/Guatemala').format()}" Tipo="FCAM"></dte:DatosGenerales>
-          <dte:Emisor AfiliacionIVA="GEN" CodigoEstablecimiento="1" CorreoEmisor="cabisarent@hotmail.com " NITEmisor="${nitDev}" NombreComercial="${emisorFactDev}" NombreEmisor="${emisorFactDev}">
+          <dte:Emisor AfiliacionIVA="GEN" CodigoEstablecimiento="1" CorreoEmisor="cabisarent@hotmail.com " NITEmisor="${nitProd}" NombreComercial="${emisorFactProd}" NombreEmisor="${emisorFactProd}">
             <dte:DireccionEmisor>
               <dte:Direccion>CALLE REAL ALDEA CONCEPCION COLMENAS CALLEJON 6, LOTE 06 Y 07</dte:Direccion>
               <dte:CodigoPostal>01051</dte:CodigoPostal>
