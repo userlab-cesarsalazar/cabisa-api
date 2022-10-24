@@ -56,7 +56,8 @@ const handleCreateDocument = async (req, res) => {
     products,
     serie = null,
     document_number = null,
-    uuid = null
+    uuid = null,
+    created_at = null
   } = req.body
   
   const related_internal_document_id = document_id
@@ -95,7 +96,8 @@ const handleCreateDocument = async (req, res) => {
     req.currentUser.user_id,
     serie,
     document_number,
-    uuid
+    uuid,
+    created_at
   ]})
   
   const newDocumentId = await res.connection.geLastInsertId()
@@ -151,9 +153,10 @@ const createDocument = () => `
       created_by,
       serie,
       document_number,
-      uuid
+      uuid,
+      created_at
     )
-  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 const createDocumentsProducts = valuesArray => `
   INSERT INTO documents_products

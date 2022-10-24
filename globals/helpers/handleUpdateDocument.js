@@ -48,6 +48,7 @@ const handleUpdateDocument = async (req, res) => {
     credit_days = null,
     products = [],
     old_products = [],
+    created_at = null
   } = req.body
 
   await res.connection.query(updateDocument(), [
@@ -70,7 +71,8 @@ const handleUpdateDocument = async (req, res) => {
     payment_method,
     credit_days,
     req.currentUser.user_id,
-    document_id,
+    created_at,
+    document_id,    
   ])
 
   const deleteProductIds = old_products.map(op => Number(op.product_id))
@@ -122,7 +124,8 @@ const updateDocument = () => `
       description = ?,
       payment_method = ?,
       credit_days = ?,
-      updated_by = ?
+      updated_by = ?, 
+      created_at = ?
   WHERE id = ?
 `
 

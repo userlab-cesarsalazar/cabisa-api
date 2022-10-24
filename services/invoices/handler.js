@@ -169,6 +169,7 @@ module.exports.create = async event => {
     serie: { type: ['string', 'number'], required: true },
     document_number: { type: ['string', 'number'], required: true },
     uuid: { type: ['string', 'number'], required: true },
+    created_at: { type: ['string', 'number'], required: false },
   }
 
   try {
@@ -190,6 +191,7 @@ module.exports.create = async event => {
       serie,
       document_number,
       uuid,
+      created_at
     } = req.body
     const operation_type = types.operationsTypes.SELL
     const errors = []
@@ -375,6 +377,7 @@ module.exports.update = async event => {
         },
       },
     },
+    created_at: { type: ['string', 'number'], required: false },
   }
 
   try {
@@ -390,6 +393,7 @@ module.exports.update = async event => {
       subtotal_amount = 0,
       total_amount,
       products,
+      created_at
     } = req.body
     const document = await getDocument({
       dbQuery: db.query,

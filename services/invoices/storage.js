@@ -2,7 +2,7 @@ const { types, getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']
 
 const findAllBy = (fields = {}) => {
   const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'd' })
-  const whereConditions = rawWhereConditions.replace(/d.nit/i, 's.nit')
+  const whereConditions = rawWhereConditions.replace(/d.nit/i, 's.nit').replace(/d.name/i, 's.name')
 
   return `
     SELECT
