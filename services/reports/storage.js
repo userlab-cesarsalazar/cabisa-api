@@ -178,9 +178,215 @@ const getInventory = (fields = {}) => {
     `
 }
 
+const getInvoice = (fields = {}) => {
+  const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'd' })  
+  const whereConditions = rawWhereConditions.replace(/d.nit/i, 's.nit').replace(/d.name/i, 's.name').replace(/d.start_date/i, 'DATE(d.created_at)').replace(/d.end_date/i, 'DATE(d.created_at)')
+  return `
+    SELECT
+      d.id,
+      d.serie,
+      d.document_number,
+      d.related_internal_document_id,
+      d.uuid,
+      d.document_type,
+      d.stakeholder_id,
+      s.name AS stakeholder_name,
+      s.nit AS stakeholder_nit,
+      s.stakeholder_type AS stakeholder_type,
+      s.email AS stakeholder_email,
+      s.phone AS stakeholder_phone,
+      s.address AS stakeholder_address,
+      d.operation_id,
+      d.status,
+      CASE
+        WHEN d.status = 'APPROVED' THEN 'APROBADO'
+        WHEN d.status = 'CANCELLED' THEN 'ANULADO'
+            ELSE 'NO DISPONIBLE' END as status_spanish,
+      d.cancel_reason,
+      d.description,
+      d.subtotal_amount AS subtotal,
+      d.total_discount_amount AS discount,
+      d.total_tax_amount AS total_tax,
+      d.total_amount AS total,
+      d.payment_method,
+      CASE
+        WHEN d.payment_method = 'CASH' THEN 'EFECTIVO'
+        WHEN d.payment_method = 'CARD' THEN 'CREDITO'
+            ELSE 'NO DISPONIBLE' END as payment_method_spanish,
+      d.credit_days,
+      d.credit_status,
+      d.created_at,
+      d.created_by,
+      d.updated_at,
+      d.updated_by,
+      proj.id AS project_id,
+      proj.name AS project_name,
+      prod.id AS products__id,
+      prod.product_type AS products__product_type,
+      prod.status AS products__status,
+      prod.code AS products__code,
+      prod.serial_number AS products__serial_number,
+      prod.description AS products__description,
+      prod.image_url AS products__image_url,
+      prod.created_at AS products__created_at,
+      prod.created_by AS products__created_by,
+      dp.service_type AS products__service_type,
+      dp.document_id AS products__document_id,
+      dp.product_price AS products__product_price,
+      dp.product_quantity AS products__product_quantity,
+      dp.tax_fee AS products__tax_fee,
+      dp.unit_tax_amount AS products__unit_tax_amount,
+      dp.discount_percentage AS products__discount_percentage,
+      dp.unit_discount_amount AS products__unit_discount_amount,
+      dp.parent_product_id AS products__parent_product_id
+    FROM documents d
+    LEFT JOIN projects proj ON proj.id = d.project_id
+    LEFT JOIN stakeholders s ON s.id = d.stakeholder_id
+    LEFT JOIN documents_products dp ON dp.document_id = d.id
+    LEFT JOIN products prod ON prod.id = dp.product_id
+    WHERE (
+      d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
+      d.document_type = '${types.documentsTypes.RENT_INVOICE}'
+    ) ${whereConditions}
+    ORDER BY d.id DESC
+  `
+}
+
+const getReceipts = (fields = {}) => {
+  const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'd' })
+  const whereConditions = rawWhereConditions.replace(/d.nit/i, 's.nit').replace(/d.name/i, 's.name').replace(/d.start_date/i, 'DATE(d.created_at)').replace(/d.end_date/i, 'DATE(d.created_at)')
+
+  return `
+    SELECT
+      d.id,
+      d.document_number,
+      d.related_internal_document_id,
+      d.document_type,
+      d.stakeholder_id,
+      s.name AS stakeholder_name,
+      s.nit AS stakeholder_nit,
+      s.stakeholder_type AS stakeholder_type,
+      s.email AS stakeholder_email,
+      s.phone AS stakeholder_phone,
+      s.address AS stakeholder_address,
+      d.operation_id,
+      d.status,
+      d.cancel_reason,
+      d.description,
+      d.subtotal_amount,
+      d.total_discount_amount,
+      d.total_tax_amount,
+      d.total_amount,
+      CASE
+        WHEN d.payment_method = 'CASH' THEN 'EFECTIVO'
+        WHEN d.payment_method = 'CARD' THEN 'CREDITO'
+        WHEN d.payment_method = 'CHECK' THEN 'CHEQUE'
+        WHEN d.payment_method = 'DEPOSIT' THEN 'DEPOSITO'
+        WHEN d.payment_method = 'TRANSFER' THEN 'TRANSFERENCIA'
+            ELSE 'NO DISPONIBLE' END as payment_method_spanish,
+      d.payment_method,
+      d.credit_days,
+      d.credit_status,
+      CASE
+        WHEN d.credit_status = 'UNPAID' THEN 'PAGO PENDIENTE'
+        WHEN d.credit_status = 'PAID' THEN 'PAGADO'
+        WHEN d.credit_status = 'DEFAULT' THEN 'EN MORA'
+          ELSE 'NO DISPONIBLE' END as credit_status_spanish,
+      d.created_at,
+      d.created_by,
+      d.updated_at,
+      d.updated_by,
+      proj.id AS project_id,
+      proj.name AS project_name,
+      prod.id AS products__id,
+      prod.product_type AS products__product_type,
+      prod.status AS products__status,
+      prod.code AS products__code,
+      prod.serial_number AS products__serial_number,
+      prod.description AS products__description,
+      prod.image_url AS products__image_url,
+      prod.created_at AS products__created_at,
+      prod.created_by AS products__created_by,
+      dp.service_type AS products__service_type,
+      dp.document_id AS products__document_id,
+      dp.product_price AS products__product_price,
+      dp.product_quantity AS products__product_quantity,
+      dp.tax_fee AS products__tax_fee,
+      dp.unit_tax_amount AS products__unit_tax_amount,
+      dp.discount_percentage AS products__discount_percentage,
+      dp.unit_discount_amount AS products__unit_discount_amount,
+      dp.parent_product_id AS products__parent_product_id,
+      pay.id AS payments__id,
+      pay.id AS payments__payment_id,
+      pay.document_id AS payments__document_id,
+      pay.payment_amount AS payments__payment_amount,
+      pay.payment_method AS payments__payment_method,
+      pay.payment_date AS payments__payment_date,
+      pay.related_external_document AS payments__related_external_document,
+      pay.description AS payments__description,
+      pay.is_deleted AS payments__is_deleted,
+      pay.created_at AS payments__created_at,
+      pay.created_by AS payments__created_by
+    FROM documents d
+    LEFT JOIN projects proj ON proj.id = d.project_id
+    LEFT JOIN stakeholders s ON s.id = d.stakeholder_id
+    LEFT JOIN documents_products dp ON dp.document_id = d.id
+    LEFT JOIN products prod ON prod.id = dp.product_id
+    LEFT JOIN payments pay ON pay.document_id = d.id
+    WHERE (
+      d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
+      d.document_type = '${types.documentsTypes.RENT_INVOICE}'
+    ) ${whereConditions}
+    ORDER BY d.id DESC
+  `
+}
+
+const getManualReceipts = (fields = {}) => {
+  const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'd' })
+  const whereConditions = rawWhereConditions.replace(/d.nit/i, 's.nit').replace(/d.name/i, 's.name').replace(/d.start_date/i, 'DATE(d.created_at)').replace(/d.end_date/i, 'DATE(d.created_at)')
+
+  return `
+  SELECT
+  d.id,
+  d.created_at,
+  d.status,
+  d.total_amount,
+  d.stakeholder_id,
+  s.name AS stakeholder_name,
+  s.nit AS stakeholder_nit,
+  s.stakeholder_type AS stakeholder_type,
+  s.email AS stakeholder_email,
+  s.phone AS stakeholder_phone,
+  s.address AS stakeholder_address,
+  proj.id AS project_id,
+  proj.name AS project_name,
+  paydetail.related_external_document AS payments__related_external_document,
+  paydetail.id AS payments__id,
+  paydetail.id AS payments__payment_id,
+  d.id AS payments__document_id,
+  paydetail.payment_amount AS payments__payment_amount,
+  paydetail.payment_method AS payments__payment_method,
+  paydetail.payment_date AS payments__payment_date,
+  paydetail.description AS payments__description,
+  paydetail.is_deleted AS payments__is_deleted,
+  paydetail.created_at AS payments__created_at,
+  paydetail.created_by AS payments__created_by
+FROM manual_payments d
+LEFT JOIN manual_payments_detail paydetail on d.id = paydetail.manual_payment
+LEFT JOIN projects proj ON d.project_id = proj.id
+LEFT JOIN stakeholders s ON d.stakeholder_id = s.id
+    WHERE 1 = 1      
+    ${whereConditions}
+    ORDER BY d.id DESC
+  `
+}
+
 module.exports = {
   getAccountsReceivable,
   getClientAccountState,
   getInventory,
   getSales,
+  getInvoice,
+  getReceipts,
+  getManualReceipts
 }
