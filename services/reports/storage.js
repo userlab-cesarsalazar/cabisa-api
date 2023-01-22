@@ -337,6 +337,7 @@ const getReceipts = (fields = {}) => {
       d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
       d.document_type = '${types.documentsTypes.RENT_INVOICE}'
     ) ${whereConditions}
+    AND d.status = 'APPROVED'
     ORDER BY d.id DESC
   `
 }
@@ -350,6 +351,11 @@ const getManualReceipts = (fields = {}) => {
   d.id,
   d.created_at,
   d.status,
+  CASE
+  WHEN d.status = 'UNPAID' THEN 'PAGO PENDIENTE'
+  WHEN d.status = 'PAID' THEN 'PAGADO'
+  WHEN d.status = 'DEFAULT' THEN 'EN MORA'
+    ELSE 'NO DISPONIBLE' END as status_spanish,
   d.total_amount,
   d.stakeholder_id,
   s.name AS stakeholder_name,

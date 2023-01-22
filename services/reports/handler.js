@@ -180,8 +180,15 @@ module.exports.getCashManualReceipts = async (event, context) => {
     const res = await handleRead(req, { dbQuery: db.query, storage: storage.getManualReceipts, nestedFieldsKeys: ['payments'] })
       
     const data = res.data[0]
-      ? res.data.map(d => ({
-          ...d,                    
+      ? res.data.map(d => {        
+        let composeData = {
+          ...d,
+          due: d.payments && d.payments[0] ? d.payments.reduce((r, p) => {
+            const isDuplicate = r[0] && r.some(rp => Number(rp.payment_id) === Number(p.payment_id))
+
+            if (isDuplicate || !p.payment_id || p.is_deleted) return r
+            else return [...r, p]
+          }, []).filter(item => item.is_deleted === 0).reduce((sum ,{payment_amount}) => sum + payment_amount , 0) : 0,
           payments:
             d.payments && d.payments[0]
               ? d.payments.reduce((r, p) => {
@@ -191,7 +198,10 @@ module.exports.getCashManualReceipts = async (event, context) => {
                   else return [...r, p]
                 }, [])
               : [],
-        }))
+        }
+        composeData.differenceAmount = composeData.total_amount - composeData.due          
+        return composeData
+      })
       : []
 
     return await handleResponse({ req, res: { ...res, data } })
@@ -215,7 +225,7 @@ module.exports.exportReport = async event => {
 
     let systemInvoice =  req.queryStringParameters.document_number ? (req.queryStringParameters.document_number.toLowerCase() === '$like:%factura del sistema%') : false
     
-    if(systemInvoice){
+    if(systemInvoice && reportType === "cashReceipts"){
       console.log("entro aqui perro")
       delete req.query.document_number
     }
@@ -277,7 +287,7 @@ module.exports.exportReport = async event => {
       
         manifestoHeaders = [
           { name: 'Nro. Nota de servicio', column: 'related_internal_document_id', width: 18 },
-          { name: 'Nro. Documento', column: 'document_number', width: 12 },                    
+          { name: 'Nro. Documento', column: 'document_number', width: 17 },                    
           { name: 'Fecha de facturacion', column: 'created_at', width: 18, numFmt: 'dd-mm-yyyy hh:mm:ss'},
           { name: 'Cliente', column: 'stakeholder_name', width: 48 },
           { name: 'Monto Pagado', column: 'due', width: 14 ,numFmt: '"Q"#,##0.00'},
@@ -289,12 +299,43 @@ module.exports.exportReport = async event => {
         break;
       case "manualCashReceipts":
         result = await handleRead(req, { dbQuery: db.query, storage: storage.getManualReceipts, nestedFieldsKeys: ['payments'] })
+        result.data = result.data[0]
+        ? result.data.map(d => 
+          {
+            let composeData = { 
+            ...d,            
+            due: d.payments && d.payments[0] ? d.payments.reduce((r, p) => {
+              const isDuplicate = r[0] && r.some(rp => Number(rp.payment_id) === Number(p.payment_id))
+  
+              if (isDuplicate || !p.payment_id || p.is_deleted) return r
+              else return [...r, p]
+            }, []).filter(item => item.is_deleted === 0).reduce((sum ,{payment_amount}) => sum + payment_amount , 0) : 0,
+           
+            payments:
+            d.payments && d.payments[0]
+              ? d.payments.reduce((r, p) => {
+                  const isDuplicate = r[0] && r.some(rp => Number(rp.payment_id) === Number(p.payment_id))
+
+                  if (isDuplicate || !p.payment_id || p.is_deleted) return r
+                  else return [...r, p]
+                }, [])
+              : []
+          }
+  
+          composeData.differenceAmount = composeData.total_amount - composeData.due          
+          return composeData
+        })
+        : []  
+
+        
         manifestoHeaders = [          
           { name: 'Nro. Recibo', column: 'id', width: 12 },                    
           { name: 'Fecha de facturacion', column: 'created_at', width: 18, numFmt: 'dd-mm-yyyy hh:mm:ss'},
           { name: 'Cliente', column: 'stakeholder_name', width: 48 },
-          { name: 'Monto', column: 'total_amount', width: 14 ,numFmt: '"Q"#,##0.00'},          
-          { name: 'Estado', column: 'status', width: 15 }
+          { name: 'Monto Pagado', column: 'due', width: 14 ,numFmt: '"Q"#,##0.00'},
+          { name: 'Monto Pendiente', column: 'differenceAmount', width: 14 ,numFmt: '"Q"#,##0.00'},
+          { name: 'Monto Total', column: 'total_amount', width: 14 ,numFmt: '"Q"#,##0.00'},
+          { name: 'Estado', column: 'status_spanish', width: 15 }
         ]
         break;    
       default:
