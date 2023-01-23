@@ -5,7 +5,7 @@ const getClientAccountState = (fields = {}) => `
     s.id,
     s.stakeholder_type,
     CASE
-    WHEN s.stakeholder_type = 'CLIENTE INDIVIDUAL' THEN 'CLIENTE INDIVIDUAL'
+    WHEN s.stakeholder_type = 'CLIENT_INDIVIDUAL' THEN 'CLIENTE INDIVIDUAL'
     WHEN s.stakeholder_type = 'CLIENT_COMPANY' THEN 'EMPRESA'
         ELSE 'NO DISPONIBLE' END as stakeholder_type_spanish,
     s.status,
