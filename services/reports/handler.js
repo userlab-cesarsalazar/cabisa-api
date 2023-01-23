@@ -15,8 +15,11 @@ module.exports.clientsAccountState = async event => {
 
     const data = res.data.map(d => ({
       ...d,
-      current_credit: Number(d.total_credit) - Number(d.paid_credit), // unpaid_credit
-      credit_balance: Number(d.credit_limit) - (Number(d.total_credit) - Number(d.paid_credit)), // available_credit
+      paid_credit : Number(d.paid_credit),
+      credit_limit: Number(d.credit_limit),
+      total_credit : d.total_charge,
+      current_credit: d.total_charge, // unpaid_credit
+      credit_balance: (Number(d.credit_limit) - (Number(d.total_charge)) - Number(d.paid_credit)), // available_credit
     }))
 
     return await handleResponse({ req, res: { ...res, data } })
@@ -225,8 +228,7 @@ module.exports.exportReport = async event => {
 
     let systemInvoice =  req.queryStringParameters.document_number ? (req.queryStringParameters.document_number.toLowerCase() === '$like:%factura del sistema%') : false
     
-    if(systemInvoice && reportType === "cashReceipts"){
-      console.log("entro aqui perro")
+    if(systemInvoice && reportType === "cashReceipts"){      
       delete req.query.document_number
     }
 
@@ -240,8 +242,8 @@ module.exports.exportReport = async event => {
           { name: 'Cliente', column: 'stakeholder_name', width: 48 },
           { name: 'Fecha de facturacion', column: 'created_at', width: 18, numFmt: 'dd-mm-yyyy hh:mm:ss'},          
           { name: 'Total', column: 'total', width: 14 ,numFmt: '"Q"#,##0.00'},
-          { name: 'Metodo de pago', column: 'payment_method_spanish', width: 15 },
-          { name: 'Estado', column: 'status_spanish', width: 15 }      
+          { name: 'Metodo de pago', column: 'payment_method_spanish', width: 17 },
+          { name: 'Estado', column: 'status_spanish', width: 17 }      
         ]
         break;
       case "cashReceipts":
@@ -293,8 +295,8 @@ module.exports.exportReport = async event => {
           { name: 'Monto Pagado', column: 'due', width: 14 ,numFmt: '"Q"#,##0.00'},
           { name: 'Monto Pendiente', column: 'differenceAmount', width: 14 ,numFmt: '"Q"#,##0.00'},
           { name: 'Monto Total', column: 'total_amount', width: 14 ,numFmt: '"Q"#,##0.00'},
-          { name: 'Metodo de pago', column: 'payment_method_spanish', width: 15 },
-          { name: 'Estado', column: 'credit_status_spanish', width: 15 }
+          { name: 'Metodo de pago', column: 'payment_method_spanish', width: 17 },
+          { name: 'Estado', column: 'credit_status_spanish', width: 17 }
         ]
         break;
       case "manualCashReceipts":
@@ -335,9 +337,35 @@ module.exports.exportReport = async event => {
           { name: 'Monto Pagado', column: 'due', width: 14 ,numFmt: '"Q"#,##0.00'},
           { name: 'Monto Pendiente', column: 'differenceAmount', width: 14 ,numFmt: '"Q"#,##0.00'},
           { name: 'Monto Total', column: 'total_amount', width: 14 ,numFmt: '"Q"#,##0.00'},
-          { name: 'Estado', column: 'status_spanish', width: 15 }
+          { name: 'Estado', column: 'status_spanish', width: 17 }
         ]
         break;    
+     
+      case "clientReport":
+          req.hasPermissions([types.permissions.REPORTS])
+          result = await handleRead(req, { dbQuery: db.query, storage: storage.getClientAccountState })
+          result.data = result.data[0] ? result.data.map(d => ({
+          ...d,
+          paid_credit : Number(d.paid_credit),
+          credit_limit: Number(d.credit_limit),
+          total_credit : d.total_charge,
+          current_credit: d.total_charge,
+          credit_balance: (Number(d.credit_limit) - (Number(d.total_charge)) - Number(d.paid_credit)),
+          total_charge: d.total_charge === null ? 0 : d.total_charge
+        })) : []
+
+        manifestoHeaders = [          
+          { name: 'Codigo Cliente', column: 'id', width: 12 },                    
+          { name: 'Nombre o razon social', column: 'name', width: 28},
+          { name: 'Nit', column: 'nit', width: 15},
+          { name: 'Fecha de Creacion', column: 'created_at', width: 18 },
+          { name: 'Tipo', column: 'stakeholder_type_spanish', width: 18 },
+          { name: 'Limite de Credito', column: 'credit_limit', width: 14 ,numFmt: '"Q"#,##0.00'},
+          { name: 'Cargos', column: 'total_charge', width: 14 ,numFmt: '"Q"#,##0.00'},
+          { name: 'Pagado', column: 'paid_credit', width: 14 ,numFmt: '"Q"#,##0.00'},
+          { name: 'Balance', column: 'credit_balance', width: 14 ,numFmt: '"Q"#,##0.00'},          
+        ]
+        break; 
       default:
         break;
     }

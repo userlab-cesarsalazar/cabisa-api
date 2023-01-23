@@ -1,9 +1,13 @@
 const { types, getWhereConditions } = require(`${process.env['FILE_ENVIRONMENT']}/globals`)
 
 const getClientAccountState = (fields = {}) => `
-  SELECT 
+    SELECT
     s.id,
     s.stakeholder_type,
+    CASE
+    WHEN s.stakeholder_type = 'CLIENTE INDIVIDUAL' THEN 'CLIENTE INDIVIDUAL'
+    WHEN s.stakeholder_type = 'CLIENT_COMPANY' THEN 'EMPRESA'
+        ELSE 'NO DISPONIBLE' END as stakeholder_type_spanish,
     s.status,
     s.name,
     s.address,
@@ -13,17 +17,34 @@ const getClientAccountState = (fields = {}) => `
     s.alternative_phone,
     s.business_man,
     s.payments_man,
-    s.credit_limit,
-    s.total_credit,
-    s.paid_credit,
+    CASE
+      WHEN s.credit_limit IS NULL THEN 0
+      ELSE s.credit_limit END AS credit_limit,    
+    CASE
+      WHEN s.total_credit IS NULL THEN 0
+      ELSE s.total_credit END AS total_credit,    
+    CASE
+      WHEN s.paid_credit IS NULL THEN 0
+      ELSE s.paid_credit END AS paid_credit,
     s.block_reason,
     s.created_at,
     s.created_by,
     s.updated_at,
-    s.updated_by
-  FROM stakeholders s
-  ${getWhereConditions({ fields, tableAlias: 's', hasPreviousConditions: false })}
-  ORDER BY s.id DESC
+    s.updated_by,
+    (SELECT
+    SUM(dc.total_amount)
+    FROM documents dc
+    LEFT JOIN stakeholders sh ON sh.id = dc.stakeholder_id
+    WHERE (
+      dc.document_type = 'SELL_INVOICE' OR
+      dc.document_type = 'RENT_INVOICE'
+    )
+    AND sh.id = s.id
+    AND dc.status = 'APPROVED'
+    ORDER BY dc.id DESC) AS total_charge
+    FROM stakeholders s
+    ${getWhereConditions({ fields, tableAlias: 's', hasPreviousConditions: false })}
+    ORDER BY s.id DESC;  
 `
 
 const getAccountsReceivable = (fields = {}) => {
