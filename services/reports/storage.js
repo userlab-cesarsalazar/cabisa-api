@@ -104,7 +104,7 @@ const getSales = (fields = {}) => {
   const invoicesWhereConditions =
     includeInvoices || includeBoth
       ? `(
-      d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR
+      d.document_type = '${types.documentsTypes.SELL_INVOICE}' OR      
       d.document_type = '${types.documentsTypes.RENT_INVOICE}'
     )`
       : ''
@@ -119,11 +119,40 @@ const getSales = (fields = {}) => {
   return `
     SELECT
       d.id,
+      d.dispatched_by,
+      d.received_by,      
+      d.related_internal_document_id,
+      d.credit_status,
+      CASE
+        WHEN d.credit_status = 'UNPAID' THEN 'PAGO PENDIENTE'
+        WHEN d.credit_status = 'PAID' THEN 'PAGADO'
+        WHEN d.credit_status = 'DEFAULT' THEN 'EN MORA'
+        ELSE 'NO DISPONIBLE' END as credit_status_spanish,
+      d.document_number,
+      CASE
+      WHEN d.document_number IS NULL THEN 'Factura Sistema'
+      ELSE d.document_number END AS document_number_report,
       d.document_type,
+      CASE
+        WHEN d.document_type = 'SELL_INVOICE' THEN 'Factura manual'
+        WHEN d.document_type = 'RENT_INVOICE' THEN 'Nota de servicio'        
+        ELSE 'NO DISPONIBLE' END as document_type_spanish,
       d.stakeholder_id,
       s.stakeholder_type,
       s.name AS stakeholder_name,
+      s.business_man,
+      s.payments_man,
+      s.address,
+      s.phone,
+      s.email,
       d.payment_method,
+      CASE
+        WHEN d.payment_method = 'CASH' THEN 'EFECTIVO'
+        WHEN d.payment_method = 'CARD' THEN 'CREDITO'
+        WHEN d.payment_method = 'CHECK' THEN 'CHEQUE'
+        WHEN d.payment_method = 'DEPOSIT' THEN 'DEPOSITO'
+        WHEN d.payment_method = 'TRANSFER' THEN 'TRANSFERENCIA'
+            ELSE 'NO DISPONIBLE' END as payment_method_spanish,
       d.status,
       d.sales_commission_amount,
       d.total_amount,
@@ -138,7 +167,7 @@ const getSales = (fields = {}) => {
     WHERE ${includeBoth ? '(' : ''}
         ${invoicesWhereConditions} ${documentTypeWhereOperator} ${preInvoicesWhereConditions}
       ${includeBoth ? ')' : ''} AND
-      d.status <> '${types.documentsStatus.CANCELLED}'
+      d.status = '${types.documentsStatus.APPROVED}'
       ${whereConditions}
     ORDER BY d.id DESC
   `
@@ -146,7 +175,7 @@ const getSales = (fields = {}) => {
 
 const getInventory = (fields = {}) => {
   const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'p' })
-  const whereConditions = rawWhereConditions.replace(/p.start_date/i, 'imd.created_at').replace(/p.end_date/i, 'imd.created_at')
+  const whereConditions = rawWhereConditions.replace(/p.start_date/i, 'imd.created_at').replace(/p.end_date/i, 'imd.created_at').replace(/p.product_id/i, 'p.id')
 
   // Las siguientes dos lineas se agregaron a la query asumiendo que no existen movimientos parciales de inventario
   // De llegar a existir se debe presentar la informacion de otra manera
@@ -191,8 +220,7 @@ const getInventory = (fields = {}) => {
       LEFT JOIN operations o ON o.id = im.operation_id
       LEFT JOIN inventory_movements_details imd ON imd.inventory_movement_id = im.id
       LEFT JOIN users u ON u.id = imd.created_by
-      WHERE (
-        im.status = '${types.inventoryMovementsStatus.PARTIAL}' OR
+      WHERE (        
         im.status = '${types.inventoryMovementsStatus.APPROVED}'
       ) ${whereConditions}
       ORDER BY im.operation_id, im.id

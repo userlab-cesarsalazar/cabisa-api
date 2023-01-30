@@ -223,8 +223,8 @@ module.exports.exportReport = async event => {
     let result,report,file
 
     const req = await handleRequest({ event })
-    const reportType  = req.queryStringParameters.reportType    
-    delete req.query.reportType
+    const reportType  = req.queryStringParameters.reportType      
+    delete req.query.reportType    
 
     let systemInvoice =  req.queryStringParameters.document_number ? (req.queryStringParameters.document_number.toLowerCase() === '$like:%factura del sistema%') : false
     
@@ -283,6 +283,7 @@ module.exports.exportReport = async event => {
 
         composeData.differenceAmount = composeData.total_amount - composeData.due
         composeData.document_number = composeData.document_number === null ? 'Factura del sistema' : composeData.document_number                
+        console.log("composeData >>", composeData)
         return composeData
       })
       : []  
@@ -340,7 +341,6 @@ module.exports.exportReport = async event => {
           { name: 'Estado', column: 'status_spanish', width: 17 }
         ]
         break;    
-     
       case "clientReport":
           req.hasPermissions([types.permissions.REPORTS])
           result = await handleRead(req, { dbQuery: db.query, storage: storage.getClientAccountState })
@@ -365,13 +365,98 @@ module.exports.exportReport = async event => {
           { name: 'Pagado', column: 'paid_credit', width: 14 ,numFmt: '"Q"#,##0.00'},
           { name: 'Balance', column: 'credit_balance', width: 14 ,numFmt: '"Q"#,##0.00'},          
         ]
-        break; 
+        break;
+      case "inventoryReport": case "inventoryReportDetail":
+        req.hasPermissions([types.permissions.REPORTS])
+
+        result = await handleRead(req, {
+          dbQuery: db.query,
+          storage: storage.getInventory,
+          nestedFieldsKeys: ['inventory_movements', 'inventory_movements_details'],
+          uniqueKey: ['product_id'],
+        })
+                
+        result.data = result.data.map(product => {
+          const inventoryMovements = product.inventory_movements.reduce((r, im) => {
+            const isDuplicateMovement = r.some(rim => Number(rim.inventory_movement_id) === Number(im.inventory_movement_id))
+    
+            if (isDuplicateMovement) return r
+            else return [...r, im]
+          }, [])
+    
+          const inventoryMovementsWithDetais = inventoryMovements.map(im => {
+            const inventory_movements_details = product.inventory_movements_details.flatMap(imd =>
+              Number(imd.inventory_movement_id) === Number(im.inventory_movement_id) ? imd : []
+            ) 
+    
+            return { ...im, inventory_movements_details, name:product.description }
+          })
+    
+          delete product.inventory_movements_details
+
+          if(reportType === "inventoryReport"){
+            return { ...product, inventory_movements: inventoryMovementsWithDetais }
+          } else{                 
+            return inventoryMovementsWithDetais
+          }                   
+        })
+                              
+        if(reportType === "inventoryReport"){
+
+          manifestoHeaders = [          
+            { name: 'Codigo', column: 'code', width: 12 },                    
+            { name: 'Nombre Producto', column: 'description', width: 28},
+            { name: 'Costo Unitario promedio', column: 'inventory_unit_value', width: 28,numFmt: '"Q"#,##0.00'},
+            { name: 'Existencias', column: 'stock', width: 18 },
+            { name: 'valor total', column: 'inventory_total_value', width: 18 ,numFmt: '"Q"#,##0.00'},
+            { name: 'Categoria', column: 'product_category', width: 18 },
+            { name: 'Estado', column: 'status', width: 14}          
+          ]
+        }else{
+          
+          result.data = result.data[0]      
+
+          manifestoHeaders = [          
+            { name: 'Fecha', column: 'created_at', width: 19,numFmt: 'dd-mm-yyyy hh:mm:ss'},                    
+            { name: 'Nombre Producto', column: 'name', width: 30},
+            { name: 'Autorizado por', column: 'creator_name', width: 16},
+            { name: 'Existencias del movimiento', column: 'quantity', width: 16 },
+            { name: 'Valor Unitiario del movimiento', column: 'unit_cost', width: 16 ,numFmt: '"Q"#,##0.00'},
+            { name: 'Valor Total del movimiento', column: 'total_cost', width: 16 ,numFmt: '"Q"#,##0.00'},
+            { name: 'Existencias actuales', column: 'inventory_quantity', width: 16 },
+            { name: 'Valor unitario promedio', column: 'inventory_unit_cost', width: 16,numFmt: '"Q"#,##0.00'},
+            { name: 'Valor total actual', column: 'inventory_total_cost', width: 16,numFmt: '"Q"#,##0.00'}          
+          ]
+        }        
+          break; 
+      case "salesReport":
+        req.hasPermissions([types.permissions.REPORTS])
+        result = await handleRead(req, { dbQuery: db.query, storage: storage.getSales })
+        manifestoHeaders = [          
+          { name: 'Tipo', column: 'document_type_spanish', width: 15 },                    
+          { name: '# Nota de servicio', column: 'related_internal_document_id', width: 28},
+          { name: '# Documento', column: 'document_number_report', width: 15},
+          { name: 'Fecha', column: 'created_at', width: 18,numFmt: 'dd-mm-yyyy hh:mm:ss' },
+          { name: 'Metodo de pago', column: 'payment_method_spanish', width: 18 },
+          { name: 'Monto', column: 'total_amount', width: 14 ,numFmt: '"Q"#,##0.00'},          
+          { name: 'Estado', column: 'credit_status_spanish', width: 18},
+          { name: 'Cliente', column: 'stakeholder_name', width: 20},
+          { name: 'Email', column: 'email', width: 30},
+          { name: 'Telefono', column: 'phone', width: 18},
+          { name: 'Direccion', column: 'address', width: 30},
+          { name: 'Encargado(Cliente)', column: 'business_man', width: 18},
+          { name: 'Quien Entrega', column: 'dispatched_by', width: 18},
+          { name: 'Quien Recibe', column: 'received_by', width: 18},
+          { name: 'Vendedor', column: 'seller_name', width: 18}
+        ]
+        break
       default:
         break;
     }
                 
     const manifestData = result.data ? result.data : []
-          console.log(manifestData)
+    console.log(">>>",manifestData)
+              
     report = await standardReport({
       sheets: [
         {
