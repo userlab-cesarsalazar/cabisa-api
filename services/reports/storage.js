@@ -189,6 +189,11 @@ const getInventory = (fields = {}) => {
         p.code,
         p.serial_number,
         p.product_type,
+        CASE
+      WHEN p.product_category = 'EQUIPMENT' THEN 'EQUIPO'
+      WHEN p.product_category = 'SERVICE' THEN 'SERVICIO'
+      WHEN p.product_category = 'PART' THEN 'REPUESTO'
+      ELSE 'NO DISPONIBLE' END as product_category_spanish,
         p.product_category,
         p.status,
         p.stock,
@@ -436,6 +441,80 @@ LEFT JOIN stakeholders s ON d.stakeholder_id = s.id
   `
 }
 
+const getServiceOrders = (fields = {}) => {
+const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'd' })
+const whereConditions = rawWhereConditions.replace(/d.name/i, 's.name').replace(/d.start_date/i, 'DATE(d.created_at)').replace(/d.end_date/i, 'DATE(d.created_at)')
+return `
+  SELECT
+    d.id,
+    d.document_type,
+    d.stakeholder_id,
+    d.operation_id,
+    d.related_internal_document_id,
+    d.related_external_document_id,
+    d.status,
+    CASE
+        WHEN d.status = 'PENDING' THEN 'PENDIENTE'
+        WHEN d.status = 'CANCELLED' THEN 'ANULADO'
+        WHEN d.status = 'APPROVED' THEN 'APROBADO'
+        ELSE 'NO DISPONIBLE' END as status_spanish,
+    d.comments,
+    d.received_by,
+    d.dispatched_by,
+    d.start_date,
+    d.end_date,
+    d.cancel_reason,
+    d.credit_days,
+    u.full_name AS creator_name,
+    d.created_at,
+    d.created_by,
+    d.updated_at,
+    d.updated_by,
+    (CASE
+      WHEN 
+        (d.related_internal_document_id IS NOT NULL AND d.operation_id IS NOT NULL) OR
+        d.status = '${types.documentsStatus.CANCELLED}'
+      THEN 1
+      ELSE 0
+    END) AS has_related_invoice,
+    s.id AS stakeholder_id,
+    s.stakeholder_type AS stakeholder_type,
+    s.name AS stakeholder_name,
+    s.nit AS stakeholder_nit,
+    s.email AS stakeholder_email,
+    s.business_man AS stakeholder_business_man,
+    s.address AS stakeholder_address,
+    s.phone AS stakeholder_phone,
+    proj.id AS project_id,
+    proj.name AS project_name,
+    prod.id AS products__id,
+    prod.status AS products__status,
+    dp.service_type AS products__service_type,
+    CASE
+      WHEN dp.service_type = 'EQUIPMENT' THEN 'EQUIPO'
+      WHEN dp.service_type = 'SERVICE' THEN 'SERVICIO'
+      WHEN dp.service_type = 'PART' THEN 'REPUESTO'
+      ELSE 'NO DISPONIBLE' END as products__service_type_spanish,
+    dp.product_price AS products__unit_price,
+    dp.product_quantity AS products__quantity,
+    dp.tax_fee AS products__tax_fee,
+    dp.unit_tax_amount AS products__unit_tax_amount,
+    dp.parent_product_id AS products__parent_product_id,
+    (dp.unit_tax_amount + dp.product_price) as products__total_product_amount,
+    prod.code AS products__code,
+    prod.serial_number AS products__serial_number,
+    prod.description AS products__description
+  FROM documents d
+  INNER JOIN users u ON u.id = d.created_by
+  INNER JOIN documents_products dp ON dp.document_id = d.id
+  INNER JOIN products prod ON prod.id = dp.product_id
+  INNER JOIN stakeholders s ON s.id = d.stakeholder_id
+  INNER JOIN projects proj ON proj.id = d.project_id
+  WHERE d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}' 
+  ${whereConditions}
+  ORDER BY d.id DESC
+`
+    }
 module.exports = {
   getAccountsReceivable,
   getClientAccountState,
@@ -443,5 +522,6 @@ module.exports = {
   getSales,
   getInvoice,
   getReceipts,
-  getManualReceipts
+  getManualReceipts,
+  getServiceOrders
 }

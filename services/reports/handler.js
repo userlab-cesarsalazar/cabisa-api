@@ -214,12 +214,28 @@ module.exports.getCashManualReceipts = async (event, context) => {
   }
 }
 
+module.exports.getServiceOrders = async event => {
+  try {
+    const req = await handleRequest({ event })
+
+    req.hasPermissions([types.permissions.REPORTS])
+
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.getServiceOrders, nestedFieldsKeys: ['products'] })
+
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
+
 //export excel
 
 module.exports.exportReport = async event => {
   
   try {
     let manifestoHeaders
+    let manifestoHeadersProducts
     let result,report,file
 
     const req = await handleRequest({ event })
@@ -409,7 +425,7 @@ module.exports.exportReport = async event => {
             { name: 'Costo Unitario promedio', column: 'inventory_unit_value', width: 28,numFmt: '"Q"#,##0.00'},
             { name: 'Existencias', column: 'stock', width: 18 },
             { name: 'valor total', column: 'inventory_total_value', width: 18 ,numFmt: '"Q"#,##0.00'},
-            { name: 'Categoria', column: 'product_category', width: 18 },
+            { name: 'Categoria', column: 'product_category_spanish', width: 18 },
             { name: 'Estado', column: 'status', width: 14}          
           ]
         }else{
@@ -450,23 +466,69 @@ module.exports.exportReport = async event => {
           { name: 'Vendedor', column: 'seller_name', width: 18}
         ]
         break
+      case "serviceOrders":
+          req.hasPermissions([types.permissions.REPORTS])
+          result = await handleRead(req, { dbQuery: db.query, storage: storage.getServiceOrders, nestedFieldsKeys: ['products'] })
+          console.log("RESULT >>> ",result)
+          manifestoHeaders = [                      
+            { name: '# Nota de servicio', column: 'id', width: 28},            
+            { name: 'Fecha Inicio', column: 'created_at', width: 18,numFmt: 'dd-mm-yyyy hh:mm:ss' },
+            { name: 'Fecha Final', column: 'end_date', width: 18,numFmt: 'dd-mm-yyyy hh:mm:ss' },
+            { name: 'Cliente', column: 'stakeholder_name', width: 20},
+            { name: 'Direccion', column: 'stakeholder_address', width: 30},
+            { name: 'Telefono', column: 'stakeholder_phone', width: 18},
+            { name: 'Encargado(Cliente)', column: 'stakeholder_business_man', width: 18},
+            { name: 'Proyecto', column: 'project_name', width: 20},            
+            { name: 'Estado', column: 'status_spanish', width: 18},            
+            { name: 'Observaciones', column: 'comments', width: 18}                                    
+          ]
+          manifestoHeadersProducts = [
+            { name: 'Referencia Nota de servicio', column: 'nota_id', width: 18},
+            { name: 'Codigo Producto', column: 'code', width: 18},
+            { name: 'Producto', column: 'description', width: 45},
+            { name: 'Tipo', column: 'service_type_spanish', width: 20},
+            { name: 'Precio', column: 'total_product_amount', width: 20,numFmt: '"Q"#,##0.00'},
+            { name: 'Cantidad', column: 'quantity', width: 20}            
+          ]
       default:
         break;
     }
                 
     const manifestData = result.data ? result.data : []
-    console.log(">>>",manifestData)
-              
-    report = await standardReport({
-      sheets: [
-        {
-          name: `FACTURAS`,
-          headers: manifestoHeaders,
-          data: systemInvoice ? manifestData.filter(item => item.document_number === 'Factura del sistema') : manifestData,
-        }        
-      ],
-    })
+    
+    if(reportType === "serviceOrders"){
+      
+      const manifestDataProducts = manifestData.flatMap((it) => {
+        let modifiedProducts = it.products.map(v => ({...v, nota_id: it.id}))        
+        return modifiedProducts
+      })
 
+      report = await standardReport({
+        sheets: [
+          {
+            name: `NOTA DE SERVICIO`,
+            headers: manifestoHeaders,
+            data: systemInvoice ? manifestData.filter(item => item.document_number === 'Factura del sistema') : manifestData,
+          },
+          {
+            name: `DETALLE NOTA DE SERVICIO`,
+            headers: manifestoHeadersProducts,
+            data: manifestDataProducts
+          }
+        ],
+      }) 
+    }else{
+      report = await standardReport({
+        sheets: [
+          {
+            name: `INFORMACION`,
+            headers: manifestoHeaders,
+            data: systemInvoice ? manifestData.filter(item => item.document_number === 'Factura del sistema') : manifestData,
+          }        
+        ],
+      })
+    }
+              
     file = await report.xlsx.writeBuffer()
 
     let data = {"reportExcel":file.toString('base64')}
@@ -479,8 +541,6 @@ module.exports.exportReport = async event => {
 
 const standardReport = data =>
   new Promise((resolve, reject) => {
-
-    console.log("data >> del fuclo ",data)
     
     let workbook = new Excel.Workbook()
     workbook.creator = 'Cabisa'
@@ -513,6 +573,17 @@ const standardReport = data =>
           pattern: 'solid',
           fgColor: { argb: '053E81' },
         }
+
+        newSheet.autoFilter = {
+          from: {
+            row: 1,
+            column: 1
+          },
+          to: {
+            row: 1,
+            column: newSheet.columns.length
+          }
+        };
 
         newSheet.addRows(sheet.data.map(d => d))
 
