@@ -480,7 +480,7 @@ module.exports.exportReport = async event => {
             { name: 'Encargado(Cliente)', column: 'stakeholder_business_man', width: 18},
             { name: 'Proyecto', column: 'project_name', width: 20},            
             { name: 'Estado', column: 'status_spanish', width: 18},            
-            { name: 'Observaciones', column: 'comments', width: 18}                                    
+            { name: 'Observaciones', column: 'comments', width: 35}                                    
           ]
           manifestoHeadersProducts = [
             { name: 'Referencia Nota de servicio', column: 'nota_id', width: 18},
