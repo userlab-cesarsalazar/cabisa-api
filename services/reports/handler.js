@@ -19,7 +19,7 @@ module.exports.clientsAccountState = async event => {
       credit_limit: Number(d.credit_limit),
       total_credit : d.total_charge,
       current_credit: d.total_charge, // unpaid_credit
-      credit_balance: (Number(d.credit_limit) - (Number(d.total_charge)) - Number(d.paid_credit)), // available_credit
+      credit_balance: ((Number(d.total_charge)) - Number(d.paid_credit)), // available_credit
     }))
 
     return await handleResponse({ req, res: { ...res, data } })
@@ -366,7 +366,7 @@ module.exports.exportReport = async event => {
           credit_limit: Number(d.credit_limit),
           total_credit : d.total_charge,
           current_credit: d.total_charge,
-          credit_balance: (Number(d.credit_limit) - (Number(d.total_charge)) - Number(d.paid_credit)),
+          credit_balance: ((Number(d.total_charge)) - Number(d.paid_credit)),
           total_charge: d.total_charge === null ? 0 : d.total_charge
         })) : []
 
@@ -374,9 +374,8 @@ module.exports.exportReport = async event => {
           { name: 'Codigo Cliente', column: 'id', width: 12 },                    
           { name: 'Nombre o razon social', column: 'name', width: 28},
           { name: 'Nit', column: 'nit', width: 15},
-          { name: 'Fecha de Creacion', column: 'created_at', width: 18 },
-          { name: 'Tipo', column: 'stakeholder_type_spanish', width: 18 },
-          { name: 'Limite de Credito', column: 'credit_limit', width: 14 ,numFmt: '"Q"#,##0.00'},
+          { name: 'Fecha de Creacion', column: 'created_at', width: 18,numFmt: 'dd-mm-yyyy hh:mm:ss' },
+          { name: 'Tipo', column: 'stakeholder_type_spanish', width: 18 },          
           { name: 'Cargos', column: 'total_charge', width: 14 ,numFmt: '"Q"#,##0.00'},
           { name: 'Pagado', column: 'paid_credit', width: 14 ,numFmt: '"Q"#,##0.00'},
           { name: 'Balance', column: 'credit_balance', width: 14 ,numFmt: '"Q"#,##0.00'},          
@@ -472,14 +471,11 @@ module.exports.exportReport = async event => {
           console.log("RESULT >>> ",result)
           manifestoHeaders = [                      
             { name: '# Nota de servicio', column: 'id', width: 28},            
-            { name: 'Fecha Inicio', column: 'created_at', width: 18,numFmt: 'dd-mm-yyyy hh:mm:ss' },
-            { name: 'Fecha Final', column: 'end_date', width: 18,numFmt: 'dd-mm-yyyy hh:mm:ss' },
-            { name: 'Cliente', column: 'stakeholder_name', width: 20},
-            { name: 'Direccion', column: 'stakeholder_address', width: 30},
-            { name: 'Telefono', column: 'stakeholder_phone', width: 18},
-            { name: 'Encargado(Cliente)', column: 'stakeholder_business_man', width: 18},
-            { name: 'Proyecto', column: 'project_name', width: 20},            
-            { name: 'Estado', column: 'status_spanish', width: 18},            
+            { name: 'Cliente', column: 'stakeholder_name', width: 20},                                    
+            { name: 'Proyecto', column: 'project_name', width: 20},                        
+            { name: 'Fecha Inicio (Proyecto)', column: 'project_start_date', width: 18,numFmt: 'dd-mm-yyyy hh:mm:ss' },
+            { name: 'Fecha Final (Proyecto)', column: 'project_end_date', width: 18,numFmt: 'dd-mm-yyyy hh:mm:ss' },
+            { name: 'Estado', column: 'status_spanish', width: 18},
             { name: 'Observaciones', column: 'comments', width: 35}                                    
           ]
           manifestoHeadersProducts = [

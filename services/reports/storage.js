@@ -443,7 +443,7 @@ LEFT JOIN stakeholders s ON d.stakeholder_id = s.id
 
 const getServiceOrders = (fields = {}) => {
 const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'd' })
-const whereConditions = rawWhereConditions.replace(/d.name/i, 's.name').replace(/d.start_date/i, 'DATE(d.created_at)').replace(/d.end_date/i, 'DATE(d.created_at)')
+const whereConditions = rawWhereConditions.replace(/d.name/i, 's.name').replace(/d.start_date/i, 'DATE(proj.start_date)').replace(/d.end_date/i, 'DATE(proj.start_date)')
 return `
   SELECT
     d.id,
@@ -487,6 +487,8 @@ return `
     s.phone AS stakeholder_phone,
     proj.id AS project_id,
     proj.name AS project_name,
+    proj.start_date as project_start_date,
+    proj.end_date as project_end_date,
     prod.id AS products__id,
     prod.status AS products__status,
     dp.service_type AS products__service_type,
