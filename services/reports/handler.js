@@ -217,11 +217,8 @@ module.exports.getCashManualReceipts = async (event, context) => {
 module.exports.getServiceOrders = async event => {
   try {
     const req = await handleRequest({ event })
-
     req.hasPermissions([types.permissions.REPORTS])
-
     const res = await handleRead(req, { dbQuery: db.query, storage: storage.getServiceOrders, nestedFieldsKeys: ['products'] })
-
     return await handleResponse({ req, res })
   } catch (error) {
     console.log(error)
@@ -236,6 +233,7 @@ module.exports.exportReport = async event => {
   try {
     let manifestoHeaders
     let manifestoHeadersProducts
+    let manifestoHeadersPayments
     let result,report,file
 
     const req = await handleRequest({ event })
@@ -307,13 +305,26 @@ module.exports.exportReport = async event => {
         manifestoHeaders = [
           { name: 'Nro. Nota de servicio', column: 'related_internal_document_id', width: 18 },
           { name: 'Nro. Documento', column: 'document_number', width: 17 },                    
-          { name: 'Fecha de facturacion', column: 'created_at', width: 18, numFmt: 'dd-mm-yyyy hh:mm:ss'},
-          { name: 'Cliente', column: 'stakeholder_name', width: 48 },
-          { name: 'Monto Pagado', column: 'due', width: 14 ,numFmt: '"Q"#,##0.00'},
+          { name: 'Fecha de facturacion', column: 'created_at', width: 18, numFmt: 'dd-mm-yyyy'},
+          { name: 'Cliente', column: 'stakeholder_name', width: 48 },          
           { name: 'Monto Pendiente', column: 'differenceAmount', width: 14 ,numFmt: '"Q"#,##0.00'},
-          { name: 'Monto Total', column: 'total_amount', width: 14 ,numFmt: '"Q"#,##0.00'},
-          { name: 'Metodo de pago', column: 'payment_method_spanish', width: 17 },
-          { name: 'Estado', column: 'credit_status_spanish', width: 17 }
+          { name: 'Monto Total', column: 'total_amount', width: 14 ,numFmt: '"Q"#,##0.00'},                    
+        ]
+        manifestoHeadersProducts = [
+          { name: 'Referencia Nota de servicio', column: 'nota_id', width: 18},
+          { name: 'Codigo Producto', column: 'code', width: 18},
+          { name: 'Producto', column: 'description', width: 45},
+          { name: 'Tipo', column: 'service_type_spanish', width: 20},
+          { name: 'Precio', column: 'total_product_amount', width: 20,numFmt: '"Q"#,##0.00'},
+          { name: 'Cantidad', column: 'product_quantity', width: 20}            
+        ]
+        manifestoHeadersPayments = [
+          { name: 'Referencia Nota de servicio', column: 'nota_id', width: 18},
+          { name: 'Fecha pago', column: 'payment_date', width: 18,numFmt: 'dd-mm-yyyy'},
+          { name: 'Monto', column: 'payment_amount', width: 18,numFmt: '"Q"#,##0.00'},
+          { name: 'Metodo de pago', column: 'payment_method_spanish', width: 18},
+          { name: 'Nro de documento', column: 'related_external_document', width: 18},
+          { name: 'Descripcion', column: 'description', width: 18},
         ]
         break;
       case "manualCashReceipts":
@@ -473,9 +484,7 @@ module.exports.exportReport = async event => {
             { name: '# Nota de servicio', column: 'id', width: 28},            
             { name: 'Cliente', column: 'stakeholder_name', width: 20},                                    
             { name: 'Proyecto', column: 'project_name', width: 20},                        
-            { name: 'Fecha Inicio (Proyecto)', column: 'project_start_date', width: 18,numFmt: 'dd-mm-yyyy hh:mm:ss' },
-            { name: 'Fecha Final (Proyecto)', column: 'project_end_date', width: 18,numFmt: 'dd-mm-yyyy hh:mm:ss' },
-            { name: 'Estado', column: 'status_spanish', width: 18},
+            { name: 'Fecha Inicio', column: 'project_start_date', width: 18,numFmt: 'dd-mm-yyyy' },            
             { name: 'Observaciones', column: 'comments', width: 35}                                    
           ]
           manifestoHeadersProducts = [
@@ -492,7 +501,39 @@ module.exports.exportReport = async event => {
                 
     const manifestData = result.data ? result.data : []
     
-    if(reportType === "serviceOrders"){
+    if(reportType === "cashReceipts"){
+      
+      const manifestDataProducts = manifestData.flatMap((it) => {
+        let modifiedProducts = it.products.map(v => ({...v, nota_id: it.related_internal_document_id}))        
+        return modifiedProducts
+      })
+
+      const manifestDataPayments = manifestData.flatMap((it) => {
+        let modifiedPayments = it.payments.map(v => ({...v, nota_id: it.related_internal_document_id}))        
+        return modifiedPayments
+      })
+      report = await standardReport({
+        sheets: [
+          {
+            name: `RECIBOS`,
+            headers: manifestoHeaders,
+            data: systemInvoice ? manifestData.filter(item => item.document_number === 'Factura del sistema') : manifestData,
+          },
+          {
+            name: `DETALLE RECIBOS`,
+            headers: manifestoHeadersProducts,
+            data: manifestDataProducts
+          },
+          {
+            name: `DETALLE PAGOS`,
+            headers: manifestoHeadersPayments,
+            data: manifestDataPayments
+          }
+        ],
+      }) 
+
+    }
+    else if(reportType === "serviceOrders"){
       
       const manifestDataProducts = manifestData.flatMap((it) => {
         let modifiedProducts = it.products.map(v => ({...v, nota_id: it.id}))        

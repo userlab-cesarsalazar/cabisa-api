@@ -361,7 +361,12 @@ const getReceipts = (fields = {}) => {
       prod.image_url AS products__image_url,
       prod.created_at AS products__created_at,
       prod.created_by AS products__created_by,
-      dp.service_type AS products__service_type,
+      dp.service_type AS products__service_type,      
+    CASE
+      WHEN dp.service_type = 'EQUIPMENT' THEN 'EQUIPO'
+      WHEN dp.service_type = 'SERVICE' THEN 'SERVICIO'
+      WHEN dp.service_type = 'PART' THEN 'REPUESTO'
+      ELSE 'NO DISPONIBLE' END as products__service_type_spanish,
       dp.document_id AS products__document_id,
       dp.product_price AS products__product_price,
       dp.product_quantity AS products__product_quantity,
@@ -370,11 +375,19 @@ const getReceipts = (fields = {}) => {
       dp.discount_percentage AS products__discount_percentage,
       dp.unit_discount_amount AS products__unit_discount_amount,
       dp.parent_product_id AS products__parent_product_id,
+      (dp.unit_tax_amount + dp.product_price) as products__total_product_amount,
       pay.id AS payments__id,
       pay.id AS payments__payment_id,
       pay.document_id AS payments__document_id,
       pay.payment_amount AS payments__payment_amount,
       pay.payment_method AS payments__payment_method,
+      CASE
+        WHEN pay.payment_method = 'CASH' THEN 'EFECTIVO'
+        WHEN pay.payment_method = 'CARD' THEN 'CREDITO'
+        WHEN pay.payment_method = 'CHECK' THEN 'CHEQUE'
+        WHEN pay.payment_method = 'DEPOSIT' THEN 'DEPOSITO'
+        WHEN pay.payment_method = 'TRANSFER' THEN 'TRANSFERENCIA'
+            ELSE 'NO DISPONIBLE' END as payments__payment_method_spanish,
       pay.payment_date AS payments__payment_date,
       pay.related_external_document AS payments__related_external_document,
       pay.description AS payments__description,
@@ -443,7 +456,7 @@ LEFT JOIN stakeholders s ON d.stakeholder_id = s.id
 
 const getServiceOrders = (fields = {}) => {
 const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'd' })
-const whereConditions = rawWhereConditions.replace(/d.name/i, 's.name').replace(/d.start_date/i, 'DATE(proj.start_date)').replace(/d.end_date/i, 'DATE(proj.start_date)')
+const whereConditions = rawWhereConditions.replace(/d.name/i, 's.name').replace(/d.start_date/i, 'DATE(d.start_date)')
 return `
   SELECT
     d.id,
