@@ -309,6 +309,7 @@ module.exports.exportReport = async event => {
           { name: 'Cliente', column: 'stakeholder_name', width: 48 },          
           { name: 'Monto Pendiente', column: 'differenceAmount', width: 14 ,numFmt: '"Q"#,##0.00'},
           { name: 'Monto Total', column: 'total_amount', width: 14 ,numFmt: '"Q"#,##0.00'},                    
+          { name: 'Detalle', column: 'producto_lit', width: 60},                    
         ]
         manifestoHeadersProducts = [
           { name: 'Referencia Nota de servicio', column: 'nota_id', width: 18},
@@ -503,32 +504,27 @@ module.exports.exportReport = async event => {
     
     if(reportType === "cashReceipts"){
       
-      const manifestDataProducts = manifestData.flatMap((it) => {
-        let modifiedProducts = it.products.map(v => ({...v, nota_id: it.related_internal_document_id}))        
-        return modifiedProducts
-      })
-
-      const manifestDataPayments = manifestData.flatMap((it) => {
-        let modifiedPayments = it.payments.map(v => ({...v, nota_id: it.related_internal_document_id}))        
-        return modifiedPayments
-      })
+      const modifiedData = manifestData.map((obj) => {
+        const descripcionProductos = obj.products.reduce((acum, products) => {
+          if (acum === "") {
+            return products.description;
+          } else {
+            return `${acum}  ||  ${products.description}`;
+          }
+        }, "");      
+        return {
+          ...obj,
+          producto_lit: descripcionProductos,
+        };
+      });
+     
       report = await standardReport({
         sheets: [
           {
             name: `RECIBOS`,
             headers: manifestoHeaders,
-            data: systemInvoice ? manifestData.filter(item => item.document_number === 'Factura del sistema') : manifestData,
-          },
-          {
-            name: `DETALLE RECIBOS`,
-            headers: manifestoHeadersProducts,
-            data: manifestDataProducts
-          },
-          {
-            name: `DETALLE PAGOS`,
-            headers: manifestoHeadersPayments,
-            data: manifestDataPayments
-          }
+            data: systemInvoice ? modifiedData.filter(item => item.document_number === 'Factura del sistema') : modifiedData,
+          }          
         ],
       }) 
 
