@@ -529,7 +529,29 @@ return `
   ${whereConditions}
   ORDER BY d.id DESC
 `
-    }
+}
+
+const getSalesProductReport = (fields = {}) => {
+  const rawWhereConditions = getWhereConditions({ fields, tableAlias: 'd' })
+  const whereConditions = rawWhereConditions.replace(/d.code/i, 'prod.code').replace(/d.description/i, 'prod.description').replace(/d.start_date/i, 'DATE(d.created_at)').replace(/d.end_date/i, 'DATE(d.created_at)')
+
+  return `
+  SELECT
+        prod.id AS id,
+        prod.code as code,
+        prod.description as description,
+        SUM(dp.product_quantity) as product_quantity,
+        SUM(d.total_amount) as total_amount
+    FROM products prod
+    INNER JOIN documents_products dp on prod.id = dp.product_id
+    INNER JOIN documents d on dp.document_id = d.id and d.status = 'APPROVED'
+    WHERE 1 = 1
+    and (d.document_type = 'SELL_INVOICE' OR d.document_type = 'RENT_INVOICE')    
+    ${whereConditions}
+    GROUP by prod.id;
+  `
+}
+
 module.exports = {
   getAccountsReceivable,
   getClientAccountState,
@@ -538,5 +560,6 @@ module.exports = {
   getInvoice,
   getReceipts,
   getManualReceipts,
-  getServiceOrders
+  getServiceOrders,
+  getSalesProductReport
 }

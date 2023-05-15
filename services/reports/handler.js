@@ -226,6 +226,17 @@ module.exports.getServiceOrders = async event => {
   }
 }
 
+module.exports.salesProductReport = async event => {
+  try {
+    const req = await handleRequest({ event })
+    req.hasPermissions([types.permissions.REPORTS])
+    const res = await handleRead(req, { dbQuery: db.query, storage: storage.getSalesProductReport })
+    return await handleResponse({ req, res })
+  } catch (error) {
+    console.log(error)
+    return await handleResponse({ error })
+  }
+}
 //export excel
 
 module.exports.exportReport = async event => {
@@ -486,16 +497,23 @@ module.exports.exportReport = async event => {
             { name: 'Cliente', column: 'stakeholder_name', width: 20},                                    
             { name: 'Proyecto', column: 'project_name', width: 20},                        
             { name: 'Fecha Inicio', column: 'project_start_date', width: 18,numFmt: 'dd-mm-yyyy' },            
-            { name: 'Observaciones', column: 'comments', width: 35}                                    
-          ]
+            { name: 'Observaciones', column: 'comments', width: 35}]
           manifestoHeadersProducts = [
             { name: 'Referencia Nota de servicio', column: 'nota_id', width: 18},
             { name: 'Codigo Producto', column: 'code', width: 18},
             { name: 'Producto', column: 'description', width: 45},
             { name: 'Tipo', column: 'service_type_spanish', width: 20},
             { name: 'Precio', column: 'total_product_amount', width: 20,numFmt: '"Q"#,##0.00'},
-            { name: 'Cantidad', column: 'quantity', width: 20}            
-          ]
+            { name: 'Cantidad', column: 'quantity', width: 20}]
+      case "salesProducts":
+        req.hasPermissions([types.permissions.REPORTS])
+        result = await handleRead(req, { dbQuery: db.query, storage: storage.getSalesProductReport })    
+        manifestoHeaders = [          
+          { name: 'Codigo de producto', column: 'code', width: 18 },                    
+          { name: 'Nombre / Descripcion', column: 'description', width: 40,},
+          { name: 'Cantidad de productos vendidos', column: 'product_quantity', width: 15 },                    
+          { name: 'Total vendido', column: 'total_amount', width: 15 ,numFmt: '"Q"#,##0.00'},          
+        ]
       default:
         break;
     }
