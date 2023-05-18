@@ -1,8 +1,12 @@
-let emisorFactDev = 'CABISA_DEMO'
-let nitDev = '92000000359K'
+const isDevelop = false
+const emisorFact = isDevelop ? 'CABISA_DEMO' : 'CABISA, SOCIEDAD ANONIMA'
+const nit = isDevelop ? '92000000359K' : '53982746'
 
-let emisorFactProd = 'CABISA, SOCIEDAD ANONIMA'
-let nitProd = '53982746'
+// let emisorFactDev = 'CABISA_DEMO'
+// let nitDev = '92000000359K'
+
+// let emisorFactProd = 'CABISA, SOCIEDAD ANONIMA'
+// let nitProd = '53982746'
 
 const buildXml = (data, moment) => {
   //BUILD XML HEADER
@@ -23,7 +27,7 @@ const buildXml = (data, moment) => {
     console.log("data >> ",x)
     
     let str = `
-      <dte:Item BienOServicio="B" NumeroLinea="1">
+    <dte:Item BienOServicio="${x.type === "SERVICE" ? "S" : "B" }" NumeroLinea="1">
         <dte:Cantidad>${x.quantity.toFixed(2)}</dte:Cantidad>
         <dte:UnidadMedida>UND</dte:UnidadMedida>
         <dte:Descripcion>${x.code}|${x.description}</dte:Descripcion>        
@@ -79,7 +83,7 @@ const headerInvoice = (data, moment) => {
       <dte:DTE ID="DatosCertificados">
         <dte:DatosEmision ID="DatosEmision">
           <dte:DatosGenerales CodigoMoneda="GTQ" FechaHoraEmision="${moment().tz('America/Guatemala').format()}" Tipo="FACT"></dte:DatosGenerales>
-          <dte:Emisor AfiliacionIVA="GEN" CodigoEstablecimiento="1" CorreoEmisor="cabisarent@hotmail.com " NITEmisor="${nitProd}" NombreComercial="${emisorFactProd}" NombreEmisor="${emisorFactProd}">
+          <dte:Emisor AfiliacionIVA="GEN" CodigoEstablecimiento="1" CorreoEmisor="cabisarent@hotmail.com " NITEmisor="${nit}" NombreComercial="${emisorFact}" NombreEmisor="${emisorFact}">
             <dte:DireccionEmisor>
               <dte:Direccion>CALLE REAL ALDEA CONCEPCION COLMENAS CALLEJON 6, LOTE 06 Y 07</dte:Direccion>
               <dte:CodigoPostal>01051</dte:CodigoPostal>
