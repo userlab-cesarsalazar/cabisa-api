@@ -69,6 +69,6 @@ JOIN stakeholders s ON s.id = dcn.stakeholder_id
     WHERE (1 = 1) 
     ${whereConditions}
     and error = 'NO ERRORS'
-    ORDER BY s.id DESC
+    ORDER BY dcn.id DESC
   `
 }
