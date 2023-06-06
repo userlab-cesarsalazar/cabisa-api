@@ -19,6 +19,7 @@ const handleUpdateStock = require('./handleUpdateStock')
 const buildXml = require('./buildInvoiceXml')
 const buildXmlFcam = require('./buildInvoiceFcamXml')
 const buidCancelXml = require('./buildCancelXml')
+const buildCreditDebitNote = require('./builCreditDebitNote')
 
 module.exports = {
   handleApproveDocument,
@@ -41,5 +42,6 @@ module.exports = {
   handleUpdateStock,
   buildXml,
   buildXmlFcam,
-  buidCancelXml
+  buidCancelXml,
+  buildCreditDebitNote
 }

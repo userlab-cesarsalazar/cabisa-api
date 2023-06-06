@@ -8,8 +8,8 @@ custom:
 
 provider:
   name: aws
-  runtime: nodejs12.x
-  stage: ${opt:stage, 'prod'}
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
   region: us-east-1
   deploymentBucket:
     name: ${file(${self:custom.config}):deploymentBucket}
@@ -115,3 +115,43 @@ functions:
                 - X-Amz-User-Agent
       layers:
         - arn:${file(${self:custom.config}):layer}
+
+  invoicesCreateDebitCreditNote:
+    handler: handler.createDebitCreditNote
+    timeout: 30
+    events:
+      - http:
+          path: invoicefel/createDebitCreditNote
+          method: post
+          cors:
+            origin: '*'
+            allowCredentials: true
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+    layers:
+      - arn:${file(${self:custom.config}):layer}
+
+  getDocumentDebitCreditNote:
+    handler: handler.getDocumentDebitCreditNote
+    timeout: 30
+    events:
+      - http:
+          path: invoicefel/getDocumentDebitCreditNote
+          method: get
+          cors:
+            origin: '*'
+            allowCredentials: true
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+    layers:
+      - arn:${file(${self:custom.config}):layer}

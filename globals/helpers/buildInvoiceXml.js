@@ -1,12 +1,6 @@
-const isDevelop = false
+const isDevelop = true
 const emisorFact = isDevelop ? 'CABISA_DEMO' : 'CABISA, SOCIEDAD ANONIMA'
 const nit = isDevelop ? '92000000359K' : '53982746'
-
-// let emisorFactDev = 'CABISA_DEMO'
-// let nitDev = '92000000359K'
-
-// let emisorFactProd = 'CABISA, SOCIEDAD ANONIMA'
-// let nitProd = '53982746'
 
 const buildXml = (data, moment) => {
   //BUILD XML HEADER
