@@ -1,4 +1,4 @@
-const isDevelop = true
+const isDevelop = false
 const emisorFact = isDevelop ? 'CABISA_DEMO' : 'CABISA, SOCIEDAD ANONIMA'
 const nit = isDevelop ? '92000000359K' : '53982746'
 
@@ -87,7 +87,7 @@ const headerInvoice = (data, moment) => {
             </dte:DireccionEmisor>
           </dte:Emisor>
 
-          <dte:Receptor CorreoReceptor="${data.client.email}" IDReceptor="${data.client.nit}" NombreReceptor="${data.client.name}">
+          <dte:Receptor CorreoReceptor="${data.client.email}" IDReceptor="${data.client.nit}" NombreReceptor="${replaceAmpersand(data.client.name)}">
             <dte:DireccionReceptor>
               <dte:Direccion>${data.client.address}</dte:Direccion>
               <dte:CodigoPostal>01001</dte:CodigoPostal>
@@ -105,5 +105,8 @@ const headerInvoice = (data, moment) => {
   return headerStructure
 }
 
+const replaceAmpersand = (str) => {
+  return str.replace(/&/g, '&#38;');
+};
 
 module.exports = buildXml

@@ -1,4 +1,4 @@
-const isDevelop = true
+const isDevelop = false
 
 const emisorFact = isDevelop ? 'CABISA_DEMO' : 'CABISA, SOCIEDAD ANONIMA'
 const nit = isDevelop ? '92000000359K' : '53982746'
@@ -24,10 +24,10 @@ const buildCreditDebitNote = (data, moment) => {
     console.log("DATA DEBIT/CREDIT NOTE >> ",x)
     
     let str = `
-      <dte:Item BienOServicio="${x.payment_method}" NumeroLinea="1">
+      <dte:Item BienOServicio="B" NumeroLinea="1">
         <dte:Cantidad>${x.payment_qty.toFixed(2)}</dte:Cantidad>
         <dte:UnidadMedida>UND</dte:UnidadMedida>
-        <dte:Descripcion>${x.description}</dte:Descripcion>        
+        <dte:Descripcion>${x.payment_code}|${x.description}</dte:Descripcion>        
         <dte:PrecioUnitario>${x.payment_amount.toFixed(2)}</dte:PrecioUnitario>
         <dte:Precio>${(price_).toFixed(2)}</dte:Precio>
         <dte:Descuento>${0}</dte:Descuento>        
@@ -95,7 +95,7 @@ const headerInvoice = (data, moment) => {
             </dte:DireccionEmisor>
           </dte:Emisor>
 
-          <dte:Receptor CorreoReceptor="${data.client.email}" IDReceptor="${data.client.nit}" NombreReceptor="${data.client.name}">
+          <dte:Receptor CorreoReceptor="${data.client.email}" IDReceptor="${data.client.nit}" NombreReceptor="${replaceAmpersand(data.client.name)}">
             <dte:DireccionReceptor>
               <dte:Direccion>${data.client.address}</dte:Direccion>
               <dte:CodigoPostal>01001</dte:CodigoPostal>
@@ -113,5 +113,8 @@ const headerInvoice = (data, moment) => {
   return headerStructure
 }
 
+const replaceAmpersand = (str) => {
+  return str.replace(/&/g, '&#38;');
+};
 
 module.exports = buildCreditDebitNote
