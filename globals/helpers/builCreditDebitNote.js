@@ -1,8 +1,10 @@
 const isDevelop = false
+
 const emisorFact = isDevelop ? 'CABISA_DEMO' : 'CABISA, SOCIEDAD ANONIMA'
 const nit = isDevelop ? '92000000359K' : '53982746'
 
-const buildXml = (data, moment) => {
+
+const buildCreditDebitNote = (data, moment) => {
   //BUILD XML HEADER
   let xml_header = headerInvoice(data, moment)
   let xml_details = ``
@@ -11,23 +13,24 @@ const buildXml = (data, moment) => {
 
   data.invoice.items.forEach(x => {
     
-    let price_ = x.price * x.quantity
-    let taxableAmount = (price_ - x.discount) / 1.12
+    let price_ = x.payment_amount * x.payment_qty
+    let taxableAmount = (price_ - 0) / 1.12
     let taxAmount = taxableAmount * 0.12
-    let total = price_ - x.discount
+    let total = price_ - 0
 
     totalTaxAmount += taxAmount
     grandTotal += total
-    console.log("data >> ",x)
+
+    console.log("DATA DEBIT/CREDIT NOTE >> ",x)
     
     let str = `
-    <dte:Item BienOServicio="${x.type === "SERVICE" ? "S" : "B" }" NumeroLinea="1">
-        <dte:Cantidad>${x.quantity.toFixed(2)}</dte:Cantidad>
+      <dte:Item BienOServicio="B" NumeroLinea="1">
+        <dte:Cantidad>${x.payment_qty.toFixed(2)}</dte:Cantidad>
         <dte:UnidadMedida>UND</dte:UnidadMedida>
-        <dte:Descripcion>${x.code}|${x.description}</dte:Descripcion>        
-        <dte:PrecioUnitario>${x.price.toFixed(2)}</dte:PrecioUnitario>
+        <dte:Descripcion>${x.payment_code}|${x.description}</dte:Descripcion>        
+        <dte:PrecioUnitario>${x.payment_amount.toFixed(2)}</dte:PrecioUnitario>
         <dte:Precio>${(price_).toFixed(2)}</dte:Precio>
-        <dte:Descuento>${x.discount.toFixed(2)}</dte:Descuento>        
+        <dte:Descuento>${0}</dte:Descuento>        
         <dte:Impuestos>
           <dte:Impuesto>
             <dte:NombreCorto>IVA</dte:NombreCorto>
@@ -44,6 +47,14 @@ const buildXml = (data, moment) => {
   })
 
   let xmlBody = `<dte:Items>${xml_details}</dte:Items>`
+  console.log("")
+  let xmlComplemento = `
+  <dte:Complementos>
+  <dte:Complemento IDComplemento="TEXT" NombreComplemento="TEXT" URIComplemento="TEXT">
+  <cno:ReferenciasNota xmlns:cno="http://www.sat.gob.gt/face2/ComplementoReferenciaNota/0.1.0" FechaEmisionDocumentoOrigen="${data.invoice.fechaEmisionDocumentoOrigen}" MotivoAjuste="${data.invoice.motivoAjuste}" NumeroAutorizacionDocumentoOrigen="${data.invoice.numeroAutorizacionDocumentoOrigen}" NumeroDocumentoOrigen="${data.invoice.numeroDocumentoOrigen}" SerieDocumentoOrigen="${data.invoice.serieDocumentoOrigen}" Version="0.0" xsi:schemaLocation="http://www.sat.gob.gt/face2/ComplementoReferenciaNota/0.1.0 C:\Users\User\Desktop\FEL\Esquemas\GT_Complemento_Referencia_Nota-0.1.0.xsd"></cno:ReferenciasNota>
+  </dte:Complemento>
+</dte:Complementos>
+  `
 
   let xmlTotales = `
       <dte:Totales>
@@ -52,15 +63,12 @@ const buildXml = (data, moment) => {
         </dte:TotalImpuestos>
         <dte:GranTotal>${grandTotal.toFixed(2)}</dte:GranTotal>
       </dte:Totales>
+      ${xmlComplemento}
       </dte:DatosEmision>
     </dte:DTE>
   `
 
-  let xmlDescription = `
-        <dte:Adenda>
-          <Codigo_cliente>C01</Codigo_cliente>
-          <Observaciones>${data.invoice.observations ? data.invoice.observations : 'sin observaciones'}</Observaciones>
-        </dte:Adenda>
+  let xmlDescription = `        
       </dte:SAT>
     </dte:GTDocumento>
   `
@@ -72,11 +80,11 @@ const buildXml = (data, moment) => {
 
 const headerInvoice = (data, moment) => {
   let headerStructure = `
-    <dte:GTDocumento xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:dte="http://www.sat.gob.gt/dte/fel/0.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Version="0.1" xsi:schemaLocation="http://www.sat.gob.gt/dte/fel/0.2.0">
+  <dte:GTDocumento xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:dte="http://www.sat.gob.gt/dte/fel/0.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" Version="0.1" xsi:schemaLocation="http://www.sat.gob.gt/dte/fel/0.2.0">
     <dte:SAT ClaseDocumento="dte">
       <dte:DTE ID="DatosCertificados">
         <dte:DatosEmision ID="DatosEmision">
-          <dte:DatosGenerales CodigoMoneda="GTQ" FechaHoraEmision="${moment().tz('America/Guatemala').format()}" Tipo="FACT"></dte:DatosGenerales>
+          <dte:DatosGenerales CodigoMoneda="GTQ" FechaHoraEmision="${moment().tz('America/Guatemala').format()}" Tipo="${data.invoice.documentType}"></dte:DatosGenerales>          
           <dte:Emisor AfiliacionIVA="GEN" CodigoEstablecimiento="1" CorreoEmisor="cabisarent@hotmail.com " NITEmisor="${nit}" NombreComercial="${emisorFact}" NombreEmisor="${emisorFact}">
             <dte:DireccionEmisor>
               <dte:Direccion>CALLE REAL ALDEA CONCEPCION COLMENAS CALLEJON 6, LOTE 06 Y 07</dte:Direccion>
@@ -109,4 +117,4 @@ const replaceAmpersand = (str) => {
   return str.replace(/&/g, '&#38;');
 };
 
-module.exports = buildXml
+module.exports = buildCreditDebitNote

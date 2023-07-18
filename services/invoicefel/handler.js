@@ -4,8 +4,8 @@ const moment = require(`moment-timezone`)
 const mysql = require(`mysql2/promise`)
 const xml2js = require('xml2js')
 const { v4: uuidv4 } = require(`uuid`)
-const { buildXml,buildXmlFcam,handleRequest, handleResponse,handleRead,buidCancelXml } = helpers
-const { createInvoiceFelLogDocument,findByDocumentId,parseToJson } = require('./storage')
+const { buildXml,buildXmlFcam,handleRequest, handleResponse,handleRead,buidCancelXml,buildCreditDebitNote } = helpers
+const { createInvoiceFelLogDocument,findByDocumentId,parseToJson,createDebitCreditLogDocument,getDebitCreditNotes } = require('./storage')
 const db = mysqlConfig(mysql)
 
 module.exports.create = async (event, context) => {
@@ -172,6 +172,72 @@ module.exports.createFactCam = async (event, context) => {
     return await handleResponse({ req: {}, res })
   } catch (error) {
     console.log('invoicefel Errors', error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.createDebitCreditNote = async (event, context) => {
+  try {
+    const { body } = await handleRequest({ event })
+
+    if (!body) throw new Error('Missing body')
+
+    const xml = buildCreditDebitNote(body, moment)
+        
+    const response = await axios.post(process.env.CERTIFIER_URL, xml, {
+      headers: {
+        UsuarioFirma: process.env.SIGNATURE_USER_SAT,
+        LlaveFirma: process.env.SIGNATURE_KEY_SAT,
+        UsuarioApi: process.env.API_USER_SAT,
+        LlaveApi: process.env.API_KEY_SAT,
+        identificador: `${process.env.IDENTIFIER_SAT}${uuidv4()}`,
+      },
+    })
+
+    if (!response && !response.data) throw new Error('The request to the SAT certification service has failed.')
+
+    const { data } = response
+    const { cantidad_errores, serie, numero, xml_certificado,descripcion,uuid } = data
+    
+    const dbValues = [
+      body.invoice.documentType === "NDEB" ? "DEBITO" : "CREDITO",
+      body.client.id,
+      body.invoice.numeroDocumentoOrigen,
+      body.invoice.numeroAutorizacionDocumentoOrigen,
+      body.invoice.serieDocumentoOrigen,
+      body.invoice.motivoAjuste,
+      cantidad_errores > 0 ? '' : xml_certificado,
+      xml,
+      cantidad_errores > 0 ? 'ERROR' : 'NO ERRORS',
+      JSON.stringify(data),      
+      cantidad_errores > 0 ? '' : serie,
+      cantidad_errores > 0 ? '' : uuid,
+      cantidad_errores > 0 ? '' : numero,
+      body.invoice.created_by,
+      JSON.stringify(body),
+    ]
+
+    const res = await db.transaction(async connection => {
+      
+      await connection.query(createDebitCreditLogDocument(), dbValues, false)      
+      
+      return { statusCode: 201, data, message:  (cantidad_errores > 0 ? descripcion :'SUCCESSFUL') }
+    })
+
+    return await handleResponse({ req: {}, res })
+  } catch (error) {
+    console.log('creditDebitNote Errors', error)
+    return await handleResponse({ error })
+  }
+}
+
+module.exports.getDocumentDebitCreditNote = async (event, context) => {    
+  try {        
+    const req = await handleRequest({ event })
+    const res = await handleRead(req, { dbQuery: db.query, storage: getDebitCreditNotes})    
+    return await handleResponse({ req, res: { ...res } })
+  } catch (error) {
+    console.log(error)
     return await handleResponse({ error })
   }
 }
