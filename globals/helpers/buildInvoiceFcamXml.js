@@ -8,6 +8,7 @@ const buildXmlFcam = (data, moment) => {
   let xml_details = ``
   let totalTaxAmount = 0
   let grandTotal = 0
+  let creditDate = getCreditDays(data.invoice.credit_days,moment)
 
   data.invoice.items.forEach(x => {
     
@@ -51,7 +52,7 @@ const buildXmlFcam = (data, moment) => {
     <cfc:AbonosFacturaCambiaria xmlns:cfc="http://www.sat.gob.gt/dte/fel/CompCambiaria/0.1.0" Version="1" xsi:schemaLocation="http://www.sat.gob.gt/dte/fel/CompCambiaria/0.1.0 C:\Users\Desktop\SAT_FEL_FINAL_V1\Esquemas\GT_Complemento_Cambiaria-0.1.0.xsd">
       <cfc:Abono>
         <cfc:NumeroAbono>1</cfc:NumeroAbono>
-        <cfc:FechaVencimiento>${moment().add(1, 'months').tz('America/Guatemala').format('YYYY-MM-DD')}</cfc:FechaVencimiento>
+        <cfc:FechaVencimiento>${creditDate}</cfc:FechaVencimiento>
         <cfc:MontoAbono>${grandTotal.toFixed(2)}</cfc:MontoAbono>
       </cfc:Abono>
     </cfc:AbonosFacturaCambiaria>
@@ -123,5 +124,17 @@ const headerInvoice = (data, moment) => {
 const replaceAmpersand = (str) => {
   return str.replace(/&/g, '&#38;');
 };
+
+const getCreditDays = (creditDays,moment) => {
+  console.log("creditDays >> ",creditDays)
+  switch (creditDays) {
+    case 7:
+      return moment().add(7, 'days').tz('America/Guatemala').format('YYYY-MM-DD')
+    case 15:
+      return moment().add(15, 'days').tz('America/Guatemala').format('YYYY-MM-DD')
+    default:
+      return moment().add(1, 'months').tz('America/Guatemala').format('YYYY-MM-DD')
+  }
+}
 
 module.exports = buildXmlFcam
