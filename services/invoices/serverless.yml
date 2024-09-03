@@ -7,8 +7,9 @@ custom:
   config: ../../envs/credentials.${self:provider.stage}.json
 
 provider:
+  timeout: 30
   name: aws
-  runtime: nodejs12.x
+  runtime: nodejs18.x
   stage: ${opt:stage, 'prod'}
   region: us-east-1
   deploymentBucket:
