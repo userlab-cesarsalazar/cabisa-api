@@ -24,7 +24,7 @@ const buildXml = (data, moment) => {
     <dte:Item BienOServicio="${x.type === "SERVICE" ? "S" : "B" }" NumeroLinea="1">
         <dte:Cantidad>${x.quantity.toFixed(2)}</dte:Cantidad>
         <dte:UnidadMedida>UND</dte:UnidadMedida>
-        <dte:Descripcion>${x.code}|${x.description}|${data.invoice.observations ? data.invoice.observations : ''}</dte:Descripcion>
+        <dte:Descripcion>${x.code}|${x.description}${data.invoice.observations ? ` - ${data.invoice.observations}` : ''}</dte:Descripcion>
         <dte:PrecioUnitario>${x.price.toFixed(2)}</dte:PrecioUnitario>
         <dte:Precio>${(price_).toFixed(2)}</dte:Precio>
         <dte:Descuento>${x.discount.toFixed(2)}</dte:Descuento>        
