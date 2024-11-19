@@ -528,6 +528,7 @@ return `
   WHERE d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}' 
   ${whereConditions}
   ORDER BY d.id DESC
+  LIMIT 200
 `
 }
 

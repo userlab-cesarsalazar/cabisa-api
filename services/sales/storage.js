@@ -57,6 +57,7 @@ const findAllBy = (fields = {}) => `
   INNER JOIN projects proj ON proj.id = d.project_id
   WHERE d.document_type = '${types.documentsTypes.RENT_PRE_INVOICE}' ${getWhereConditions({ fields, tableAlias: 'd' })}
   ORDER BY d.id DESC
+  LIMIT 200
 `
 
 const findSalesStatus = () => `DESCRIBE documents status`
